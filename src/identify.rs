@@ -267,7 +267,7 @@ pub unsafe extern fn flood_fill_seed(
     mut
     func
     :
-    unsafe extern fn(*mut ::std::os::raw::c_void, i32, i32, i32),
+    Option<unsafe extern fn(*mut ::std::os::raw::c_void, i32, i32, i32)>,
     mut user_data : *mut ::std::os::raw::c_void,
     mut depth : i32
 ) {
@@ -303,8 +303,8 @@ pub unsafe extern fn flood_fill_seed(
             *row.offset(i as (isize)) = to as (u8);
             i = i + 1;
         }
-        if func != 0 {
-            func(user_data,y,left,right);
+        if let Some(f) = func {
+            f(user_data,y,left,right);
         }
         if y > 0i32 {
             row = (*q).pixels.offset(((y - 1i32) * (*q).w) as (isize));
@@ -420,7 +420,7 @@ pub unsafe extern fn region_code(
     mut q : *mut quirc, mut x : i32, mut y : i32
 ) -> i32 {
     let mut pixel : i32;
-    let mut box : *mut quirc_region;
+    let mut r#box : *mut quirc_region;
     let mut region : i32;
     if x < 0i32 || y < 0i32 || x >= (*q).w || y >= (*q).h {
         -1i32
@@ -434,7 +434,7 @@ pub unsafe extern fn region_code(
              -1i32
          } else {
              region = (*q).num_regions;
-             box = &mut (*q).regions[
+             r#box = &mut (*q).regions[
                             {
                                 let _old = (*q).num_regions;
                                 (*q).num_regions = (*q).num_regions + 1;
@@ -442,21 +442,21 @@ pub unsafe extern fn region_code(
                             } as (usize)
                         ] as (*mut quirc_region);
              memset(
-                 box as (*mut ::std::os::raw::c_void),
+                 r#box as (*mut ::std::os::raw::c_void),
                  0i32,
                  ::std::mem::size_of::<quirc_region>()
              );
-             (*box).seed.x = x;
-             (*box).seed.y = y;
-             (*box).capstone = -1i32;
+             (*r#box).seed.x = x;
+             (*r#box).seed.y = y;
+             (*r#box).capstone = -1i32;
              flood_fill_seed(
                  q,
                  x,
                  y,
                  pixel,
                  region,
-                 area_count,
-                 box as (*mut ::std::os::raw::c_void),
+                 Some(area_count),
+                 r#box as (*mut ::std::os::raw::c_void),
                  0i32
              );
              region
@@ -467,7 +467,7 @@ pub unsafe extern fn region_code(
 #[derive(Copy)]
 #[repr(C)]
 pub struct polygon_score_data {
-    pub ref : quirc_point,
+    pub r#ref : quirc_point,
     pub scores : [i32; 4],
     pub corners : *mut quirc_point,
 }
@@ -487,14 +487,14 @@ pub unsafe extern fn find_one_corner(
         : *mut polygon_score_data
         = user_data as (*mut polygon_score_data);
     let mut xs : [i32; 2] = [ left, right ];
-    let mut dy : i32 = y - (*psd).ref.y;
+    let mut dy : i32 = y - (*psd).r#ref.y;
     let mut i : i32;
     i = 0i32;
     'loop1: loop {
         if !(i < 2i32) {
             break;
         }
-        let mut dx : i32 = xs[i as (usize)] - (*psd).ref.x;
+        let mut dx : i32 = xs[i as (usize)] - (*psd).r#ref.x;
         let mut d : i32 = dx * dx + dy * dy;
         if d > (*psd).scores[0usize] {
             (*psd).scores[0usize] = d;
@@ -524,10 +524,10 @@ pub unsafe extern fn find_other_corners(
         }
         let mut up
             : i32
-            = xs[i as (usize)] * (*psd).ref.x + y * (*psd).ref.y;
+            = xs[i as (usize)] * (*psd).r#ref.x + y * (*psd).r#ref.y;
         let mut right
             : i32
-            = xs[i as (usize)] * -(*psd).ref.y + y * (*psd).ref.x;
+            = xs[i as (usize)] * -(*psd).r#ref.y + y * (*psd).r#ref.x;
         let mut scores : [i32; 4] = [ up, right, -up, -right ];
         let mut j : i32;
         j = 0i32;
@@ -550,7 +550,7 @@ pub unsafe extern fn find_other_corners(
 pub unsafe extern fn find_region_corners(
     mut q : *mut quirc,
     mut rcode : i32,
-    mut ref : *const quirc_point,
+    mut r#ref : *const quirc_point,
     mut corners : *mut quirc_point
 ) {
     let mut region
@@ -565,8 +565,8 @@ pub unsafe extern fn find_region_corners(
     );
     psd.corners = corners;
     memcpy(
-        &mut psd.ref as (*mut quirc_point) as (*mut ::std::os::raw::c_void),
-        ref as (*const ::std::os::raw::c_void),
+        &mut psd.r#ref as (*mut quirc_point) as (*mut ::std::os::raw::c_void),
+        r#ref as (*const ::std::os::raw::c_void),
         ::std::mem::size_of::<quirc_point>()
     );
     psd.scores[0usize] = -1i32;
@@ -576,12 +576,12 @@ pub unsafe extern fn find_region_corners(
         (*region).seed.y,
         rcode,
         1i32,
-        find_one_corner,
+        Some(find_one_corner),
         &mut psd as (*mut polygon_score_data) as (*mut ::std::os::raw::c_void),
         0i32
     );
-    psd.ref.x = (*psd.corners.offset(0isize)).x - psd.ref.x;
-    psd.ref.y = (*psd.corners.offset(0isize)).y - psd.ref.y;
+    psd.r#ref.x = (*psd.corners.offset(0isize)).x - psd.r#ref.x;
+    psd.r#ref.y = (*psd.corners.offset(0isize)).y - psd.r#ref.y;
     i = 0i32;
     'loop1: loop {
         if !(i < 4i32) {
@@ -596,10 +596,10 @@ pub unsafe extern fn find_region_corners(
         );
         i = i + 1;
     }
-    i = (*region).seed.x * psd.ref.x + (*region).seed.y * psd.ref.y;
+    i = (*region).seed.x * psd.r#ref.x + (*region).seed.y * psd.r#ref.y;
     psd.scores[0usize] = i;
     psd.scores[2usize] = -i;
-    i = (*region).seed.x * -psd.ref.y + (*region).seed.y * psd.ref.x;
+    i = (*region).seed.x * -psd.r#ref.y + (*region).seed.y * psd.r#ref.x;
     psd.scores[1usize] = i;
     psd.scores[3usize] = -i;
     flood_fill_seed(
@@ -608,7 +608,7 @@ pub unsafe extern fn find_region_corners(
         (*region).seed.y,
         1i32,
         rcode,
-        find_other_corners,
+        Some(find_other_corners),
         &mut psd as (*mut polygon_score_data) as (*mut ::std::os::raw::c_void),
         0i32
     );
@@ -783,7 +783,6 @@ pub unsafe extern fn finder_scan(mut q : *mut quirc, mut y : i32) {
 pub unsafe extern fn find_alignment_pattern(
     mut q : *mut quirc, mut index : i32
 ) {
-    let mut _currentBlock;
     let mut qr
         : *mut quirc_grid
         = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
@@ -805,11 +804,17 @@ pub unsafe extern fn find_alignment_pattern(
     let mut dir : i32 = 0i32;
     let mut u : f64;
     let mut v : f64;
+
+    /* Grab our previous estimate of the alignment pattern corner */
     memcpy(
         &mut b as (*mut quirc_point) as (*mut ::std::os::raw::c_void),
         &mut (*qr).align as (*mut quirc_point) as (*const ::std::os::raw::c_void),
         ::std::mem::size_of::<quirc_point>()
     );
+
+    /* Guess another two corners of the alignment pattern so that we
+     * can estimate its size.
+     */
     perspective_unmap(
         (*c0).c.as_mut_ptr() as (*const f64),
         &mut b as (*mut quirc_point) as (*const quirc_point),
@@ -834,45 +839,38 @@ pub unsafe extern fn find_alignment_pattern(
         v,
         &mut c as (*mut quirc_point)
     );
+
     size_estimate = abs(
                         (a.x - b.x) * -(c.y - b.y) + (a.y - b.y) * (c.x - b.x)
                     );
-    'loop1: loop {
-        if !(step_size * step_size < size_estimate * 100i32) {
-            _currentBlock = 2;
-            break;
-        }
+
+    /* Spiral outwards from the estimate point until we find something
+     * roughly the right size. Don't look too far from the estimate
+     * point.
+     */
+    while step_size * step_size < size_estimate * 100 {
         static mut dx_map : [i32; 4] = [1, 0, -1, 0];
         static mut dy_map : [i32; 4] = [0, -1, 0, 1];
         let mut i : i32;
-        i = 0i32;
-        'loop4: loop {
-            if !(i < step_size) {
-                break;
-            }
+
+        for i in 0..step_size {
             let mut code : i32 = region_code(q,b.x,b.y);
             if code >= 0i32 {
                 let mut reg
                     : *mut quirc_region
                     = &mut (*q).regions[code as (usize)] as (*mut quirc_region);
                 if (*reg).count >= size_estimate / 2i32 && ((*reg).count <= size_estimate * 2i32) {
-                    _currentBlock = 11;
-                    break 'loop1;
+                    (*qr).align_region = code;
+                    return;
                 }
             }
             b.x = b.x + dx_map[dir as (usize)];
             b.y = b.y + dy_map[dir as (usize)];
-            i = i + 1;
         }
         dir = (dir + 1i32) % 4i32;
-        if !(dir & 1i32 == 0) {
-            continue;
+        if dir & 1i32 == 0 {
+            step_size = step_size + 1;
         }
-        step_size = step_size + 1;
-    }
-    if _currentBlock == 2 {
-    } else {
-        (*qr).align_region = code;
     }
 }
 
@@ -895,7 +893,7 @@ pub unsafe extern fn find_leftmost_to_line(
         }
         let mut d
             : i32
-            = -(*psd).ref.y * xs[i as (usize)] + (*psd).ref.x * y;
+            = -(*psd).r#ref.y * xs[i as (usize)] + (*psd).r#ref.x * y;
         if d < (*psd).scores[0usize] {
             (*psd).scores[0usize] = d;
             (*(*psd).corners.offset(0isize)).x = xs[i as (usize)];
@@ -1557,7 +1555,7 @@ pub unsafe extern fn record_qr_grid(
                             ::std::mem::size_of::<quirc_point>()
                         );
                         memcpy(
-                            &mut psd.ref as (*mut quirc_point) as (*mut ::std::os::raw::c_void),
+                            &mut psd.r#ref as (*mut quirc_point) as (*mut ::std::os::raw::c_void),
                             &mut hd as (*mut quirc_point) as (*const ::std::os::raw::c_void),
                             ::std::mem::size_of::<quirc_point>()
                         );
@@ -1569,7 +1567,7 @@ pub unsafe extern fn record_qr_grid(
                             (*reg).seed.y,
                             (*qr).align_region,
                             1i32,
-                            0i32 as (*mut ::std::os::raw::c_void) as (unsafe extern fn(*mut ::std::os::raw::c_void, i32, i32, i32)),
+                            None,
                             0i32 as (*mut ::std::os::raw::c_void),
                             0i32
                         );
@@ -1579,7 +1577,7 @@ pub unsafe extern fn record_qr_grid(
                             (*reg).seed.y,
                             1i32,
                             (*qr).align_region,
-                            find_leftmost_to_line,
+                            Some(find_leftmost_to_line),
                             &mut psd as (*mut polygon_score_data) as (*mut ::std::os::raw::c_void),
                             0i32
                         );
@@ -1657,7 +1655,7 @@ pub unsafe extern fn test_neighbours(
                 = &mut (*vlist).n[
                            k as (usize)
                        ] as (*mut neighbour) as (*const neighbour);
-            let mut score : f64 = fabs(1.0 - hn->distance / vn->distance);
+            let mut score : f64 = (1.0 - (*hn).distance / (*vn).distance).abs();
             if !(score > 2.5f64) {
                 if best_h < 0i32 || score < best_score {
                     best_h = (*hn).index;
@@ -1705,8 +1703,8 @@ pub unsafe extern fn test_grouping(mut q : *mut quirc, mut i : i32) {
                     &mut v as (*mut f64)
                 );
 
-                u = fabs(u - 3.5);
-                v = fabs(v - 3.5);
+                u = (u - 3.5).abs();
+                v = (v - 3.5).abs();
 
                 if u < 0.2f64 * v {
                     let mut n
