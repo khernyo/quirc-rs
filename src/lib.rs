@@ -1,6 +1,6 @@
 mod decode;
 mod identify;
-mod quirc;
+pub mod quirc;
 mod version_db;
 
 #[cfg(test)]
