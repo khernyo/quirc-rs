@@ -556,20 +556,12 @@ pub unsafe extern fn find_region_corners(
     let mut region
         : *mut quirc_region
         = &mut (*q).regions[rcode as (usize)] as (*mut quirc_region);
-    let mut psd : polygon_score_data;
+    let mut psd : polygon_score_data = polygon_score_data {
+        r#ref: *r#ref,
+        scores: [-1i32, 0i32, 0i32, 0i32],
+        corners,
+    };
     let mut i : i32;
-    memset(
-        &mut psd as (*mut polygon_score_data) as (*mut ::std::os::raw::c_void),
-        0i32,
-        ::std::mem::size_of::<polygon_score_data>()
-    );
-    psd.corners = corners;
-    memcpy(
-        &mut psd.r#ref as (*mut quirc_point) as (*mut ::std::os::raw::c_void),
-        r#ref as (*const ::std::os::raw::c_void),
-        ::std::mem::size_of::<quirc_point>()
-    );
-    psd.scores[0usize] = -1i32;
     flood_fill_seed(
         q,
         (*region).seed.x,
@@ -723,12 +715,7 @@ pub unsafe extern fn finder_scan(mut q : *mut quirc, mut y : i32) {
     let mut last_color : i32 = 0i32;
     let mut run_length : i32 = 0i32;
     let mut run_count : i32 = 0i32;
-    let mut pb : [i32; 5];
-    memset(
-        pb.as_mut_ptr() as (*mut ::std::os::raw::c_void),
-        0i32,
-        ::std::mem::size_of::<[i32; 5]>()
-    );
+    let mut pb : [i32; 5] = [0i32; 5];
     x = 0i32;
     'loop1: loop {
         if !(x < (*q).w) {
@@ -796,14 +783,14 @@ pub unsafe extern fn find_alignment_pattern(
         = &mut (*q).capstones[
                    (*qr).caps[2usize] as (usize)
                ] as (*mut quirc_capstone);
-    let mut a : quirc_point;
-    let mut b : quirc_point;
-    let mut c : quirc_point;
+    let mut a : quirc_point = std::mem::uninitialized();
+    let mut b : quirc_point = std::mem::uninitialized();
+    let mut c : quirc_point = std::mem::uninitialized();
     let mut size_estimate : i32;
     let mut step_size : i32 = 1i32;
     let mut dir : i32 = 0i32;
-    let mut u : f64;
-    let mut v : f64;
+    let mut u : f64 = 0f64;
+    let mut v : f64 = 0f64;
 
     /* Grab our previous estimate of the alignment pattern corner */
     memcpy(
@@ -1045,14 +1032,14 @@ pub unsafe extern fn measure_timing_pattern(
 
 #[no_mangle]
 pub unsafe extern fn read_cell(
-    mut q : *const quirc, mut index : i32, mut x : i32, mut y : i32
+    mut q : *mut quirc, mut index : i32, mut x : i32, mut y : i32
 ) -> i32 {
     let mut qr
-        : *const quirc_grid
+        : *mut quirc_grid
         = &mut (*q).grids[
                    index as (usize)
-               ] as (*mut quirc_grid) as (*const quirc_grid);
-    let mut p : quirc_point;
+               ] as (*mut quirc_grid) as (*mut quirc_grid);
+    let mut p : quirc_point = std::mem::uninitialized();
     perspective_map(
         (*qr).c.as_mut_ptr() as (*const f64),
         x as (f64) + 0.5f64,
@@ -1072,13 +1059,13 @@ pub unsafe extern fn read_cell(
 
 #[no_mangle]
 pub unsafe extern fn fitness_cell(
-    mut q : *const quirc, mut index : i32, mut x : i32, mut y : i32
+    mut q : *mut quirc, mut index : i32, mut x : i32, mut y : i32
 ) -> i32 {
     let mut qr
-        : *const quirc_grid
+        : *mut quirc_grid
         = &mut (*q).grids[
                    index as (usize)
-               ] as (*mut quirc_grid) as (*const quirc_grid);
+               ] as (*mut quirc_grid) as (*mut quirc_grid);
     let mut score : i32 = 0i32;
     let mut u : i32;
     let mut v : i32;
@@ -1093,7 +1080,7 @@ pub unsafe extern fn fitness_cell(
                 break;
             }
             static mut offsets : [f64; 3] = [0.3, 0.5, 0.7];
-            let mut p : quirc_point;
+            let mut p : quirc_point = std::mem::uninitialized();
             perspective_map(
                 (*qr).c.as_mut_ptr() as (*const f64),
                 x as (f64) + offsets[u as (usize)],
@@ -1116,7 +1103,7 @@ pub unsafe extern fn fitness_cell(
 
 #[no_mangle]
 pub unsafe extern fn fitness_ring(
-    mut q : *const quirc,
+    mut q : *mut quirc,
     mut index : i32,
     mut cx : i32,
     mut cy : i32,
@@ -1140,7 +1127,7 @@ pub unsafe extern fn fitness_ring(
 
 #[no_mangle]
 pub unsafe extern fn fitness_apat(
-    mut q : *const quirc, mut index : i32, mut cx : i32, mut cy : i32
+    mut q : *mut quirc, mut index : i32, mut cx : i32, mut cy : i32
 ) -> i32 {
     fitness_cell(q,index,cx,cy) - fitness_ring(
                                       q,
@@ -1153,7 +1140,7 @@ pub unsafe extern fn fitness_apat(
 
 #[no_mangle]
 pub unsafe extern fn fitness_capstone(
-    mut q : *const quirc, mut index : i32, mut x : i32, mut y : i32
+    mut q : *mut quirc, mut index : i32, mut x : i32, mut y : i32
 ) -> i32 {
     x = x + 3i32;
     y = y + 3i32;
@@ -1192,7 +1179,7 @@ impl Clone for quirc_version_info {
 
 #[no_mangle]
 pub unsafe extern fn fitness_all(
-    mut q : *const quirc, mut index : i32
+    mut q : *mut quirc, mut index : i32
 ) -> i32 {
     let mut qr
         : *const quirc_grid
@@ -1292,9 +1279,9 @@ pub unsafe extern fn jiggle_perspective(
     let mut qr
         : *mut quirc_grid
         = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
-    let mut best : i32 = fitness_all(q as (*const quirc),index);
+    let mut best : i32 = fitness_all(q as (*mut quirc),index);
     let mut pass : i32;
-    let mut adjustments : [f64; 8];
+    let mut adjustments : [f64; 8] = [0f64; 8];
     let mut i : i32;
     i = 0i32;
     'loop1: loop {
@@ -1325,7 +1312,7 @@ pub unsafe extern fn jiggle_perspective(
                 new = old - step;
             }
             (*qr).c[j as (usize)] = new;
-            test = fitness_all(q as (*const quirc),index);
+            test = fitness_all(q as (*mut quirc),index);
             if test > best {
                 best = test;
             } else {
@@ -1354,7 +1341,7 @@ pub unsafe extern fn setup_qr_perspective(
     let mut qr
         : *mut quirc_grid
         = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
-    let mut rect : [quirc_point; 4];
+    let mut rect : [quirc_point; 4] = std::mem::uninitialized();
     memcpy(
         &mut rect[
                  0usize
@@ -1404,10 +1391,10 @@ pub unsafe extern fn rotate_capstone(
     mut h0 : *const quirc_point,
     mut hd : *const quirc_point
 ) {
-    let mut copy : [quirc_point; 4];
+    let mut copy : [quirc_point; 4] = std::mem::uninitialized();
     let mut j : i32;
-    let mut best : i32;
-    let mut best_score : i32;
+    let mut best : i32 = std::mem::uninitialized();
+    let mut best_score : i32 = std::mem::uninitialized();
     j = 0i32;
     'loop1: loop {
         if !(j < 4i32) {
@@ -1458,8 +1445,8 @@ pub unsafe extern fn rotate_capstone(
 pub unsafe extern fn record_qr_grid(
     mut q : *mut quirc, mut a : i32, mut b : i32, mut c : i32
 ) {
-    let mut h0 : quirc_point;
-    let mut hd : quirc_point;
+    let mut h0 : quirc_point = std::mem::uninitialized();
+    let mut hd : quirc_point = std::mem::uninitialized();
     let mut i : i32;
     let mut qr_index : i32;
     let mut qr : *mut quirc_grid;
@@ -1543,7 +1530,7 @@ pub unsafe extern fn record_qr_grid(
                 if (*qr).grid_size > 21i32 {
                     find_alignment_pattern(q,qr_index);
                     if (*qr).align_region >= 0i32 {
-                        let mut psd : polygon_score_data;
+                        let mut psd : polygon_score_data = std::mem::uninitialized();
                         let mut reg
                             : *mut quirc_region
                             = &mut (*q).regions[
@@ -1627,8 +1614,8 @@ impl Clone for neighbour_list {
 pub unsafe extern fn test_neighbours(
     mut q : *mut quirc,
     mut i : i32,
-    mut hlist : *const neighbour_list,
-    mut vlist : *const neighbour_list
+    mut hlist : *mut neighbour_list,
+    mut vlist : *mut neighbour_list
 ) {
     let mut j : i32;
     let mut k : i32;
@@ -1679,8 +1666,8 @@ pub unsafe extern fn test_grouping(mut q : *mut quirc, mut i : i32) {
         : *mut quirc_capstone
         = &mut (*q).capstones[i as (usize)] as (*mut quirc_capstone);
     let mut j : i32;
-    let mut hlist : neighbour_list;
-    let mut vlist : neighbour_list;
+    let mut hlist : neighbour_list = std::mem::uninitialized();
+    let mut vlist : neighbour_list = std::mem::uninitialized();
     if (*c1).qr_grid >= 0i32 {
     } else {
         hlist.count = 0i32;
@@ -1693,8 +1680,8 @@ pub unsafe extern fn test_grouping(mut q : *mut quirc, mut i : i32) {
             let mut c2
                 : *mut quirc_capstone
                 = &mut (*q).capstones[j as (usize)] as (*mut quirc_capstone);
-            let mut u : f64;
-            let mut v : f64;
+            let mut u : f64 = std::mem::uninitialized();
+            let mut v : f64 = std::mem::uninitialized();
             if !(i == j || (*c2).qr_grid >= 0i32) {
                 perspective_unmap(
                     (*c1).c.as_mut_ptr() as (*const f64),
@@ -1740,8 +1727,8 @@ pub unsafe extern fn test_grouping(mut q : *mut quirc, mut i : i32) {
              test_neighbours(
                  q,
                  i,
-                 &mut hlist as (*mut neighbour_list) as (*const neighbour_list),
-                 &mut vlist as (*mut neighbour_list) as (*const neighbour_list)
+                 &mut hlist as (*mut neighbour_list),
+                 &mut vlist as (*mut neighbour_list),
              );
          })
     }
@@ -1827,13 +1814,13 @@ impl Clone for quirc_code {
 
 #[no_mangle]
 pub unsafe extern fn quirc_extract(
-    mut q : *const quirc, mut index : i32, mut code : *mut quirc_code
+    mut q : *mut quirc, mut index : i32, mut code : *mut quirc_code
 ) {
     let mut qr
-        : *const quirc_grid
+        : *mut quirc_grid
         = &mut (*q).grids[
                    index as (usize)
-               ] as (*mut quirc_grid) as (*const quirc_grid);
+               ] as (*mut quirc_grid) as (*mut quirc_grid);
     let mut y : i32;
     let mut i : i32 = 0i32;
     if index < 0i32 || index > (*q).num_grids {
