@@ -618,7 +618,7 @@ static gf256
           exp: gf256_exp.as_ptr()
       };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(i32)]
 pub enum Enum1 {
     QUIRC_SUCCESS = 0i32,
@@ -999,7 +999,7 @@ unsafe extern fn read_format(
     }
     format = (format as (i32) ^ 0x5412i32) as (u16);
     err = correct_format(&mut format as (*mut u16));
-    if err != 0 {
+    if err != Enum1::QUIRC_SUCCESS {
         err
     } else {
         fdata = (format as (i32) >> 10i32) as (u16);
@@ -1367,6 +1367,7 @@ unsafe extern fn codestream_ecc(
     lb_ecc.dw = lb_ecc.dw + 1;
     lb_ecc.bs = lb_ecc.bs + 1;
     i = 0i32;
+    let mut err : Enum1;
     'loop1: loop {
         if !(i < bc) {
             _currentBlock = 2;
@@ -1383,7 +1384,6 @@ unsafe extern fn codestream_ecc(
                   &mut lb_ecc as (*mut quirc_rs_params) as (*const quirc_rs_params)
               };
         let num_ec : i32 = (*ecc).bs - (*ecc).dw;
-        let mut err : Enum1;
         let mut j : i32;
         j = 0i32;
         'loop4: loop {
@@ -1404,7 +1404,7 @@ unsafe extern fn codestream_ecc(
             j = j + 1;
         }
         err = correct_block(dst,ecc);
-        if err != 0 {
+        if err != Enum1::QUIRC_SUCCESS {
             _currentBlock = 10;
             break;
         }
@@ -1710,12 +1710,12 @@ unsafe extern fn decode_payload(
     mut data : *mut quirc_data, mut ds : *mut datastream
 ) -> Enum1 {
     let mut _currentBlock;
+    let mut err : Enum1 = Enum1::QUIRC_SUCCESS;
     'loop0: loop {
         if !(bits_remaining(ds as (*const datastream)) >= 4i32) {
             _currentBlock = 7;
             break;
         }
-        let mut err : Enum1 = Enum1::QUIRC_SUCCESS;
         let mut type_ : i32 = take_bits(ds,4i32);
         if type_ == 7i32 {
             err = decode_eci(data,ds);
@@ -1732,7 +1732,7 @@ unsafe extern fn decode_payload(
             }
             err = decode_numeric(data,ds);
         }
-        if err != 0 {
+        if err != Enum1::QUIRC_SUCCESS {
             _currentBlock = 18;
             break;
         }
@@ -1777,19 +1777,19 @@ pub unsafe extern fn quirc_decode(
              Enum1::QUIRC_ERROR_INVALID_VERSION
          } else {
              err = read_format(code,data,0i32);
-             if err != 0 {
+             if err != Enum1::QUIRC_SUCCESS {
                  err = read_format(code,data,1i32);
              }
-             (if err != 0 {
+             (if err != Enum1::QUIRC_SUCCESS {
                   err
               } else {
                   read_data(code,data,&mut ds as (*mut datastream));
                   err = codestream_ecc(data,&mut ds as (*mut datastream));
-                  (if err != 0 {
+                  (if err != Enum1::QUIRC_SUCCESS {
                        err
                    } else {
                        err = decode_payload(data,&mut ds as (*mut datastream));
-                       (if err != 0 { err } else { Enum1::QUIRC_SUCCESS })
+                       (if err != Enum1::QUIRC_SUCCESS { err } else { Enum1::QUIRC_SUCCESS })
                    })
               })
          })
