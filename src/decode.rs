@@ -30,6 +30,7 @@ extern {
     static mut quirc_version_db : [quirc_version_info; QUIRC_MAX_VERSION + 1];
 }
 
+const MAX_POLY: usize = 64;
 
 static mut gf16_exp
     : [u8; 16]
@@ -767,22 +768,12 @@ unsafe extern fn berlekamp_massey(
     mut gf : *const galois_field,
     mut sigma : *mut u8
 ) {
-    let mut C : [u8; 64];
-    let mut B : [u8; 64];
+    let mut C : [u8; MAX_POLY] = [0u8; MAX_POLY];
+    let mut B : [u8; MAX_POLY] = [0u8; MAX_POLY];
     let mut L : i32 = 0i32;
     let mut m : i32 = 1i32;
     let mut b : u8 = 1u8;
     let mut n : i32;
-    memset(
-        B.as_mut_ptr() as (*mut ::std::os::raw::c_void),
-        0i32,
-        ::std::mem::size_of::<[u8; 64]>()
-    );
-    memset(
-        C.as_mut_ptr() as (*mut ::std::os::raw::c_void),
-        0i32,
-        ::std::mem::size_of::<[u8; 64]>()
-    );
     B[0usize] = 1u8;
     C[0usize] = 1u8;
     n = 0i32;
@@ -821,7 +812,7 @@ unsafe extern fn berlekamp_massey(
         if d == 0 {
             m = m + 1;
         } else if L * 2i32 <= n {
-            let mut T : [u8; 64];
+            let mut T : [u8; MAX_POLY] = [0u8; MAX_POLY];
             memcpy(
                 T.as_mut_ptr() as (*mut ::std::os::raw::c_void),
                 C.as_mut_ptr() as (*const ::std::os::raw::c_void),
@@ -880,8 +871,8 @@ unsafe extern fn poly_eval(
 unsafe extern fn correct_format(mut f_ret : *mut u16) -> Enum1 {
     let mut u : u16 = *f_ret;
     let mut i : i32;
-    let mut s : [u8; 64];
-    let mut sigma : [u8; 64];
+    let mut s : [u8; MAX_POLY] = [0u8; MAX_POLY];
+    let mut sigma : [u8; MAX_POLY] = [0u8; MAX_POLY];
     if format_syndromes(u,s.as_mut_ptr()) == 0 {
         Enum1::QUIRC_SUCCESS
     } else {
@@ -1225,11 +1216,13 @@ unsafe extern fn correct_block(
     mut data : *mut u8, mut ecc : *const quirc_rs_params
 ) -> Enum1 {
     let mut npar : i32 = (*ecc).bs - (*ecc).dw;
-    let mut s : [u8; 64];
-    let mut sigma : [u8; 64];
-    let mut sigma_deriv : [u8; 64];
-    let mut omega : [u8; 64];
+    let mut s : [u8; MAX_POLY] = [0u8; MAX_POLY];
+    let mut sigma : [u8; MAX_POLY] = [0u8; MAX_POLY];
+    let mut sigma_deriv : [u8; MAX_POLY] = [0u8; MAX_POLY];
+    let mut omega : [u8; MAX_POLY] = [0u8; MAX_POLY];
     let mut i : i32;
+
+    /* Compute syndrome vector */
     if block_syndromes(
            data as (*const u8),
            (*ecc).bs,
@@ -1244,11 +1237,8 @@ unsafe extern fn correct_block(
             &gf256 as (*const galois_field),
             sigma.as_mut_ptr()
         );
-        memset(
-            sigma_deriv.as_mut_ptr() as (*mut ::std::os::raw::c_void),
-            0i32,
-            64usize
-        );
+
+        /* Compute derivative of sigma */
         i = 0i32;
         'loop2: loop {
             if !(i + 1i32 < 64i32) {
@@ -1257,12 +1247,16 @@ unsafe extern fn correct_block(
             sigma_deriv[i as (usize)] = sigma[(i + 1i32) as (usize)];
             i = i + 2i32;
         }
+
+        /* Compute error evaluator polynomial */
         eloc_poly(
             omega.as_mut_ptr(),
             s.as_mut_ptr() as (*const u8),
             sigma.as_mut_ptr() as (*const u8),
             npar - 1i32
         );
+
+        /* Find error locations and magnitudes */
         i = 0i32;
         'loop4: loop {
             if !(i < (*ecc).bs) {
@@ -1317,7 +1311,6 @@ unsafe extern fn correct_block(
 unsafe extern fn codestream_ecc(
     mut data : *mut quirc_data, mut ds : *mut datastream
 ) -> Enum1 {
-    let mut _currentBlock;
     let mut ver
         : *const quirc_version_info
         = &quirc_version_db[
@@ -1325,9 +1318,9 @@ unsafe extern fn codestream_ecc(
            ] as (*const quirc_version_info);
     let mut sb_ecc
         : *const quirc_rs_params
-        = &mut (*ver).ecc[
+        = &(*ver).ecc[
                    (*data).ecc_level as (usize)
-               ] as (*mut quirc_rs_params) as (*const quirc_rs_params);
+               ] as (*const quirc_rs_params);
     let mut lb_ecc : quirc_rs_params;
     let lb_count
         : i32
@@ -1336,64 +1329,44 @@ unsafe extern fn codestream_ecc(
     let ecc_offset : i32 = (*sb_ecc).dw * bc + lb_count;
     let mut dst_offset : i32 = 0i32;
     let mut i : i32;
-    memcpy(
-        &mut lb_ecc as (*mut quirc_rs_params) as (*mut ::std::os::raw::c_void),
-        sb_ecc as (*const ::std::os::raw::c_void),
-        ::std::mem::size_of::<quirc_rs_params>()
-    );
+    lb_ecc = *sb_ecc;
     lb_ecc.dw = lb_ecc.dw + 1;
     lb_ecc.bs = lb_ecc.bs + 1;
-    i = 0i32;
-    let mut err : Enum1;
-    'loop1: loop {
-        if !(i < bc) {
-            _currentBlock = 2;
-            break;
-        }
+
+    for i in 0..bc {
         let mut dst
             : *mut u8
             = (*ds).data.as_mut_ptr().offset(dst_offset as (isize));
         let mut ecc
             : *const quirc_rs_params
             = if i < (*sb_ecc).ns {
-                  sb_ecc
-              } else {
-                  &mut lb_ecc as (*mut quirc_rs_params) as (*const quirc_rs_params)
-              };
+            sb_ecc
+        } else {
+            &mut lb_ecc as (*mut quirc_rs_params) as (*const quirc_rs_params)
+        };
         let num_ec : i32 = (*ecc).bs - (*ecc).dw;
+        let mut err : Enum1;
         let mut j : i32;
-        j = 0i32;
-        'loop4: loop {
-            if !(j < (*ecc).dw) {
-                break;
-            }
+
+        for j in 0..(*ecc).dw {
             *dst.offset(j as (isize)) = (*ds).raw[(j * bc + i) as (usize)];
-            j = j + 1;
         }
-        j = 0i32;
-        'loop6: loop {
-            if !(j < num_ec) {
-                break;
-            }
+        for j in 0..num_ec {
             *dst.offset(((*ecc).dw + j) as (isize)) = (*ds).raw[
-                                                          (ecc_offset + j * bc + i) as (usize)
-                                                      ];
-            j = j + 1;
+                (ecc_offset + j * bc + i) as (usize)
+                ];
         }
+
         err = correct_block(dst,ecc);
         if err != Enum1::QUIRC_SUCCESS {
-            _currentBlock = 10;
-            break;
+            return err;
         }
+
         dst_offset = dst_offset + (*ecc).dw;
-        i = i + 1;
     }
-    if _currentBlock == 2 {
-        (*ds).data_bits = dst_offset * 8i32;
-        Enum1::QUIRC_SUCCESS
-    } else {
-        err
-    }
+
+    (*ds).data_bits = dst_offset * 8i32;
+    Enum1::QUIRC_SUCCESS
 }
 
 unsafe extern fn bits_remaining(
