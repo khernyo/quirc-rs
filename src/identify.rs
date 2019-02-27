@@ -14,6 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+use crate::quirc::*;
+
 extern "C" {
     fn abs(__x: i32) -> i32;
     fn memcpy(
@@ -32,19 +34,6 @@ extern "C" {
         __n: usize,
     ) -> *mut ::std::os::raw::c_void;
     static mut quirc_version_db: [quirc_version_info; 41];
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_point {
-    pub x: i32,
-    pub y: i32,
-}
-
-impl Clone for quirc_point {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 #[no_mangle]
@@ -147,78 +136,6 @@ pub unsafe extern "C" fn perspective_unmap(
         + (*c.offset(5isize) * *c.offset(6isize) - *c.offset(3isize)) * x
         + *c.offset(2isize) * *c.offset(3isize))
         / den;
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_region {
-    pub seed: quirc_point,
-    pub count: i32,
-    pub capstone: i32,
-}
-
-impl Clone for quirc_region {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_capstone {
-    pub ring: i32,
-    pub stone: i32,
-    pub corners: [quirc_point; 4],
-    pub center: quirc_point,
-    pub c: [f64; 8],
-    pub qr_grid: i32,
-}
-
-impl Clone for quirc_capstone {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_grid {
-    pub caps: [i32; 3],
-    pub align_region: i32,
-    pub align: quirc_point,
-    pub tpep: [quirc_point; 3],
-    pub hscan: i32,
-    pub vscan: i32,
-    pub grid_size: i32,
-    pub c: [f64; 8],
-}
-
-impl Clone for quirc_grid {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc {
-    pub image: *mut u8,
-    pub pixels: *mut u8,
-    pub row_average: *mut i32,
-    pub w: i32,
-    pub h: i32,
-    pub num_regions: i32,
-    pub regions: [quirc_region; 254],
-    pub num_capstones: i32,
-    pub capstones: [quirc_capstone; 32],
-    pub num_grids: i32,
-    pub grids: [quirc_grid; 8],
-}
-
-impl Clone for quirc {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 #[no_mangle]
