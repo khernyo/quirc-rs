@@ -1,5 +1,5 @@
 [package]
-name = "qr-rs"
+name = "quirc-rs"
 version = "0.1.0"
 authors = ["Szabolcs Berecz <szabolcs.berecz@gmail.com>"]
 edition = "2018"
