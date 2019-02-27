@@ -26,19 +26,20 @@ impl Clone for quirc_rs_params {
     fn clone(&self) -> Self { *self }
 }
 
+pub const QUIRC_MAX_VERSION: usize = 40;
+const QUIRC_MAX_ALIGNMENT: usize = 7;
+
 #[derive(Copy)]
 #[repr(C)]
 pub struct quirc_version_info {
     pub data_bytes : i32,
-    pub apat : [i32; 7],
+    pub apat : [i32; QUIRC_MAX_ALIGNMENT],
     pub ecc : [quirc_rs_params; 4],
 }
 
 impl Clone for quirc_version_info {
     fn clone(&self) -> Self { *self }
 }
-
-const QUIRC_MAX_VERSION: usize = 40;
 
 #[no_mangle]
 pub static mut quirc_version_db

@@ -14,7 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-const QUIRC_MAX_VERSION: usize = 40;
+use crate::quirc::consts::*;
+use crate::version_db::{quirc_rs_params, quirc_version_info, QUIRC_MAX_VERSION};
 
 extern {
     fn abs(__x : i32) -> i32;
@@ -84,11 +85,11 @@ impl Clone for galois_field {
 
 static gf16
     : galois_field
-    = galois_field {
+    = unsafe { galois_field {
           p: 15i32,
           log: gf16_log.as_ptr(),
           exp: gf16_exp.as_ptr()
-      };
+      } };
 
 static mut gf256_exp
     : [u8; 256]
@@ -612,11 +613,11 @@ static mut gf256_log
 
 static gf256
     : galois_field
-    = galois_field {
+    = unsafe { galois_field {
           p: 255i32,
           log: gf256_log.as_ptr(),
           exp: gf256_exp.as_ptr()
-      };
+      } };
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(i32)]
@@ -661,7 +662,7 @@ pub struct quirc_data {
     pub ecc_level : i32,
     pub mask : i32,
     pub data_type : i32,
-    pub payload : [u8; 8896],
+    pub payload : [u8; QUIRC_MAX_PAYLOAD],
     pub payload_len : i32,
     pub eci : u32,
 }
@@ -673,10 +674,10 @@ impl Clone for quirc_data {
 #[derive(Copy)]
 #[repr(C)]
 pub struct datastream {
-    pub raw : [u8; 8896],
+    pub raw : [u8; QUIRC_MAX_PAYLOAD],
     pub data_bits : i32,
     pub ptr : i32,
-    pub data : [u8; 8896],
+    pub data : [u8; QUIRC_MAX_PAYLOAD],
 }
 
 impl Clone for datastream {
@@ -1007,30 +1008,6 @@ unsafe extern fn read_format(
         (*data).mask = fdata as (i32) & 7i32;
         Enum1::QUIRC_SUCCESS
     }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_rs_params {
-    pub bs : i32,
-    pub dw : i32,
-    pub ns : i32,
-}
-
-impl Clone for quirc_rs_params {
-    fn clone(&self) -> Self { *self }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_version_info {
-    pub data_bytes : i32,
-    pub apat : [i32; 7],
-    pub ecc : [quirc_rs_params; 4],
-}
-
-impl Clone for quirc_version_info {
-    fn clone(&self) -> Self { *self }
 }
 
 unsafe extern fn reserved_cell(
@@ -1758,7 +1735,12 @@ pub unsafe extern fn quirc_decode(
     mut code : *const quirc_code, mut data : *mut quirc_data
 ) -> Enum1 {
     let mut err : Enum1;
-    let mut ds : datastream;
+    let mut ds : datastream = datastream {
+          raw: [0u8; QUIRC_MAX_PAYLOAD],
+          data_bits: 0,
+          ptr: 0,
+          data: [0u8; QUIRC_MAX_PAYLOAD],
+    };
     if ((*code).size - 17i32) % 4i32 != 0 {
         Enum1::QUIRC_ERROR_INVALID_GRID_SIZE
     } else {
@@ -1766,11 +1748,6 @@ pub unsafe extern fn quirc_decode(
             data as (*mut ::std::os::raw::c_void),
             0i32,
             ::std::mem::size_of::<quirc_data>()
-        );
-        memset(
-            &mut ds as (*mut datastream) as (*mut ::std::os::raw::c_void),
-            0i32,
-            ::std::mem::size_of::<datastream>()
         );
         (*data).version = ((*code).size - 17i32) / 4i32;
         (if (*data).version < 1i32 || (*data).version > 40i32 {

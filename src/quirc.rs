@@ -242,3 +242,38 @@ pub unsafe extern fn quirc_strerror(mut err : Enum1) -> *const u8 {
         (*b"Unknown error\0").as_ptr()
     }
 }
+
+pub(crate) mod consts {
+    /* Limits on the maximum size of QR-codes and their content. */
+    const QUIRC_MAX_BITMAP: usize = 3917;
+    pub const QUIRC_MAX_PAYLOAD: usize = 8896;
+
+    /* QR-code ECC types. */
+    const QUIRC_ECC_LEVEL_M: usize = 0;
+    const QUIRC_ECC_LEVEL_L: usize = 1;
+    const QUIRC_ECC_LEVEL_H: usize = 2;
+    const QUIRC_ECC_LEVEL_Q: usize = 3;
+
+    /* QR-code data types. */
+    const QUIRC_DATA_TYPE_NUMERIC: usize = 1;
+    const QUIRC_DATA_TYPE_ALPHA: usize = 2;
+    const QUIRC_DATA_TYPE_BYTE: usize = 4;
+    const QUIRC_DATA_TYPE_KANJI: usize = 8;
+
+    /* Common character encodings */
+    const QUIRC_ECI_ISO_8859_1: usize = 1;
+    const QUIRC_ECI_IBM437: usize = 2;
+    const QUIRC_ECI_ISO_8859_2: usize = 4;
+    const QUIRC_ECI_ISO_8859_3: usize = 5;
+    const QUIRC_ECI_ISO_8859_4: usize = 6;
+    const QUIRC_ECI_ISO_8859_5: usize = 7;
+    const QUIRC_ECI_ISO_8859_6: usize = 8;
+    const QUIRC_ECI_ISO_8859_7: usize = 9;
+    const QUIRC_ECI_ISO_8859_8: usize = 10;
+    const QUIRC_ECI_ISO_8859_9: usize = 11;
+    const QUIRC_ECI_WINDOWS_874: usize = 13;
+    const QUIRC_ECI_ISO_8859_13: usize = 15;
+    const QUIRC_ECI_ISO_8859_15: usize = 17;
+    const QUIRC_ECI_SHIFT_JIS: usize = 20;
+    const QUIRC_ECI_UTF_8: usize = 26;
+}
