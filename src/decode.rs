@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+use crate::quirc::*;
 use crate::quirc::consts::*;
 use crate::version_db::{quirc_rs_params, quirc_version_info, QUIRC_MAX_VERSION};
 
