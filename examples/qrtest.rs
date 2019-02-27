@@ -43,15 +43,6 @@ extern {
     fn strlen(__s : *const u8) -> usize;
 }
 
-enum _IO_FILE {
-}
-
-enum __dirstream {
-}
-
-enum quirc {
-}
-
 static mut want_verbose : i32 = 0i32;
 
 static mut want_cell_dump : i32 = 0i32;
@@ -127,69 +118,6 @@ pub unsafe extern fn add_result(
     (*sum).total_time = (*sum).total_time.wrapping_add(
                             (*inf).total_time
                         );
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct timespec {
-    pub tv_sec : isize,
-    pub tv_nsec : isize,
-}
-
-impl Clone for timespec {
-    fn clone(&self) -> Self { *self }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_point {
-    pub x : i32,
-    pub y : i32,
-}
-
-impl Clone for quirc_point {
-    fn clone(&self) -> Self { *self }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_code {
-    pub corners : [quirc_point; 4],
-    pub size : i32,
-    pub cell_bitmap : [u8; 3917],
-}
-
-impl Clone for quirc_code {
-    fn clone(&self) -> Self { *self }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_data {
-    pub version : i32,
-    pub ecc_level : i32,
-    pub mask : i32,
-    pub data_type : i32,
-    pub payload : [u8; 8896],
-    pub payload_len : i32,
-    pub eci : u32,
-}
-
-impl Clone for quirc_data {
-    fn clone(&self) -> Self { *self }
-}
-
-#[derive(Clone, Copy)]
-#[repr(i32)]
-pub enum Enum1 {
-    QUIRC_SUCCESS = 0i32,
-    QUIRC_ERROR_INVALID_GRID_SIZE,
-    QUIRC_ERROR_INVALID_VERSION,
-    QUIRC_ERROR_FORMAT_ECC,
-    QUIRC_ERROR_DATA_ECC,
-    QUIRC_ERROR_UNKNOWN_DATA_TYPE,
-    QUIRC_ERROR_DATA_OVERFLOW,
-    QUIRC_ERROR_DATA_UNDERFLOW,
 }
 
 #[no_mangle]
@@ -322,20 +250,6 @@ pub unsafe extern fn scan_file(
     }
 }
 
-#[derive(Copy)]
-#[repr(C)]
-pub struct dirent {
-    pub d_ino : usize,
-    pub d_off : isize,
-    pub d_reclen : u16,
-    pub d_type : u8,
-    pub d_name : [u8; 256],
-}
-
-impl Clone for dirent {
-    fn clone(&self) -> Self { *self }
-}
-
 #[no_mangle]
 pub unsafe extern fn scan_dir(
     mut path : *const u8,
@@ -391,30 +305,6 @@ pub unsafe extern fn scan_dir(
         }
         (count > 0i32) as (i32)
     }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct stat {
-    pub st_dev : usize,
-    pub st_ino : usize,
-    pub st_nlink : usize,
-    pub st_mode : u32,
-    pub st_uid : u32,
-    pub st_gid : u32,
-    pub __pad0 : i32,
-    pub st_rdev : usize,
-    pub st_size : isize,
-    pub st_blksize : isize,
-    pub st_blocks : isize,
-    pub st_atim : timespec,
-    pub st_mtim : timespec,
-    pub st_ctim : timespec,
-    pub __glibc_reserved : [isize; 3],
-}
-
-impl Clone for stat {
-    fn clone(&self) -> Self { *self }
 }
 
 #[no_mangle]
