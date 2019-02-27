@@ -1,4 +1,3 @@
-
 mod decode;
 mod identify;
 mod quirc;
