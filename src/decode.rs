@@ -139,19 +139,6 @@ pub enum Enum1 {
 
 #[derive(Copy)]
 #[repr(C)]
-pub struct quirc_point {
-    pub x: i32,
-    pub y: i32,
-}
-
-impl Clone for quirc_point {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-#[derive(Copy)]
-#[repr(C)]
 pub struct quirc_code {
     pub corners: [quirc_point; 4],
     pub size: i32,
