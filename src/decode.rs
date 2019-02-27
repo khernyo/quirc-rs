@@ -76,8 +76,8 @@ static mut gf16_log
 #[repr(C)]
 pub struct galois_field {
     pub p : i32,
-    pub log : *const u8,
-    pub exp : *const u8,
+    pub log : &'static [u8],
+    pub exp : &'static [u8],
 }
 
 impl Clone for galois_field {
@@ -88,8 +88,8 @@ static gf16
     : galois_field
     = unsafe { galois_field {
           p: 15i32,
-          log: gf16_log.as_ptr(),
-          exp: gf16_exp.as_ptr()
+          log: &gf16_log,
+          exp: &gf16_exp,
       } };
 
 static mut gf256_exp
@@ -616,8 +616,8 @@ static gf256
     : galois_field
     = unsafe { galois_field {
           p: 255i32,
-          log: gf256_log.as_ptr(),
-          exp: gf256_exp.as_ptr()
+          log: &gf256_log,
+          exp: &gf256_exp,
       } };
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -735,7 +735,7 @@ unsafe extern fn poly_add(
     mut gf : *const galois_field
 ) {
     let mut i : i32;
-    let mut log_c : i32 = *(*gf).log.offset(c as (isize)) as (i32);
+    let mut log_c : i32 = (*gf).log[c as (usize)] as (i32);
     if c == 0 {
     } else {
         i = 0i32;
@@ -748,11 +748,11 @@ unsafe extern fn poly_add(
             if !(p < 0i32 || p >= 64i32) {
                 if !(v == 0) {
                     let _rhs
-                        = *(*gf).exp.offset(
-                               ((*(*gf).log.offset(
-                                      v as (isize)
-                                  ) as (i32) + log_c) % (*gf).p) as (isize)
-                           );
+                        = (*gf).exp[
+                               (((*gf).log[
+                                      v as (usize)
+                                  ] as (i32) + log_c) % (*gf).p) as (usize)
+                           ];
                     let _lhs = &mut *dst.offset(p as (isize));
                     *_lhs = (*_lhs as (i32) ^ _rhs as (i32)) as (u8);
                 }
@@ -792,23 +792,23 @@ unsafe extern fn berlekamp_massey(
             if !!(C[i as (usize)] != 0 && (*s.offset(
                                                 (n - i) as (isize)
                                             ) != 0)) {
-                d = (d as (i32) ^ *(*gf).exp.offset(
-                                       ((*(*gf).log.offset(
-                                              C[i as (usize)] as (isize)
-                                          ) as (i32) + *(*gf).log.offset(
-                                                            *s.offset((n - i) as (isize)) as (isize)
-                                                        ) as (i32)) % (*gf).p) as (isize)
-                                   ) as (i32)) as (u8);
+                d = (d as (i32) ^ (*gf).exp[
+                                       (((*gf).log[
+                                              C[i as (usize)] as (usize)
+                                          ] as (i32) + (*gf).log[
+                                                            *s.offset((n - i) as (isize)) as (usize)
+                                                        ] as (i32)) % (*gf).p) as (usize)
+                                   ] as (i32)) as (u8);
             }
             i = i + 1;
         }
-        mult = *(*gf).exp.offset(
-                    (((*gf).p - *(*gf).log.offset(
-                                     b as (isize)
-                                 ) as (i32) + *(*gf).log.offset(
-                                                   d as (isize)
-                                               ) as (i32)) % (*gf).p) as (isize)
-                );
+        mult = (*gf).exp[
+                    (((*gf).p - (*gf).log[
+                                     b as (usize)
+                                 ] as (i32) + (*gf).log[
+                                                   d as (usize)
+                                               ] as (i32)) % (*gf).p) as (usize)
+                ];
         if d == 0 {
             m = m + 1;
         } else if L * 2i32 <= n {
@@ -845,7 +845,7 @@ unsafe extern fn poly_eval(
 ) -> u8 {
     let mut i : i32;
     let mut sum : u8 = 0u8;
-    let mut log_x : u8 = *(*gf).log.offset(x as (isize));
+    let mut log_x : u8 = (*gf).log[x as (usize)];
     if x == 0 {
         *s.offset(0isize)
     } else {
@@ -856,11 +856,11 @@ unsafe extern fn poly_eval(
             }
             let mut c : u8 = *s.offset(i as (isize));
             if !(c == 0) {
-                sum = (sum as (i32) ^ *(*gf).exp.offset(
-                                           ((*(*gf).log.offset(
-                                                  c as (isize)
-                                              ) as (i32) + log_x as (i32) * i) % (*gf).p) as (isize)
-                                       ) as (i32)) as (u8);
+                sum = (sum as (i32) ^ (*gf).exp[
+                                           (((*gf).log[
+                                                  c as (usize)
+                                              ] as (i32) + log_x as (i32) * i) % (*gf).p) as (usize)
+                                       ] as (i32)) as (u8);
             }
             i = i + 1;
         }
