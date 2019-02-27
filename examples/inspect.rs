@@ -59,18 +59,6 @@ extern {
     ) -> i32;
 }
 
-enum SDL_BlitMap {
-}
-
-enum SDL_Event {
-}
-
-enum _IO_FILE {
-}
-
-enum private_hwdata {
-}
-
 fn main() {
     use ::std::os::unix::ffi::OsStringExt;
     let mut argv_storage
@@ -129,92 +117,6 @@ unsafe extern fn dump_info(mut q : *mut quirc) {
         printf((*b"\n\0").as_ptr());
         i = i + 1;
     }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct SDL_Color {
-    pub r : u8,
-    pub g : u8,
-    pub b : u8,
-    pub unused : u8,
-}
-
-impl Clone for SDL_Color {
-    fn clone(&self) -> Self { *self }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct SDL_Palette {
-    pub ncolors : i32,
-    pub colors : *mut SDL_Color,
-}
-
-impl Clone for SDL_Palette {
-    fn clone(&self) -> Self { *self }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct SDL_PixelFormat {
-    pub palette : *mut SDL_Palette,
-    pub BitsPerPixel : u8,
-    pub BytesPerPixel : u8,
-    pub Rloss : u8,
-    pub Gloss : u8,
-    pub Bloss : u8,
-    pub Aloss : u8,
-    pub Rshift : u8,
-    pub Gshift : u8,
-    pub Bshift : u8,
-    pub Ashift : u8,
-    pub Rmask : u32,
-    pub Gmask : u32,
-    pub Bmask : u32,
-    pub Amask : u32,
-    pub colorkey : u32,
-    pub alpha : u8,
-}
-
-impl Clone for SDL_PixelFormat {
-    fn clone(&self) -> Self { *self }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct SDL_Rect {
-    pub x : i16,
-    pub y : i16,
-    pub w : u16,
-    pub h : u16,
-}
-
-impl Clone for SDL_Rect {
-    fn clone(&self) -> Self { *self }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct SDL_Surface {
-    pub flags : u32,
-    pub format : *mut SDL_PixelFormat,
-    pub w : i32,
-    pub h : i32,
-    pub pitch : u16,
-    pub pixels : *mut ::std::os::raw::c_void,
-    pub offset : i32,
-    pub hwdata : *mut private_hwdata,
-    pub clip_rect : SDL_Rect,
-    pub unused1 : u32,
-    pub locked : u32,
-    pub map : *mut SDL_BlitMap,
-    pub format_version : u32,
-    pub refcount : i32,
-}
-
-impl Clone for SDL_Surface {
-    fn clone(&self) -> Self { *self }
 }
 
 unsafe extern fn draw_frame(
@@ -448,7 +350,7 @@ unsafe extern fn draw_grid(
             }
             let mut u : f64 = x as (f64) + 0.5f64;
             let mut v : f64 = y as (f64) + 0.5f64;
-            let mut p : quirc_point;
+            let mut p : quirc_point = std::mem::uninitialized();
             perspective_map(
                 (*qr).c.as_mut_ptr() as (*const f64),
                 u,
@@ -488,12 +390,13 @@ unsafe extern fn sdl_examine(mut q : *mut quirc) -> i32 {
                  }
                  let mut i : i32;
 
-                 if (ev.type == SDL_QUIT)
+                 if ev.r#type == SDL_QUIT {
                      break;
+                 }
 
-                 if (ev.type == SDL_KEYDOWN &&
-                     ev.key.keysym.sym == 'q')
+                 if ev.r#type == SDL_KEYDOWN && ev.key.keysym.sym == 'q' {
                      break;
+                 }
 
                  draw_frame(screen,q);
                  i = 0i32;
