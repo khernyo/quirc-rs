@@ -212,7 +212,7 @@ static mut error_table: [*const u8; 8] = [0 as (*const u8); 8];
 // [QUIRC_ERROR_DATA_OVERFLOW] = "Data overflow",
 // [QUIRC_ERROR_DATA_UNDERFLOW] = "Data underflow"
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(i32)]
 pub enum Enum1 {
     QUIRC_SUCCESS = 0i32,

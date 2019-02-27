@@ -125,19 +125,6 @@ static gf256: galois_field = unsafe {
     }
 };
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-#[repr(i32)]
-pub enum Enum1 {
-    QUIRC_SUCCESS = 0i32,
-    QUIRC_ERROR_INVALID_GRID_SIZE,
-    QUIRC_ERROR_INVALID_VERSION,
-    QUIRC_ERROR_FORMAT_ECC,
-    QUIRC_ERROR_DATA_ECC,
-    QUIRC_ERROR_UNKNOWN_DATA_TYPE,
-    QUIRC_ERROR_DATA_OVERFLOW,
-    QUIRC_ERROR_DATA_UNDERFLOW,
-}
-
 #[derive(Copy)]
 #[repr(C)]
 pub struct quirc_code {
