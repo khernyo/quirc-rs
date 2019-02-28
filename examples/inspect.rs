@@ -2,7 +2,7 @@ extern crate quirc_rs;
 
 use std::path::Path;
 
-use libc::{c_char, memset, perror, puts, timespec};
+use libc::{c_char, fprintf, memset, perror, printf, puts, snprintf, timespec};
 
 use quirc_rs::quirc::*;
 use quirc_rs::decode::*;
@@ -90,7 +90,7 @@ fn main() {
 unsafe extern fn dump_info(mut q : *mut quirc) {
     let mut count : i32 = quirc_count(q as (*const quirc));
     let mut i : i32;
-    printf((*b"%d QR-codes found:\n\n\0").as_ptr(),count);
+    printf((*b"%d QR-codes found:\n\n\0").as_ptr() as *const c_char,count);
     i = 0i32;
     'loop1: loop {
         if !(i < count) {
@@ -100,7 +100,7 @@ unsafe extern fn dump_info(mut q : *mut quirc) {
         let mut data : quirc_data;
         let mut err : Enum1;
         quirc_extract(
-            q as (*const quirc),
+            q as (*mut quirc),
             i,
             &mut code as (*mut quirc_code)
         );
@@ -109,17 +109,17 @@ unsafe extern fn dump_info(mut q : *mut quirc) {
                   &mut data as (*mut quirc_data)
               );
         dump_cells(&mut code as (*mut quirc_code) as (*const quirc_code));
-        printf((*b"\n\0").as_ptr());
+        printf((*b"\n\0").as_ptr() as *const c_char);
         if err != Enum1::QUIRC_SUCCESS {
             printf(
-                (*b"  Decoding FAILED: %s\n\0").as_ptr(),
+                (*b"  Decoding FAILED: %s\n\0").as_ptr() as *const c_char,
                 quirc_strerror(err)
             );
         } else {
-            printf((*b"  Decoding successful:\n\0").as_ptr());
+            printf((*b"  Decoding successful:\n\0").as_ptr() as *const c_char);
             dump_data(&mut data as (*mut quirc_data) as (*const quirc_data));
         }
-        printf((*b"\n\0").as_ptr());
+        printf((*b"\n\0").as_ptr() as *const c_char);
         i = i + 1;
     }
 }
@@ -239,9 +239,9 @@ unsafe extern fn draw_capstone(
     );
     if (*cap).qr_grid < 0i32 {
         snprintf(
-            buf.as_mut_ptr(),
+            buf.as_mut_ptr() as *mut c_char,
             ::std::mem::size_of::<[u8; 8]>(),
-            (*b"?%d\0").as_ptr(),
+            (*b"?%d\0").as_ptr() as *const c_char,
             index
         );
         stringColor(
@@ -309,9 +309,9 @@ unsafe extern fn draw_grid(
                    ] as (*mut quirc_capstone);
         let mut buf : [u8; 8];
         snprintf(
-            buf.as_mut_ptr(),
+            buf.as_mut_ptr() as *mut c_char,
             ::std::mem::size_of::<[u8; 8]>(),
-            (*b"%d.%c\0").as_ptr(),
+            (*b"%d.%c\0").as_ptr() as *const c_char,
             index,
             (*b"ABC\0")[i as (usize)] as (i32)
         );
@@ -433,32 +433,28 @@ pub unsafe extern fn _c_main(
     mut argc : i32, mut argv : *mut *mut u8
 ) -> i32 {
     let mut q : *mut quirc;
-    printf((*b"quirc inspection program\n\0").as_ptr());
+    printf((*b"quirc inspection program\n\0").as_ptr() as *const c_char);
     printf(
         (*b"Copyright (C) 2010-2012 Daniel Beer <dlbeer@gmail.com>\n\0").as_ptr(
-        )
+        ) as *const c_char
     );
-    printf((*b"Library version: %s\n\0").as_ptr(),quirc_version());
-    printf((*b"\n\0").as_ptr());
+    printf((*b"Library version: %s\n\0").as_ptr() as *const c_char,quirc_version());
+    printf((*b"\n\0").as_ptr() as *const c_char);
     if argc < 2i32 {
         fprintf(
             stderr,
-            (*b"Usage: %s <testfile.jpg|testfile.png>\n\0").as_ptr(),
+            (*b"Usage: %s <testfile.jpg|testfile.png>\n\0").as_ptr() as *const c_char,
             *argv.offset(0isize)
         );
         -1i32
     } else {
         q = quirc_new() as (*mut quirc);
         (if q.is_null() {
-             perror((*b"can\'t create quirc object\0").as_ptr());
+             perror((*b"can\'t create quirc object\0").as_ptr() as *const c_char);
              -1i32
          } else {
              let mut status : i32 = -1i32;
-             if check_if_png(*argv.offset(1isize) as (*const u8)) != 0 {
-                 status = load_png(q,*argv.offset(1isize) as (*const u8));
-             } else {
-                 status = load_jpeg(q,*argv.offset(1isize) as (*const u8));
-             }
+             status = load_image(q,*argv.offset(1isize) as (*const u8));
              (if status < 0i32 {
                   quirc_destroy(q as (*mut quirc));
                   -1i32
