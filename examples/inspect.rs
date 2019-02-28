@@ -1,6 +1,14 @@
 extern crate quirc_rs;
 
+use std::path::Path;
+
+use libc::{c_char, memset, perror, puts, timespec};
+
 use quirc_rs::quirc::*;
+use quirc_rs::decode::*;
+use quirc_rs::identify::*;
+
+include!("util/dbgutil.rs");
 
 extern {
     fn SDL_Flip(screen : *mut SDL_Surface) -> i32;
@@ -14,8 +22,6 @@ extern {
     fn SDL_UnlockSurface(surface : *mut SDL_Surface);
     fn SDL_WaitEvent(event : *mut SDL_Event) -> i32;
     fn check_if_png(filename : *const u8) -> i32;
-    fn dump_cells(code : *const quirc_code);
-    fn dump_data(data : *const quirc_data);
     fn fprintf(
         __stream : *mut _IO_FILE, __format : *const u8, ...
     ) -> i32;
@@ -29,7 +35,6 @@ extern {
     ) -> i32;
     fn load_jpeg(q : *mut quirc, filename : *const u8) -> i32;
     fn load_png(q : *mut quirc, filename : *const u8) -> i32;
-    fn perror(__s : *const u8);
     fn pixelColor(
         dst : *mut SDL_Surface, x : i16, y : i16, color : u32
     ) -> i32;
