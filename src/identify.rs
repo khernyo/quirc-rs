@@ -15,6 +15,7 @@
  */
 
 use crate::quirc::*;
+use crate::decode::*;
 
 extern "C" {
     fn abs(__x: i32) -> i32;
@@ -1523,20 +1524,6 @@ pub unsafe extern "C" fn quirc_end(mut q: *mut quirc) {
         }
         test_grouping(q, i);
         i = i + 1;
-    }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_code {
-    pub corners: [quirc_point; 4],
-    pub size: i32,
-    pub cell_bitmap: [u8; 3917],
-}
-
-impl Clone for quirc_code {
-    fn clone(&self) -> Self {
-        *self
     }
 }
 
