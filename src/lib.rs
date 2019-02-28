@@ -1,5 +1,5 @@
-mod decode;
-mod identify;
+pub mod decode;
+pub mod identify;
 pub mod quirc;
 mod version_db;
 

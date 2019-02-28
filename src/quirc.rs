@@ -30,9 +30,8 @@ extern "C" {
     ) -> *mut ::std::os::raw::c_void;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn quirc_version() -> *const u8 {
-    (*b"1.0\0").as_ptr()
+pub fn quirc_version() -> &'static str {
+    "1.0"
 }
 
 #[derive(Copy)]
