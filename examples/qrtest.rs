@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 
 use clap::{Arg, App};
-use libc::{c_char, memset, perror, printf, puts, timespec};
+use libc::{c_char, memset, perror, puts, timespec};
 
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
@@ -35,12 +35,9 @@ impl Clone for result_info {
 pub unsafe extern fn print_result(
     mut name : &str, mut info : *mut result_info
 ) {
-    puts(
-        (*b"-------------------------------------------------------------------------------\0").as_ptr(
-        ) as *const c_char
-    );
-    printf(
-        (*b"%s: %d files, %d codes, %d decoded (%d failures)\0").as_ptr() as *const c_char,
+    println!("-------------------------------------------------------------------------------");
+    print!(
+        "{}: {} files, {} codes, {} decoded ({} failures)",
         name,
         (*info).file_count,
         (*info).id_count,
@@ -48,22 +45,21 @@ pub unsafe extern fn print_result(
         (*info).id_count - (*info).decode_count
     );
     if (*info).id_count != 0 {
-        printf(
-            (*b", %d%% success rate\0").as_ptr() as *const c_char,
+        print!(
+            ", {}% success rate",
             ((*info).decode_count * 100i32 + (*info).id_count / 2i32) / (*info).id_count
         );
     }
-    printf((*b"\n\0").as_ptr() as *const c_char);
-    printf(
-        (*b"Total time [load: %u, identify: %u, total: %u]\n\0").as_ptr() as *const c_char,
+    println!();
+    println!(
+        "Total time [load: {}, identify: {}, total: {}]",
         (*info).load_time,
         (*info).identify_time,
         (*info).total_time
     );
     if (*info).file_count != 0 {
-        printf(
-            (*b"Average time [load: %u, identify: %u, total: %u]\n\0").as_ptr(
-            ) as *const c_char,
+        println!(
+            "Average time [load: {}, identify: {}, total: {}]",
             (*info).load_time.wrapping_div((*info).file_count as (u32)),
             (*info).identify_time.wrapping_div((*info).file_count as (u32)),
             (*info).total_time.wrapping_div((*info).file_count as (u32))
@@ -144,9 +140,9 @@ pub unsafe extern fn scan_file(
                                      total_start
                                  )
                              );
-        printf(
-            (*b"  %-30s: %5u %5u %5u %5d %5d\n\0").as_ptr() as *const c_char,
-            filename,
+          println!(
+            "  {:-30}: {:5} {:5} {:5} {:5} {:5}",
+            filename.to_str().unwrap(),
             (*info).load_time,
             (*info).identify_time,
             (*info).total_time,
@@ -174,9 +170,10 @@ pub unsafe extern fn scan_file(
                               &mut data as (*mut quirc_data)
                           );
                     if err != Enum1::QUIRC_SUCCESS {
-                        printf((*b"  ERROR: %s\n\n\0").as_ptr() as *const c_char,quirc_strerror(err));
+                        println!("  ERROR: {}", quirc_strerror(err));
+                        println!();
                     } else {
-                        printf((*b"  Decode successful:\n\0").as_ptr() as *const c_char);
+                        println!("  Decode successful:");
                         dump_data(&mut data as (*mut quirc_data));
                         println!();
                     }
@@ -196,7 +193,7 @@ pub unsafe extern fn scan_dir(
 ) -> i32 {
     let entries = path.read_dir().unwrap();
 
-    println!("{}", path.display());
+    println!("{}:", path.display());
 
     let mut count : i32 = 0i32;
     for entry in entries {
@@ -252,24 +249,23 @@ pub unsafe extern fn run_tests(paths: Vec<&str>) -> i32 {
         perror((*b"quirc_new\0").as_ptr() as *const c_char);
         -1i32
     } else {
-        printf(
-            (*b"  %-30s  %17s %11s\n\0").as_ptr() as *const c_char,
-            (*b"\0").as_ptr(),
-            (*b"Time (ms)\0").as_ptr(),
-            (*b"Count\0").as_ptr()
+        println!(
+            "  {:-30}  {:17} {:11}",
+            "",
+            "Time (ms)",
+            "Count"
         );
-        printf(
-            (*b"  %-30s  %5s %5s %5s %5s %5s\n\0").as_ptr() as *const c_char,
-            (*b"Filename\0").as_ptr(),
-            (*b"Load\0").as_ptr(),
-            (*b"ID\0").as_ptr(),
-            (*b"Total\0").as_ptr(),
-            (*b"ID\0").as_ptr(),
-            (*b"Dec\0").as_ptr()
+        println!(
+            "  {:-30}  {:5} {:5} {:5} {:5} {:5}",
+            "Filename",
+            "Load",
+            "ID",
+            "Total",
+            "ID",
+            "Dec"
         );
-        puts(
-            (*b"-------------------------------------------------------------------------------\0").as_ptr(
-            ) as *const c_char
+        println!(
+            "-------------------------------------------------------------------------------"
         );
         memset(
             &mut sum as (*mut result_info) as (*mut ::std::os::raw::c_void),

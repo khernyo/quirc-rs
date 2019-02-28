@@ -201,16 +201,6 @@ pub unsafe extern "C" fn quirc_count(mut q: *const quirc) -> i32 {
     (*q).num_grids
 }
 
-static mut error_table: [*const u8; 8] = [0 as (*const u8); 8];
-// [QUIRC_SUCCESS] = "Success",
-// [QUIRC_ERROR_INVALID_GRID_SIZE] = "Invalid grid size",
-// [QUIRC_ERROR_INVALID_VERSION] = "Invalid version",
-// [QUIRC_ERROR_FORMAT_ECC] = "Format data ECC failure",
-// [QUIRC_ERROR_DATA_ECC] = "ECC failure",
-// [QUIRC_ERROR_UNKNOWN_DATA_TYPE] = "Unknown data type",
-// [QUIRC_ERROR_DATA_OVERFLOW] = "Data overflow",
-// [QUIRC_ERROR_DATA_UNDERFLOW] = "Data underflow"
-
 #[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(i32)]
 pub enum Enum1 {
@@ -225,15 +215,16 @@ pub enum Enum1 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn quirc_strerror(mut err: Enum1) -> *const u8 {
-    if err as (i32) >= 0i32
-        && (err as (usize)
-            < ::std::mem::size_of::<[*const u8; 8]>()
-                .wrapping_div(::std::mem::size_of::<*const u8>()))
-    {
-        error_table[err as (usize)]
-    } else {
-        (*b"Unknown error\0").as_ptr()
+pub unsafe extern "C" fn quirc_strerror(mut err: Enum1) -> &'static str {
+    match err {
+        Enum1::QUIRC_SUCCESS => "Success",
+        Enum1::QUIRC_ERROR_INVALID_GRID_SIZE => "Invalid grid size",
+        Enum1::QUIRC_ERROR_INVALID_VERSION => "Invalid version",
+        Enum1::QUIRC_ERROR_FORMAT_ECC => "Format data ECC failure",
+        Enum1::QUIRC_ERROR_DATA_ECC => "ECC failure",
+        Enum1::QUIRC_ERROR_UNKNOWN_DATA_TYPE => "Unknown data type",
+        Enum1::QUIRC_ERROR_DATA_OVERFLOW => "Data overflow",
+        Enum1::QUIRC_ERROR_DATA_UNDERFLOW => "Data underflow",
     }
 }
 

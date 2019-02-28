@@ -1,41 +1,43 @@
+use std::ffi::CStr;
+
 use image;
 
-use libc::{c_void, fprintf, STDERR_FILENO};
+use libc::{c_void};
 
-unsafe extern fn data_type_str(mut dt : i32) -> *const u8 {
+unsafe extern fn data_type_str(mut dt : i32) -> &'static str {
     if dt == 8i32 {
-        (*b"KANJI\0").as_ptr()
+        "KANJI"
     } else if dt == 4i32 {
-        (*b"BYTE\0").as_ptr()
+        "BYTE"
     } else if dt == 2i32 {
-        (*b"ALPHA\0").as_ptr()
+        "ALPHA"
     } else if dt == 1i32 {
-        (*b"NUMERIC\0").as_ptr()
+        "NUMERIC"
     } else {
-        (*b"unknown\0").as_ptr()
+        "unknown"
     }
 }
 
 #[no_mangle]
 pub unsafe extern fn dump_data(mut data : *mut quirc_data) {
-    printf((*b"    Version: %d\n\0").as_ptr() as *const c_char,(*data).version);
-    printf(
-        (*b"    ECC level: %c\n\0").as_ptr() as *const c_char,
+    println!("    Version: {}", (*data).version);
+    println!(
+        "    ECC level: {}",
         (*b"MLHQ\0")[(*data).ecc_level as (usize)] as (i32)
     );
-    printf((*b"    Mask: %d\n\0").as_ptr() as *const c_char,(*data).mask);
-    printf(
-        (*b"    Data type: %d (%s)\n\0").as_ptr() as *const c_char,
+    println!("    Mask: {}", (*data).mask);
+    println!(
+        "    Data type: {} ({})",
         (*data).data_type,
         data_type_str((*data).data_type)
     );
-    printf((*b"    Length: %d\n\0").as_ptr() as *const c_char,(*data).payload_len);
-    printf(
-        (*b"    Payload: %s\n\0").as_ptr() as *const c_char,
-        (*data).payload.as_mut_ptr()
+    println!("    Length: {}", (*data).payload_len);
+    println!(
+        "    Payload: {}",
+        CStr::from_ptr((*data).payload.as_mut_ptr() as *mut c_char).to_str().unwrap()
     );
     if (*data).eci != 0 {
-        printf((*b"    ECI: %d\n\0").as_ptr() as *const c_char,(*data).eci);
+        println!("    ECI: {}", (*data).eci);
     }
 }
 
@@ -43,26 +45,26 @@ pub unsafe extern fn dump_data(mut data : *mut quirc_data) {
 pub unsafe extern fn dump_cells(mut code : *const quirc_code) {
     let mut u : i32;
     let mut v : i32;
-    printf((*b"    %d cells, corners:\0").as_ptr() as *const c_char,(*code).size);
+    print!("    {} cells, corners:", (*code).size);
     u = 0i32;
     'loop1: loop {
         if !(u < 4i32) {
             break;
         }
-        printf(
-            (*b" (%d,%d)\0").as_ptr() as *const c_char,
+        print!(
+            " ({},{})",
             (*code).corners[u as (usize)].x,
             (*code).corners[u as (usize)].y
         );
         u = u + 1;
     }
-    printf((*b"\n\0").as_ptr() as *const c_char);
+    println!();
     v = 0i32;
     'loop3: loop {
         if !(v < (*code).size) {
             break;
         }
-        printf((*b"    \0").as_ptr() as *const c_char);
+        print!("    ");
         u = 0i32;
         'loop6: loop {
             if !(u < (*code).size) {
@@ -72,13 +74,13 @@ pub unsafe extern fn dump_cells(mut code : *const quirc_code) {
             if (*code).cell_bitmap[
                    (p >> 3i32) as (usize)
                ] as (i32) & 1i32 << (p & 7i32) != 0 {
-                printf((*b"[]\0").as_ptr() as *const c_char);
+                print!("[]");
             } else {
-                printf((*b"  \0").as_ptr() as *const c_char);
+                print!("  ");
             }
             u = u + 1;
         }
-        printf((*b"\n\0").as_ptr() as *const c_char);
+        println!();
         v = v + 1;
     }
 }
