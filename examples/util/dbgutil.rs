@@ -1,5 +1,3 @@
-use std::ffi::CStr;
-
 use image;
 
 use libc::{c_void};

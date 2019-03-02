@@ -1,6 +1,7 @@
 extern crate clap;
 extern crate quirc_rs;
 
+use std::ffi::CStr;
 use std::fs;
 use std::path::Path;
 

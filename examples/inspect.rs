@@ -1,68 +1,25 @@
 extern crate quirc_rs;
+extern crate sdl2;
+extern crate sdl2_unifont;
 
+use std::ffi::CStr;
 use std::path::Path;
 
-use libc::{c_char, fprintf, memset, perror, printf, puts, snprintf, timespec};
+use libc::{c_char, fprintf, memset, perror, printf, puts, snprintf, timespec, FILE};
+use libc_extra::unix::stdio::stderr;
+
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
+use sdl2::rect::{Point, Rect};
+use sdl2::render::Canvas;
+use sdl2::video::Window;
 
 use quirc_rs::quirc::*;
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
 
 include!("util/dbgutil.rs");
-
-extern {
-    fn SDL_Flip(screen : *mut SDL_Surface) -> i32;
-    fn SDL_GetError() -> *mut u8;
-    fn SDL_Init(flags : u32) -> i32;
-    fn SDL_LockSurface(surface : *mut SDL_Surface) -> i32;
-    fn SDL_Quit();
-    fn SDL_SetVideoMode(
-        width : i32, height : i32, bpp : i32, flags : u32
-    ) -> *mut SDL_Surface;
-    fn SDL_UnlockSurface(surface : *mut SDL_Surface);
-    fn SDL_WaitEvent(event : *mut SDL_Event) -> i32;
-    fn check_if_png(filename : *const u8) -> i32;
-    fn fprintf(
-        __stream : *mut _IO_FILE, __format : *const u8, ...
-    ) -> i32;
-    fn lineColor(
-        dst : *mut SDL_Surface,
-        x1 : i16,
-        y1 : i16,
-        x2 : i16,
-        y2 : i16,
-        color : u32
-    ) -> i32;
-    fn load_jpeg(q : *mut quirc, filename : *const u8) -> i32;
-    fn load_png(q : *mut quirc, filename : *const u8) -> i32;
-    fn pixelColor(
-        dst : *mut SDL_Surface, x : i16, y : i16, color : u32
-    ) -> i32;
-    fn printf(__format : *const u8, ...) -> i32;
-    fn quirc_count(q : *const quirc) -> i32;
-    fn quirc_decode(
-        code : *const quirc_code, data : *mut quirc_data
-    ) -> Enum1;
-    fn quirc_destroy(q : *mut quirc);
-    fn quirc_end(q : *mut quirc);
-    fn quirc_extract(
-        q : *const quirc, index : i32, code : *mut quirc_code
-    );
-    fn quirc_new() -> *mut quirc;
-    fn quirc_strerror(err : Enum1) -> *const u8;
-    fn quirc_version() -> *const u8;
-    fn snprintf(
-        __s : *mut u8, __maxlen : usize, __format : *const u8, ...
-    ) -> i32;
-    static mut stderr : *mut _IO_FILE;
-    fn stringColor(
-        dst : *mut SDL_Surface,
-        x : i16,
-        y : i16,
-        s : *const u8,
-        color : u32
-    ) -> i32;
-}
 
 fn main() {
     use ::std::os::unix::ffi::OsStringExt;
@@ -96,8 +53,8 @@ unsafe extern fn dump_info(mut q : *mut quirc) {
         if !(i < count) {
             break;
         }
-        let mut code : quirc_code;
-        let mut data : quirc_data;
+        let mut code : quirc_code = std::mem::uninitialized();
+        let mut data : quirc_data = std::mem::uninitialized();
         let mut err : Enum1;
         quirc_extract(
             q as (*mut quirc),
@@ -117,33 +74,65 @@ unsafe extern fn dump_info(mut q : *mut quirc) {
             );
         } else {
             printf((*b"  Decoding successful:\n\0").as_ptr() as *const c_char);
-            dump_data(&mut data as (*mut quirc_data) as (*const quirc_data));
+            dump_data(&mut data as (*mut quirc_data));
         }
         printf((*b"\n\0").as_ptr() as *const c_char);
         i = i + 1;
     }
 }
 
-unsafe extern fn draw_frame(
-    mut screen : *mut SDL_Surface, mut q : *mut quirc
+unsafe fn pixelColor(mut canvas : &mut Canvas<Window>, x: i16, y: i16, color: Color) {
+    canvas.set_draw_color(color);
+    canvas.draw_point((x as i32, y as i32)).unwrap();
+}
+
+unsafe fn lineColor(
+    mut canvas : &mut Canvas<Window>,
+    x1: i16,
+    y1: i16,
+    x2: i16,
+    y2: i16,
+    color: Color,
 ) {
-    let mut pix : *mut u8;
+    canvas.set_draw_color(color);
+    canvas.draw_line((x1 as i32, y1 as i32), (x2 as i32, y2 as i32));
+}
+
+unsafe fn stringColor(
+    mut canvas : &mut Canvas<Window>,
+    x: i16,
+    y: i16,
+    s: *const u8,
+    color: Color,
+) {
+    let renderer = sdl2_unifont::renderer::SurfaceRenderer::new(color, Color::RGBA(0, 0, 0, 0));
+    let surface = renderer.draw(CStr::from_ptr(s as *const c_char).to_str().unwrap()).unwrap();
+    let (w, h) = canvas.output_size().unwrap();
+    let mut screen = sdl2::surface::Surface::new(
+        w,
+        h,
+        sdl2::pixels::PixelFormatEnum::RGBA8888,
+    ).unwrap();
+    surface.blit(None, &mut screen, Rect::new(x as i32, y as i32, 0, 0));
+    let texture_creator = canvas.texture_creator();
+    let tex = texture_creator
+        .create_texture_from_surface(screen)
+        .unwrap();
+    canvas.copy(&tex, None, None).unwrap();
+}
+
+const QUIRC_PIXEL_WHITE: i32 = 0;
+const QUIRC_PIXEL_BLACK: i32 = 1;
+
+unsafe extern fn draw_frame(
+    mut canvas : &mut Canvas<Window>, mut q : *mut quirc
+) {
     let mut raw : *mut u8 = (*q).image;
     let mut x : i32;
     let mut y : i32;
-    SDL_LockSurface(screen);
-    pix = (*screen).pixels as (*mut u8);
-    y = 0i32;
-    'loop1: loop {
-        if !(y < (*q).h) {
-            break;
-        }
-        let mut row : *mut u32 = pix as (*mut u32);
-        x = 0i32;
-        'loop4: loop {
-            if !(x < (*q).w) {
-                break;
-            }
+
+    for y in 0..(*q).h {
+        for x in 0..(*q).w {
             let mut v
                 : u8
                 = *{
@@ -151,69 +140,44 @@ unsafe extern fn draw_frame(
                        raw = raw.offset(1isize);
                        _old
                    };
-            let mut color
-                : u32
-                = (v as (i32) << 16i32 | v as (i32) << 8i32 | v as (i32)) as (u32);
             let mut reg
                 : *mut quirc_region
                 = &mut (*q).regions[v as (usize)] as (*mut quirc_region);
-            if v as (i32) == 1i32 {
-                color = 0x0u32;
-            } else if v as (i32) == 0i32 {
-                color = 0xffffffu32;
-            } else if (*reg).capstone >= 0i32 {
-                color = 0x8000u32;
-            } else {
-                color = 0x808080u32;
-            }
-            *{
-                 let _old = row;
-                 row = row.offset(1isize);
-                 _old
-             } = color;
-            x = x + 1;
+            let color = match v as (i32) {
+                QUIRC_PIXEL_BLACK => Color::RGB(0, 0, 0),
+                QUIRC_PIXEL_WHITE => Color::RGB(0xff, 0xff, 0xff),
+                _ => {
+                    if (*reg).capstone >= 0i32 {
+                        Color::RGB(0, 0x80, 0)
+                    } else {
+                        Color::RGB(0x80, 0x80, 0x80)
+                    }
+                }
+            };
+            pixelColor(canvas, x as i16, y as i16, color);
         }
-        pix = pix.offset((*screen).pitch as (isize));
-        y = y + 1;
     }
-    SDL_UnlockSurface(screen);
 }
 
 unsafe extern fn draw_blob(
-    mut screen : *mut SDL_Surface, mut x : i32, mut y : i32
+    mut canvas : &mut Canvas<Window>, mut x : i32, mut y : i32
 ) {
-    let mut i : i32;
-    let mut j : i32;
-    i = -2i32;
-    'loop1: loop {
-        if !(i <= 2i32) {
-            break;
+    for i in -2..=2 {
+        for j in -2..=2 {
+            pixelColor(canvas, (x + i) as (i16), (y + j) as (i16), Color::RGBA(0, 0, 0xff, 0xff));
         }
-        j = -2i32;
-        'loop4: loop {
-            if !(j <= 2i32) {
-                break;
-            }
-            pixelColor(screen,(x + i) as (i16),(y + j) as (i16),0xffffu32);
-            j = j + 1;
-        }
-        i = i + 1;
     }
 }
 
 unsafe extern fn draw_capstone(
-    mut screen : *mut SDL_Surface, mut q : *mut quirc, mut index : i32
+    mut canvas : &mut Canvas<Window>, mut q : *mut quirc, mut index : i32
 ) {
     let mut cap
         : *mut quirc_capstone
         = &mut (*q).capstones[index as (usize)] as (*mut quirc_capstone);
     let mut j : i32;
-    let mut buf : [u8; 8];
-    j = 0i32;
-    'loop1: loop {
-        if !(j < 4i32) {
-            break;
-        }
+    let mut buf : [u8; 8] = std::mem::uninitialized();
+    for j in 0..4 {
         let mut p0
             : *mut quirc_point
             = &mut (*cap).corners[j as (usize)] as (*mut quirc_point);
@@ -223,17 +187,16 @@ unsafe extern fn draw_capstone(
                        ((j + 1i32) % 4i32) as (usize)
                    ] as (*mut quirc_point);
         lineColor(
-            screen,
+            canvas,
             (*p0).x as (i16),
             (*p0).y as (i16),
             (*p1).x as (i16),
             (*p1).y as (i16),
-            0x800080ffu32
+            Color::RGBA(0x80, 0, 0x80, 0xff)
         );
-        j = j + 1;
     }
     draw_blob(
-        screen,
+        canvas,
         (*cap).corners[0usize].x,
         (*cap).corners[0usize].y
     );
@@ -245,11 +208,11 @@ unsafe extern fn draw_capstone(
             index
         );
         stringColor(
-            screen,
+            canvas,
             (*cap).center.x as (i16),
             (*cap).center.y as (i16),
             buf.as_mut_ptr() as (*const u8),
-            0xffu32
+            Color::RGB(0, 0, 0)
         );
     }
 }
@@ -274,22 +237,23 @@ unsafe extern fn perspective_map(
                                                                 5isize
                                                             )) / den;
 
-    (*ret).x = rint(x);
-    (*ret).y = rint(y);
+    (*ret).x = x.round() as i32;
+    (*ret).y = y.round() as i32;
 }
 
 unsafe extern fn draw_mark(
-    mut screen : *mut SDL_Surface, mut x : i32, mut y : i32
+    mut canvas : &mut Canvas<Window>, mut x : i32, mut y : i32
 ) {
-    pixelColor(screen,x as (i16),y as (i16),0xff0000ffu32);
-    pixelColor(screen,(x + 1i32) as (i16),y as (i16),0xff0000ffu32);
-    pixelColor(screen,(x - 1i32) as (i16),y as (i16),0xff0000ffu32);
-    pixelColor(screen,x as (i16),(y + 1i32) as (i16),0xff0000ffu32);
-    pixelColor(screen,x as (i16),(y - 1i32) as (i16),0xff0000ffu32);
+    let red = Color::RGBA(0xff, 0, 0, 0xff);
+    pixelColor(canvas,x as (i16),y as (i16), red);
+    pixelColor(canvas,(x + 1i32) as (i16),y as (i16), red);
+    pixelColor(canvas,(x - 1i32) as (i16),y as (i16), red);
+    pixelColor(canvas,x as (i16),(y + 1i32) as (i16), red);
+    pixelColor(canvas,x as (i16),(y - 1i32) as (i16), red);
 }
 
 unsafe extern fn draw_grid(
-    mut screen : *mut SDL_Surface, mut q : *mut quirc, mut index : i32
+    mut canvas : &mut Canvas<Window>, mut q : *mut quirc, mut index : i32
 ) {
     let mut qr
         : *mut quirc_grid
@@ -297,17 +261,13 @@ unsafe extern fn draw_grid(
     let mut x : i32;
     let mut y : i32;
     let mut i : i32;
-    i = 0i32;
-    'loop1: loop {
-        if !(i < 3i32) {
-            break;
-        }
+    for i in 0..3 {
         let mut cap
             : *mut quirc_capstone
             = &mut (*q).capstones[
                        (*qr).caps[i as (usize)] as (usize)
                    ] as (*mut quirc_capstone);
-        let mut buf : [u8; 8];
+        let mut buf : [u8; 8] = std::mem::uninitialized();
         snprintf(
             buf.as_mut_ptr() as *mut c_char,
             ::std::mem::size_of::<[u8; 8]>(),
@@ -316,43 +276,34 @@ unsafe extern fn draw_grid(
             (*b"ABC\0")[i as (usize)] as (i32)
         );
         stringColor(
-            screen,
+            canvas,
             (*cap).center.x as (i16),
             (*cap).center.y as (i16),
             buf.as_mut_ptr() as (*const u8),
-            0xffu32
+            Color::RGB(0, 0, 0)
         );
-        i = i + 1;
     }
     lineColor(
-        screen,
+        canvas,
         (*qr).tpep[0usize].x as (i16),
         (*qr).tpep[0usize].y as (i16),
         (*qr).tpep[1usize].x as (i16),
         (*qr).tpep[1usize].y as (i16),
-        0xff00ffffu32
+        Color::RGBA(0xff, 0, 0xff, 0xff)
     );
     lineColor(
-        screen,
+        canvas,
         (*qr).tpep[1usize].x as (i16),
         (*qr).tpep[1usize].y as (i16),
         (*qr).tpep[2usize].x as (i16),
         (*qr).tpep[2usize].y as (i16),
-        0xff00ffffu32
+        Color::RGBA(0xff, 0, 0xff, 0xff)
     );
     if (*qr).align_region >= 0i32 {
-        draw_blob(screen,(*qr).align.x,(*qr).align.y);
+        draw_blob(canvas,(*qr).align.x,(*qr).align.y);
     }
-    y = 0i32;
-    'loop5: loop {
-        if !(y < (*qr).grid_size) {
-            break;
-        }
-        x = 0i32;
-        'loop8: loop {
-            if !(x < (*qr).grid_size) {
-                break;
-            }
+    for y in 0..(*qr).grid_size {
+        for x in 0..(*qr).grid_size {
             let mut u : f64 = x as (f64) + 0.5f64;
             let mut v : f64 = y as (f64) + 0.5f64;
             let mut p : quirc_point = std::mem::uninitialized();
@@ -362,70 +313,43 @@ unsafe extern fn draw_grid(
                 v,
                 &mut p as (*mut quirc_point)
             );
-            draw_mark(screen,p.x,p.y);
-            x = x + 1;
+            draw_mark(canvas,p.x,p.y);
         }
-        y = y + 1;
     }
 }
 
 unsafe extern fn sdl_examine(mut q : *mut quirc) -> i32 {
-    let mut screen : *mut SDL_Surface;
-    let mut ev : SDL_Event;
-    if SDL_Init(0x20u32) < 0i32 {
-        fprintf(
-            stderr,
-            (*b"couldn\'t init SDL: %s\n\0").as_ptr(),
-            SDL_GetError()
-        );
-        -1i32
-    } else {
-        screen = SDL_SetVideoMode((*q).w,(*q).h,32i32,0x0u32);
-        (if screen.is_null() {
-             fprintf(
-                 stderr,
-                 (*b"couldn\'t init video mode: %s\n\0").as_ptr(),
-                 SDL_GetError()
-             );
-             -1i32
-         } else {
-             'loop2: loop {
-                 if !(SDL_WaitEvent(&mut ev as (*mut SDL_Event)) >= 0i32) {
-                     break;
-                 }
-                 let mut i : i32;
+    let sdl_context = sdl2::init().unwrap();
 
-                 if ev.r#type == SDL_QUIT {
-                     break;
-                 }
+    let video_subsystem = sdl_context.video().unwrap();
+    let window = video_subsystem
+        .window("", (*q).w as u32, (*q).h as u32)
+        .position_centered()
+        .build()
+        .unwrap();
+    let mut canvas = window.into_canvas().present_vsync().build().unwrap();
 
-                 if ev.r#type == SDL_KEYDOWN && ev.key.keysym.sym == 'q' {
-                     break;
-                 }
+    'mainloop: loop {
+        let mut event_pump = sdl_context.event_pump().unwrap();
+        for event in event_pump.wait_iter() {
+            match event {
+                Event::Quit { .. } |
+                Event::KeyDown { keycode: Some(Keycode::Q), .. } => break 'mainloop,
+                _ => (),
+            }
 
-                 draw_frame(screen,q);
-                 i = 0i32;
-                 'loop5: loop {
-                     if !(i < (*q).num_capstones) {
-                         break;
-                     }
-                     draw_capstone(screen,q,i);
-                     i = i + 1;
-                 }
-                 i = 0i32;
-                 'loop7: loop {
-                     if !(i < (*q).num_grids) {
-                         break;
-                     }
-                     draw_grid(screen,q,i);
-                     i = i + 1;
-                 }
-                 SDL_Flip(screen);
-             }
-             SDL_Quit();
-             0i32
-         })
+            draw_frame(&mut canvas, q);
+            for i in 0..(*q).num_capstones {
+                draw_capstone(&mut canvas, q, i);
+            }
+            for i in 0..(*q).num_grids {
+                draw_grid(&mut canvas, q, i);
+            }
+
+            canvas.present();
+        }
     }
+    0
 }
 
 #[no_mangle]
@@ -442,7 +366,7 @@ pub unsafe extern fn _c_main(
     printf((*b"\n\0").as_ptr() as *const c_char);
     if argc < 2i32 {
         fprintf(
-            stderr,
+            stderr as *mut FILE,
             (*b"Usage: %s <testfile.jpg|testfile.png>\n\0").as_ptr() as *const c_char,
             *argv.offset(0isize)
         );
@@ -454,7 +378,7 @@ pub unsafe extern fn _c_main(
              -1i32
          } else {
              let mut status : i32 = -1i32;
-             status = load_image(q,*argv.offset(1isize) as (*const u8));
+             status = load_image(q, &Path::new(CStr::from_ptr(*argv.offset(1isize) as (*const c_char)).to_str().unwrap()));
              (if status < 0i32 {
                   quirc_destroy(q as (*mut quirc));
                   -1i32
