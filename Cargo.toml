@@ -1,11 +1,13 @@
+[workspace]
+members = [
+    "quirc_wrapper",
+]
+
 [package]
 name = "quirc-rs"
 version = "0.1.0"
 authors = ["Szabolcs Berecz <szabolcs.berecz@gmail.com>"]
 edition = "2018"
-
-[build-dependencies]
-bindgen = "0.47.3"
 
 [dependencies]
 
@@ -15,5 +17,6 @@ clap = "2.32.0"
 image = "0.21.0"
 libc = "0.2.49"
 libc-extra = "0.3.2"
+quirc-wrapper = { path = "quirc_wrapper" }
 sdl2 = "0.31.0"
 sdl2-unifont = "1.0.1"

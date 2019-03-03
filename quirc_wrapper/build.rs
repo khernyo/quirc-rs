@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process::Command;
 
 fn main() -> Result<(), io::Error> {
-    let quirc_path = Path::new("quirc_wrapper/quirc");
+    let quirc_path = Path::new("quirc");
     let quirc_src_path = quirc_path.join("lib");
     let lib_filename = "libquirc.a";
 
@@ -26,7 +26,7 @@ fn main() -> Result<(), io::Error> {
         .derive_partialeq(true)
         .impl_debug(false)
         .impl_partialeq(false)
-        .header("quirc_wrapper/wrapper.h")
+        .header("wrapper.h")
         .generate()
         .expect("Unable to generate bindings");
 
