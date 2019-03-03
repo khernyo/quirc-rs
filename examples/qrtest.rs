@@ -321,9 +321,9 @@ pub unsafe extern fn _c_main(
     let mut opt : i32;
 
     let cell_dump_arg_name = "cell-dump";
-    let cell_dump_arg = Arg::with_name(cell_dump_arg_name).short("d");
+    let cell_dump_arg = Arg::with_name(cell_dump_arg_name).short("d").help("Dumps cell data");
     let verbose_arg_name = "verbose";
-    let verbose_arg = Arg::with_name(verbose_arg_name).short("v");
+    let verbose_arg = Arg::with_name(verbose_arg_name).short("v").help("Enables verbose output");
     let paths_arg_name = "paths";
     let paths_arg = Arg::with_name(paths_arg_name).multiple(true).required(true);
 
