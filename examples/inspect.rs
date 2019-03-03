@@ -352,7 +352,6 @@ unsafe extern fn sdl_examine(mut q : *mut quirc) -> i32 {
     0
 }
 
-#[no_mangle]
 pub unsafe extern fn _c_main(
     mut argc : i32, mut argv : *mut *mut u8
 ) -> i32 {

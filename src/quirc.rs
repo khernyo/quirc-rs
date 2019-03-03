@@ -119,7 +119,6 @@ impl Clone for quirc {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn quirc_new() -> *mut quirc {
     let mut q: *mut quirc = malloc(::std::mem::size_of::<quirc>()) as (*mut quirc);
     if q.is_null() {
@@ -134,7 +133,6 @@ pub unsafe extern "C" fn quirc_new() -> *mut quirc {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn quirc_destroy(mut q: *mut quirc) {
     free((*q).image as (*mut ::std::os::raw::c_void));
     if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
@@ -144,7 +142,6 @@ pub unsafe extern "C" fn quirc_destroy(mut q: *mut quirc) {
     free(q as (*mut ::std::os::raw::c_void));
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn quirc_resize(mut q: *mut quirc, mut w: i32, mut h: i32) -> i32 {
     let mut _currentBlock;
     let mut image: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
@@ -196,7 +193,6 @@ pub unsafe extern "C" fn quirc_resize(mut q: *mut quirc, mut w: i32, mut h: i32)
     -1i32
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn quirc_count(mut q: *const quirc) -> i32 {
     (*q).num_grids
 }
@@ -214,7 +210,6 @@ pub enum Enum1 {
     QUIRC_ERROR_DATA_UNDERFLOW,
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn quirc_strerror(mut err: Enum1) -> &'static str {
     match err {
         Enum1::QUIRC_SUCCESS => "Success",

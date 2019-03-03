@@ -32,7 +32,6 @@ impl Clone for result_info {
     fn clone(&self) -> Self { *self }
 }
 
-#[no_mangle]
 pub unsafe extern fn print_result(
     mut name : &str, mut info : *mut result_info
 ) {
@@ -68,7 +67,6 @@ pub unsafe extern fn print_result(
     }
 }
 
-#[no_mangle]
 pub unsafe extern fn add_result(
     mut sum : *mut result_info, mut inf : *mut result_info
 ) {
@@ -84,7 +82,6 @@ pub unsafe extern fn add_result(
                         );
 }
 
-#[no_mangle]
 pub unsafe extern fn scan_file(
     mut decoder: *mut quirc,
     mut path : &Path,
@@ -186,7 +183,6 @@ pub unsafe extern fn scan_file(
     }
 }
 
-#[no_mangle]
 pub unsafe extern fn scan_dir(
     mut decoder: *mut quirc,
     mut path : &Path,
@@ -218,7 +214,6 @@ pub unsafe extern fn scan_dir(
     (count > 0i32) as (i32)
 }
 
-#[no_mangle]
 pub unsafe extern fn test_scan(
     mut decoder: *mut quirc,
     mut path : &Path,
@@ -239,7 +234,6 @@ pub unsafe extern fn test_scan(
     }
 }
 
-#[no_mangle]
 pub unsafe extern fn run_tests(paths: Vec<&str>) -> i32 {
     let mut sum : result_info = std::mem::uninitialized();
     let mut count : i32 = 0i32;
@@ -321,7 +315,6 @@ fn main() {
     ::std::process::exit(ret);
 }
 
-#[no_mangle]
 pub unsafe extern fn _c_main(
     mut argc : i32, mut argv : *mut *mut u8
 ) -> i32 {

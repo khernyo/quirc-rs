@@ -16,7 +16,6 @@ unsafe extern fn data_type_str(mut dt : i32) -> &'static str {
     }
 }
 
-#[no_mangle]
 pub unsafe extern fn dump_data(mut data : *mut quirc_data) {
     println!("    Version: {}", (*data).version);
     println!(
@@ -39,7 +38,6 @@ pub unsafe extern fn dump_data(mut data : *mut quirc_data) {
     }
 }
 
-#[no_mangle]
 pub unsafe extern fn dump_cells(mut code : *const quirc_code) {
     let mut u : i32;
     let mut v : i32;

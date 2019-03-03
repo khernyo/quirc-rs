@@ -16,7 +16,7 @@
 
 use crate::quirc::consts::*;
 use crate::quirc::*;
-use crate::version_db::{quirc_rs_params, quirc_version_info, QUIRC_MAX_VERSION};
+use crate::version_db::*;
 
 extern "C" {
     fn abs(__x: i32) -> i32;
@@ -30,7 +30,6 @@ extern "C" {
         __c: i32,
         __n: usize,
     ) -> *mut ::std::os::raw::c_void;
-    static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1];
 }
 
 const MAX_POLY: usize = 64;
@@ -1057,7 +1056,6 @@ unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, mut ds: *mut data
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn quirc_decode(
     mut code: *const quirc_code,
     mut data: *mut quirc_data,

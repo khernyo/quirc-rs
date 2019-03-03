@@ -16,6 +16,7 @@
 
 use crate::quirc::*;
 use crate::decode::*;
+use crate::version_db::*;
 
 extern "C" {
     fn abs(__x: i32) -> i32;
@@ -34,10 +35,8 @@ extern "C" {
         __c: i32,
         __n: usize,
     ) -> *mut ::std::os::raw::c_void;
-    static mut quirc_version_db: [quirc_version_info; 41];
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn line_intersect(
     mut p0: *const quirc_point,
     mut p1: *const quirc_point,
@@ -61,7 +60,6 @@ pub unsafe extern "C" fn line_intersect(
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn perspective_setup(
     mut c: *mut f64,
     mut rect: *const quirc_point,
@@ -100,7 +98,6 @@ pub unsafe extern "C" fn perspective_setup(
         (-x2 * y3 + x1 * y3 + x3 * y2 + x0 * (y1 - y2) - x3 * y1 + (x2 - x1) * y0) / hden;
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn perspective_map(
     mut c: *const f64,
     mut u: f64,
@@ -115,7 +112,6 @@ pub unsafe extern "C" fn perspective_map(
     (*ret).y = y.round() as i32;
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn perspective_unmap(
     mut c: *const f64,
     mut in_: *const quirc_point,
@@ -139,7 +135,6 @@ pub unsafe extern "C" fn perspective_unmap(
         / den;
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn flood_fill_seed(
     mut q: *mut quirc,
     mut x: i32,
@@ -209,7 +204,6 @@ pub unsafe extern "C" fn flood_fill_seed(
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn threshold(mut q: *mut quirc) {
     let mut x: i32;
     let mut y: i32;
@@ -273,7 +267,6 @@ pub unsafe extern "C" fn threshold(mut q: *mut quirc) {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn area_count(
     mut user_data: *mut ::std::os::raw::c_void,
     mut y: i32,
@@ -285,7 +278,6 @@ pub unsafe extern "C" fn area_count(
     *_lhs = *_lhs + _rhs;
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn region_code(mut q: *mut quirc, mut x: i32, mut y: i32) -> i32 {
     let mut pixel: i32;
     let mut r#box: *mut quirc_region;
@@ -344,7 +336,6 @@ impl Clone for polygon_score_data {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn find_one_corner(
     mut user_data: *mut ::std::os::raw::c_void,
     mut y: i32,
@@ -371,7 +362,6 @@ pub unsafe extern "C" fn find_one_corner(
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn find_other_corners(
     mut user_data: *mut ::std::os::raw::c_void,
     mut y: i32,
@@ -406,7 +396,6 @@ pub unsafe extern "C" fn find_other_corners(
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn find_region_corners(
     mut q: *mut quirc,
     mut rcode: i32,
@@ -463,7 +452,6 @@ pub unsafe extern "C" fn find_region_corners(
     );
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn record_capstone(mut q: *mut quirc, mut ring: i32, mut stone: i32) {
     let mut stone_reg: *mut quirc_region =
         &mut (*q).regions[stone as (usize)] as (*mut quirc_region);
@@ -509,7 +497,6 @@ pub unsafe extern "C" fn record_capstone(mut q: *mut quirc, mut ring: i32, mut s
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn test_capstone(
     mut q: *mut quirc,
     mut x: i32,
@@ -551,7 +538,6 @@ pub unsafe extern "C" fn test_capstone(
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn finder_scan(mut q: *mut quirc, mut y: i32) {
     let mut row: *mut u8 = (*q).pixels.offset((y * (*q).w) as (isize));
     let mut x: i32;
@@ -609,7 +595,6 @@ pub unsafe extern "C" fn finder_scan(mut q: *mut quirc, mut y: i32) {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn find_alignment_pattern(mut q: *mut quirc, mut index: i32) {
     let mut qr: *mut quirc_grid = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
     let mut c0: *mut quirc_capstone =
@@ -691,7 +676,6 @@ pub unsafe extern "C" fn find_alignment_pattern(mut q: *mut quirc, mut index: i3
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn find_leftmost_to_line(
     mut user_data: *mut ::std::os::raw::c_void,
     mut y: i32,
@@ -716,7 +700,6 @@ pub unsafe extern "C" fn find_leftmost_to_line(
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn timing_scan(
     mut q: *const quirc,
     mut p0: *const quirc_point,
@@ -793,7 +776,6 @@ pub unsafe extern "C" fn timing_scan(
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn measure_timing_pattern(mut q: *mut quirc, mut index: i32) -> i32 {
     let mut qr: *mut quirc_grid = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
     let mut i: i32;
@@ -841,7 +823,6 @@ pub unsafe extern "C" fn measure_timing_pattern(mut q: *mut quirc, mut index: i3
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn read_cell(
     mut q: *mut quirc,
     mut index: i32,
@@ -866,7 +847,6 @@ pub unsafe extern "C" fn read_cell(
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn fitness_cell(
     mut q: *mut quirc,
     mut index: i32,
@@ -910,7 +890,6 @@ pub unsafe extern "C" fn fitness_cell(
     score
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn fitness_ring(
     mut q: *mut quirc,
     mut index: i32,
@@ -934,7 +913,6 @@ pub unsafe extern "C" fn fitness_ring(
     score
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn fitness_apat(
     mut q: *mut quirc,
     mut index: i32,
@@ -945,7 +923,6 @@ pub unsafe extern "C" fn fitness_apat(
         + fitness_ring(q, index, cx, cy, 2i32)
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn fitness_capstone(
     mut q: *mut quirc,
     mut index: i32,
@@ -959,35 +936,6 @@ pub unsafe extern "C" fn fitness_capstone(
         + fitness_ring(q, index, x, y, 3i32)
 }
 
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_rs_params {
-    pub bs: i32,
-    pub dw: i32,
-    pub ns: i32,
-}
-
-impl Clone for quirc_rs_params {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct quirc_version_info {
-    pub data_bytes: i32,
-    pub apat: [i32; 7],
-    pub ecc: [quirc_rs_params; 4],
-}
-
-impl Clone for quirc_version_info {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn fitness_all(mut q: *mut quirc, mut index: i32) -> i32 {
     let mut qr: *const quirc_grid =
         &mut (*q).grids[index as (usize)] as (*mut quirc_grid) as (*const quirc_grid);
@@ -1055,7 +1003,6 @@ pub unsafe extern "C" fn fitness_all(mut q: *mut quirc, mut index: i32) -> i32 {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn jiggle_perspective(mut q: *mut quirc, mut index: i32) {
     let mut qr: *mut quirc_grid = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
     let mut best: i32 = fitness_all(q as (*mut quirc), index);
@@ -1113,7 +1060,6 @@ pub unsafe extern "C" fn jiggle_perspective(mut q: *mut quirc, mut index: i32) {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn setup_qr_perspective(mut q: *mut quirc, mut index: i32) {
     let mut qr: *mut quirc_grid = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
     let mut rect: [quirc_point; 4] = std::mem::uninitialized();
@@ -1149,7 +1095,6 @@ pub unsafe extern "C" fn setup_qr_perspective(mut q: *mut quirc, mut index: i32)
     jiggle_perspective(q, index);
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn rotate_capstone(
     mut cap: *mut quirc_capstone,
     mut h0: *const quirc_point,
@@ -1198,7 +1143,6 @@ pub unsafe extern "C" fn rotate_capstone(
     );
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn record_qr_grid(mut q: *mut quirc, mut a: i32, mut b: i32, mut c: i32) {
     let mut h0: quirc_point = std::mem::uninitialized();
     let mut hd: quirc_point = std::mem::uninitialized();
@@ -1351,7 +1295,6 @@ impl Clone for neighbour_list {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn test_neighbours(
     mut q: *mut quirc,
     mut i: i32,
@@ -1395,7 +1338,6 @@ pub unsafe extern "C" fn test_neighbours(
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn test_grouping(mut q: *mut quirc, mut i: i32) {
     let mut c1: *mut quirc_capstone = &mut (*q).capstones[i as (usize)] as (*mut quirc_capstone);
     let mut j: i32;
@@ -1460,7 +1402,6 @@ pub unsafe extern "C" fn test_grouping(mut q: *mut quirc, mut i: i32) {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn pixels_setup(mut q: *mut quirc) {
     if ::std::mem::size_of::<u8>() == ::std::mem::size_of::<u8>() {
         (*q).pixels = (*q).image;
@@ -1486,7 +1427,6 @@ pub unsafe extern "C" fn pixels_setup(mut q: *mut quirc) {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn quirc_begin(
     mut q: *mut quirc,
     mut w: *mut i32,
@@ -1504,7 +1444,6 @@ pub unsafe extern "C" fn quirc_begin(
     (*q).image
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn quirc_end(mut q: *mut quirc) {
     let mut i: i32;
     pixels_setup(q);
@@ -1527,7 +1466,6 @@ pub unsafe extern "C" fn quirc_end(mut q: *mut quirc) {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn quirc_extract(
     mut q: *mut quirc,
     mut index: i32,
