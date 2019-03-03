@@ -97,6 +97,10 @@ impl Clone for quirc_grid {
     }
 }
 
+// TODO handle QUIRC_MAX_REGIONS > 254
+//  See https://github.com/dlbeer/quirc/commit/3a6efb3d84651f67da3ff210bc2eb0e113c0086c
+const QUIRC_MAX_REGIONS: u32 = 254;
+
 #[derive(Copy)]
 #[repr(C)]
 pub struct quirc {
