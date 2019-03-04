@@ -245,13 +245,13 @@ pub unsafe extern fn run_tests(paths: Vec<&str>) -> i32 {
         -1i32
     } else {
         println!(
-            "  {:-30}  {:17} {:11}",
+            "  {:30}  {:>17} {:>11}",
             "",
             "Time (ms)",
             "Count"
         );
         println!(
-            "  {:-30}  {:5} {:5} {:5} {:5} {:5}",
+            "  {:<30}  {:>5} {:>5} {:>5} {:>5} {:>5}",
             "Filename",
             "Load",
             "ID",
