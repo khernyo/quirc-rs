@@ -1,7 +1,5 @@
 use image;
 
-use libc::{c_void};
-
 unsafe extern fn data_type_str(mut dt : i32) -> &'static str {
     if dt == 8i32 {
         "KANJI"

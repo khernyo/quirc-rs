@@ -6,15 +6,18 @@ use std::fs;
 use std::path::Path;
 
 use clap::{Arg, App};
-use libc::{c_char, memset, perror, puts, timespec};
+use libc::{c_char, c_void, malloc, memcmp, memcpy, memset, perror, puts, timespec};
 
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
 use quirc_rs::quirc::*;
 
+use quirc_wrapper as qw;
+
 include!("util/dbgutil.rs");
 
 static mut want_cell_dump: bool = false;
+static mut want_validate: bool = false;
 static mut want_verbose: bool = false;
 
 #[derive(Copy)]
@@ -105,6 +108,13 @@ pub unsafe extern fn scan_file(
     (*info).load_time = ((tp.tv_sec * 1000i64 + tp.tv_nsec / 1000000i64) as (u32)).wrapping_sub(
                             start
                         );
+    let image_bytes = if want_validate {
+        let dst = malloc(((*decoder).w * (*decoder).h) as usize);
+        memcpy(dst, (*decoder).image as *const c_void, ((*decoder).w * (*decoder).h) as usize);
+        dst
+    } else {
+        0 as *const c_void
+    };
     if ret < 0i32 {
         eprintln!("{}: load failed", filename.to_str().unwrap());
         -1i32
@@ -178,9 +188,62 @@ pub unsafe extern fn scan_file(
                 }
             }
         }
+        if want_validate {
+            validate(decoder, path, info, image_bytes);
+        }
         (*info).file_count = 1i32;
         1i32
     }
+}
+
+unsafe fn validate(
+    mut decoder: *mut quirc,
+    mut path : &Path,
+    mut info : *mut result_info,
+    image: *const c_void,
+) {
+    let mut qw_decoder : *mut qw::quirc = qw::quirc_new();
+    assert!(qw::quirc_resize(qw_decoder, (*decoder).w, (*decoder).h) >= 0);
+    let image_bytes = qw::quirc_begin(
+        qw_decoder,
+        0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
+        0i32 as (*mut ::std::os::raw::c_void) as (*mut i32)
+    );
+    memcpy(image_bytes as *mut c_void, image, ((*decoder).w * (*decoder).h) as usize);
+    qw::quirc_end(qw_decoder);
+
+    let mut count = 0;
+    let mut not_black = 0;
+    for i in 0..((*decoder).w * (*decoder).h) as isize {
+        if *(*decoder).image.offset(i) != 0 {
+            not_black += 1;
+        }
+        if *(*decoder).image.offset(i) != *(*qw_decoder).image.offset(i) {
+            count += 1;
+        }
+    }
+
+    assert_eq!(std::mem::size_of_val(&*(*decoder).image), 1);
+    assert_eq!(std::mem::size_of_val(&*(*decoder).pixels), 1);
+    assert_eq!(std::mem::size_of_val(&*(*decoder).row_average), 4);
+    assert_eq!(std::mem::size_of_val(&(*decoder).regions), 16*254);
+    assert_eq!(std::mem::size_of_val(&(*decoder).regions[0]), 16);
+    assert_eq!(std::mem::size_of_val(&(*decoder).capstones), std::mem::size_of::<quirc_capstone>() * 32);
+    assert_eq!(std::mem::size_of_val(&(*decoder).capstones[0]), std::mem::size_of::<quirc_capstone>());
+    assert_eq!(std::mem::size_of_val(&(*decoder).grids), 8 * std::mem::size_of::<quirc_grid>());
+    assert_eq!(std::mem::size_of_val(&(*decoder).grids[0]), std::mem::size_of::<quirc_grid>());
+
+    assert_eq!(memcmp((*decoder).image as *const c_void, (*qw_decoder).image as *const c_void, ((*decoder).w * (*decoder).h) as usize * std::mem::size_of_val(&*(*decoder).image)), 0);
+    assert_eq!(memcmp((*decoder).pixels as *const c_void, (*qw_decoder).pixels as *const c_void, ((*decoder).w * (*decoder).h) as usize * std::mem::size_of_val(&*(*decoder).pixels)), 0);
+    assert_eq!(memcmp((*decoder).row_average as *const c_void, (*qw_decoder).row_average as *const c_void, (*decoder).w as usize * std::mem::size_of_val(&*(*decoder).row_average)), 0);
+    assert_eq!((*decoder).w, (*qw_decoder).w);
+    assert_eq!((*decoder).h, (*qw_decoder).h);
+    assert_eq!((*decoder).num_regions, (*qw_decoder).num_regions);
+    assert_eq!(memcmp((*decoder).regions.as_ptr() as *const c_void, (*qw_decoder).regions.as_ptr() as *const c_void, std::mem::size_of_val(&(*decoder).regions[0]) * (*decoder).num_regions as usize), 0);
+    assert_eq!((*decoder).num_capstones, (*qw_decoder).num_capstones);
+    assert_eq!(memcmp((*decoder).capstones.as_ptr() as *const c_void, (*qw_decoder).capstones.as_ptr() as *const c_void, std::mem::size_of_val(&(*decoder).capstones[0]) * (*decoder).num_capstones as usize), 0);
+    assert_eq!((*decoder).num_grids, (*qw_decoder).num_grids);
+    assert_eq!(memcmp((*decoder).grids.as_ptr() as *const c_void, (*qw_decoder).grids.as_ptr() as *const c_void, std::mem::size_of_val(&(*decoder).grids[0]) * (*decoder).num_grids as usize), 0);
 }
 
 pub unsafe extern fn scan_dir(
@@ -322,6 +385,8 @@ pub unsafe extern fn _c_main(
 
     let cell_dump_arg_name = "cell-dump";
     let cell_dump_arg = Arg::with_name(cell_dump_arg_name).short("d").help("Dumps cell data");
+    let no_validation_arg_name = "no-validate";
+    let no_validation_arg = Arg::with_name(no_validation_arg_name).long(no_validation_arg_name).help("Disables validating the results against quirc");
     let verbose_arg_name = "verbose";
     let verbose_arg = Arg::with_name(verbose_arg_name).short("v").help("Enables verbose output");
     let paths_arg_name = "paths";
@@ -331,10 +396,11 @@ pub unsafe extern fn _c_main(
         .about("quirc test program")
         .version(quirc_version())
         .author("Copyright (C) 2010-2012 Daniel Beer <dlbeer@gmail.com>")
-        .args(&[cell_dump_arg, verbose_arg, paths_arg]);
+        .args(&[cell_dump_arg, no_validation_arg, verbose_arg, paths_arg]);
 
     let matches = args.get_matches();
     want_cell_dump = matches.is_present(cell_dump_arg_name);
+    want_validate = !matches.is_present(no_validation_arg_name);
     want_verbose = matches.is_present(verbose_arg_name);
     let paths = matches.values_of(paths_arg_name).unwrap();
 
