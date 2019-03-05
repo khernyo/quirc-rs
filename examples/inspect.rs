@@ -4,6 +4,7 @@ extern crate sdl2_unifont;
 
 use std::ffi::CStr;
 use std::path::Path;
+use std::os::raw::c_double;
 
 use libc::{c_char, fprintf, memset, perror, printf, puts, snprintf, timespec, FILE};
 use libc_extra::unix::stdio::stderr;
@@ -18,6 +19,10 @@ use sdl2::video::Window;
 use quirc_rs::quirc::*;
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
+
+extern "C" {
+    fn rint(x: c_double) -> c_double;
+}
 
 include!("util/dbgutil.rs");
 
@@ -237,8 +242,8 @@ unsafe extern fn perspective_map(
                                                                 5isize
                                                             )) / den;
 
-    (*ret).x = x.round() as i32;
-    (*ret).y = y.round() as i32;
+    (*ret).x = rint(x) as i32;
+    (*ret).y = rint(y) as i32;
 }
 
 unsafe extern fn draw_mark(

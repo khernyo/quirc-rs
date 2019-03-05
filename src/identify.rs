@@ -17,6 +17,7 @@
 use crate::quirc::*;
 use crate::decode::*;
 use crate::version_db::*;
+use std::os::raw::c_double;
 
 extern "C" {
     fn abs(__x: i32) -> i32;
@@ -35,6 +36,7 @@ extern "C" {
         __c: i32,
         __n: usize,
     ) -> *mut ::std::os::raw::c_void;
+    fn rint(x: c_double) -> c_double;
 }
 
 pub unsafe extern "C" fn line_intersect(
@@ -108,8 +110,8 @@ pub unsafe extern "C" fn perspective_map(
     let mut x: f64 = (*c.offset(0isize) * u + *c.offset(1isize) * v + *c.offset(2isize)) / den;
     let mut y: f64 = (*c.offset(3isize) * u + *c.offset(4isize) * v + *c.offset(5isize)) / den;
 
-    (*ret).x = x.round() as i32;
-    (*ret).y = y.round() as i32;
+    (*ret).x = rint(x) as i32;
+    (*ret).y = rint(y) as i32;
 }
 
 pub unsafe extern "C" fn perspective_unmap(
