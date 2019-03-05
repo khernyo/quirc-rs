@@ -212,27 +212,6 @@ unsafe fn validate(
     memcpy(image_bytes as *mut c_void, image, ((*decoder).w * (*decoder).h) as usize);
     qw::quirc_end(qw_decoder);
 
-    let mut count = 0;
-    let mut not_black = 0;
-    for i in 0..((*decoder).w * (*decoder).h) as isize {
-        if *(*decoder).image.offset(i) != 0 {
-            not_black += 1;
-        }
-        if *(*decoder).image.offset(i) != *(*qw_decoder).image.offset(i) {
-            count += 1;
-        }
-    }
-
-    assert_eq!(std::mem::size_of_val(&*(*decoder).image), 1);
-    assert_eq!(std::mem::size_of_val(&*(*decoder).pixels), 1);
-    assert_eq!(std::mem::size_of_val(&*(*decoder).row_average), 4);
-    assert_eq!(std::mem::size_of_val(&(*decoder).regions), 16*254);
-    assert_eq!(std::mem::size_of_val(&(*decoder).regions[0]), 16);
-    assert_eq!(std::mem::size_of_val(&(*decoder).capstones), std::mem::size_of::<quirc_capstone>() * 32);
-    assert_eq!(std::mem::size_of_val(&(*decoder).capstones[0]), std::mem::size_of::<quirc_capstone>());
-    assert_eq!(std::mem::size_of_val(&(*decoder).grids), 8 * std::mem::size_of::<quirc_grid>());
-    assert_eq!(std::mem::size_of_val(&(*decoder).grids[0]), std::mem::size_of::<quirc_grid>());
-
     assert_eq!(memcmp((*decoder).image as *const c_void, (*qw_decoder).image as *const c_void, ((*decoder).w * (*decoder).h) as usize * std::mem::size_of_val(&*(*decoder).image)), 0);
     assert_eq!(memcmp((*decoder).pixels as *const c_void, (*qw_decoder).pixels as *const c_void, ((*decoder).w * (*decoder).h) as usize * std::mem::size_of_val(&*(*decoder).pixels)), 0);
     assert_eq!(memcmp((*decoder).row_average as *const c_void, (*qw_decoder).row_average as *const c_void, (*decoder).w as usize * std::mem::size_of_val(&*(*decoder).row_average)), 0);
