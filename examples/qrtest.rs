@@ -223,6 +223,36 @@ unsafe fn validate(
     assert_eq!(memcmp((*decoder).capstones.as_ptr() as *const c_void, (*qw_decoder).capstones.as_ptr() as *const c_void, std::mem::size_of_val(&(*decoder).capstones[0]) * (*decoder).num_capstones as usize), 0);
     assert_eq!((*decoder).num_grids, (*qw_decoder).num_grids);
     assert_eq!(memcmp((*decoder).grids.as_ptr() as *const c_void, (*qw_decoder).grids.as_ptr() as *const c_void, std::mem::size_of_val(&(*decoder).grids[0]) * (*decoder).num_grids as usize), 0);
+
+    let id_count = quirc_count(decoder);
+    assert_eq!(id_count, qw::quirc_count(qw_decoder));
+
+    for i in 0..id_count {
+        let mut code: quirc_code = std::mem::uninitialized();
+        let mut decode_result;
+        let mut data: quirc_data = std::mem::uninitialized();
+        quirc_extract(decoder, i, &mut code);
+        decode_result = quirc_decode(&code, &mut data);
+
+        let mut qw_code: qw::quirc_code = std::mem::uninitialized();
+        let qw_decode_result;
+        let mut qw_data: qw::quirc_data = std::mem::uninitialized();
+        qw::quirc_extract(qw_decoder, i, &mut qw_code);
+        qw_decode_result = qw::quirc_decode(&qw_code, &mut qw_data);
+
+        assert_eq!(memcmp(code.corners.as_ptr() as *mut c_void, qw_code.corners.as_ptr() as *mut c_void, std::mem::size_of_val(&code.corners)), 0);
+        assert_eq!(code.size, qw_code.size);
+        assert_eq!(memcmp(code.cell_bitmap.as_ptr() as *mut c_void, qw_code.cell_bitmap.as_ptr() as *mut c_void, std::mem::size_of_val(&code.cell_bitmap)), 0);
+
+        assert_eq!(decode_result as u32, qw_decode_result);
+        assert_eq!(data.version, qw_data.version);
+        assert_eq!(data.ecc_level, qw_data.ecc_level);
+        assert_eq!(data.mask, qw_data.mask);
+        assert_eq!(data.data_type, qw_data.data_type);
+        assert_eq!(data.payload_len, qw_data.payload_len);
+        assert_eq!(memcmp(data.payload.as_ptr() as *mut c_void, qw_data.payload.as_ptr() as *mut c_void, std::mem::size_of_val(&data.payload)), 0);
+        assert_eq!(data.eci, qw_data.eci);
+    }
 }
 
 pub unsafe extern fn scan_dir(

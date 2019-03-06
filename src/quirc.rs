@@ -34,7 +34,7 @@ pub fn quirc_version() -> &'static str {
     "1.0"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Debug)]
 #[repr(C)]
 pub struct quirc_point {
     pub x: i32,
@@ -61,7 +61,7 @@ impl Clone for quirc_region {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Debug)]
 #[repr(C)]
 pub struct quirc_capstone {
     pub ring: i32,
@@ -78,7 +78,7 @@ impl Clone for quirc_capstone {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Debug)]
 #[repr(C)]
 pub struct quirc_grid {
     pub caps: [i32; 3],

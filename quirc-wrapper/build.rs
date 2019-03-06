@@ -24,8 +24,8 @@ fn main() -> Result<(), io::Error> {
         .derive_debug(true)
         .derive_eq(true)
         .derive_partialeq(true)
-        .impl_debug(false)
-        .impl_partialeq(false)
+        .impl_debug(true)
+        .impl_partialeq(true)
         .header("wrapper.h")
         .generate()
         .expect("Unable to generate bindings");
