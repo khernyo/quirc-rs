@@ -28,28 +28,11 @@ use quirc_rs::decode::*;
 use quirc_rs::identify::*;
 use quirc_rs::quirc::*;
 
-use quirc_wrapper as qw;
-
 include!("../tests/util/dbgutil.rs");
 
 static mut want_cell_dump: bool = false;
 static mut want_validate: bool = false;
 static mut want_verbose: bool = false;
-
-#[derive(Copy)]
-#[repr(C)]
-pub struct result_info {
-    pub file_count : i32,
-    pub id_count : i32,
-    pub decode_count : i32,
-    pub load_time : u32,
-    pub identify_time : u32,
-    pub total_time : u32,
-}
-
-impl Clone for result_info {
-    fn clone(&self) -> Self { *self }
-}
 
 pub unsafe extern fn print_result(
     mut name : &str, mut info : *mut result_info
@@ -209,65 +192,6 @@ pub unsafe extern fn scan_file(
         }
         (*info).file_count = 1i32;
         1i32
-    }
-}
-
-unsafe fn validate(
-    mut decoder: *mut quirc,
-    mut path : &Path,
-    mut info : *mut result_info,
-    image: *const c_void,
-) {
-    let mut qw_decoder : *mut qw::quirc = qw::quirc_new();
-    assert!(qw::quirc_resize(qw_decoder, (*decoder).w, (*decoder).h) >= 0);
-    let image_bytes = qw::quirc_begin(
-        qw_decoder,
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut i32)
-    );
-    memcpy(image_bytes as *mut c_void, image, ((*decoder).w * (*decoder).h) as usize);
-    qw::quirc_end(qw_decoder);
-
-    assert_eq!(memcmp((*decoder).image as *const c_void, (*qw_decoder).image as *const c_void, ((*decoder).w * (*decoder).h) as usize * std::mem::size_of_val(&*(*decoder).image)), 0);
-    assert_eq!(memcmp((*decoder).pixels as *const c_void, (*qw_decoder).pixels as *const c_void, ((*decoder).w * (*decoder).h) as usize * std::mem::size_of_val(&*(*decoder).pixels)), 0);
-    assert_eq!(memcmp((*decoder).row_average as *const c_void, (*qw_decoder).row_average as *const c_void, (*decoder).w as usize * std::mem::size_of_val(&*(*decoder).row_average)), 0);
-    assert_eq!((*decoder).w, (*qw_decoder).w);
-    assert_eq!((*decoder).h, (*qw_decoder).h);
-    assert_eq!((*decoder).num_regions, (*qw_decoder).num_regions);
-    assert_eq!(memcmp((*decoder).regions.as_ptr() as *const c_void, (*qw_decoder).regions.as_ptr() as *const c_void, std::mem::size_of_val(&(*decoder).regions[0]) * (*decoder).num_regions as usize), 0);
-    assert_eq!((*decoder).num_capstones, (*qw_decoder).num_capstones);
-    assert_eq!(memcmp((*decoder).capstones.as_ptr() as *const c_void, (*qw_decoder).capstones.as_ptr() as *const c_void, std::mem::size_of_val(&(*decoder).capstones[0]) * (*decoder).num_capstones as usize), 0);
-    assert_eq!((*decoder).num_grids, (*qw_decoder).num_grids);
-    assert_eq!(memcmp((*decoder).grids.as_ptr() as *const c_void, (*qw_decoder).grids.as_ptr() as *const c_void, std::mem::size_of_val(&(*decoder).grids[0]) * (*decoder).num_grids as usize), 0);
-
-    let id_count = quirc_count(decoder);
-    assert_eq!(id_count, qw::quirc_count(qw_decoder));
-
-    for i in 0..id_count {
-        let mut code: quirc_code = std::mem::uninitialized();
-        let mut decode_result;
-        let mut data: quirc_data = std::mem::uninitialized();
-        quirc_extract(decoder, i, &mut code);
-        decode_result = quirc_decode(&code, &mut data);
-
-        let mut qw_code: qw::quirc_code = std::mem::uninitialized();
-        let qw_decode_result;
-        let mut qw_data: qw::quirc_data = std::mem::uninitialized();
-        qw::quirc_extract(qw_decoder, i, &mut qw_code);
-        qw_decode_result = qw::quirc_decode(&qw_code, &mut qw_data);
-
-        assert_eq!(memcmp(code.corners.as_ptr() as *mut c_void, qw_code.corners.as_ptr() as *mut c_void, std::mem::size_of_val(&code.corners)), 0);
-        assert_eq!(code.size, qw_code.size);
-        assert_eq!(memcmp(code.cell_bitmap.as_ptr() as *mut c_void, qw_code.cell_bitmap.as_ptr() as *mut c_void, std::mem::size_of_val(&code.cell_bitmap)), 0);
-
-        assert_eq!(decode_result as u32, qw_decode_result);
-        assert_eq!(data.version, qw_data.version);
-        assert_eq!(data.ecc_level, qw_data.ecc_level);
-        assert_eq!(data.mask, qw_data.mask);
-        assert_eq!(data.data_type, qw_data.data_type);
-        assert_eq!(data.payload_len, qw_data.payload_len);
-        assert_eq!(memcmp(data.payload.as_ptr() as *mut c_void, qw_data.payload.as_ptr() as *mut c_void, std::mem::size_of_val(&data.payload)), 0);
-        assert_eq!(data.eci, qw_data.eci);
     }
 }
 

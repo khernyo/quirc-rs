@@ -22,7 +22,7 @@ use std::ffi::CStr;
 use std::path::Path;
 use std::os::raw::c_double;
 
-use libc::{c_char, c_void, fprintf, memset, perror, printf, puts, snprintf, timespec, FILE};
+use libc::{c_char, c_void, fprintf, memcmp, memcpy, memset, perror, printf, puts, snprintf, timespec, FILE};
 use libc_extra::unix::stdio::stderr;
 
 use sdl2::event::Event;
