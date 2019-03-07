@@ -22,9 +22,7 @@ unsafe fn validate_against_original(path: &Path) {
 
     quirc_end(decoder);
 
-    let mut info : result_info = std::mem::uninitialized();
-    info.id_count = quirc_count(decoder as (*const quirc));
-    for i in 0..info.id_count {
+    for i in 0..quirc_count(decoder as (*const quirc)) {
         let mut code : quirc_code = std::mem::uninitialized();
         let mut data : quirc_data = std::mem::uninitialized();
         quirc_extract(
@@ -36,11 +34,10 @@ unsafe fn validate_against_original(path: &Path) {
             &mut code as (*mut quirc_code) as (*const quirc_code),
             &mut data as (*mut quirc_data)
         ) == Enum1::QUIRC_SUCCESS {
-            info.decode_count = info.decode_count + 1;
         }
     }
 
-    validate(decoder, path, &mut info, image_bytes);
+    validate(decoder, path, image_bytes);
 }
 
 macro_rules! check {

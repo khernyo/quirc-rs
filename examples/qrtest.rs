@@ -188,7 +188,7 @@ pub unsafe extern fn scan_file(
             }
         }
         if want_validate {
-            validate(decoder, path, info, image_bytes);
+            validate(decoder, path, image_bytes);
         }
         (*info).file_count = 1i32;
         1i32
