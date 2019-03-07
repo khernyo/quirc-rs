@@ -171,12 +171,12 @@ impl Clone for datastream {
     }
 }
 
-unsafe extern "C" fn grid_bit(mut code: *const quirc_code, mut x: i32, mut y: i32) -> i32 {
-    let mut p: i32 = y * (*code).size + x;
+unsafe extern "C" fn grid_bit(code: *const quirc_code, x: i32, y: i32) -> i32 {
+    let p: i32 = y * (*code).size + x;
     (*code).cell_bitmap[(p >> 3i32) as (usize)] as (i32) >> (p & 7i32) & 1i32
 }
 
-unsafe extern "C" fn format_syndromes(mut u: u16, mut s: *mut u8) -> i32 {
+unsafe extern "C" fn format_syndromes(u: u16, s: *mut u8) -> i32 {
     let mut i: i32;
     let mut nonzero: i32 = 0i32;
     memset(s as (*mut ::std::os::raw::c_void), 0i32, 64usize);
@@ -208,14 +208,14 @@ unsafe extern "C" fn format_syndromes(mut u: u16, mut s: *mut u8) -> i32 {
 }
 
 unsafe extern "C" fn poly_add(
-    mut dst: *mut u8,
-    mut src: *const u8,
-    mut c: u8,
-    mut shift: i32,
-    mut gf: *const galois_field,
+    dst: *mut u8,
+    src: *const u8,
+    c: u8,
+    shift: i32,
+    gf: *const galois_field,
 ) {
     let mut i: i32;
-    let mut log_c: i32 = (*gf).log[c as (usize)] as (i32);
+    let log_c: i32 = (*gf).log[c as (usize)] as (i32);
     if c == 0 {
     } else {
         i = 0i32;
@@ -223,8 +223,8 @@ unsafe extern "C" fn poly_add(
             if !(i < 64i32) {
                 break;
             }
-            let mut p: i32 = i + shift;
-            let mut v: u8 = *src.offset(i as (isize));
+            let p: i32 = i + shift;
+            let v: u8 = *src.offset(i as (isize));
             if !(p < 0i32 || p >= 64i32) {
                 if !(v == 0) {
                     let _rhs = (*gf).exp
@@ -239,10 +239,10 @@ unsafe extern "C" fn poly_add(
 }
 
 unsafe extern "C" fn berlekamp_massey(
-    mut s: *const u8,
-    mut N: i32,
-    mut gf: *const galois_field,
-    mut sigma: *mut u8,
+    s: *const u8,
+    N: i32,
+    gf: *const galois_field,
+    sigma: *mut u8,
 ) {
     let mut C: [u8; MAX_POLY] = [0u8; MAX_POLY];
     let mut B: [u8; MAX_POLY] = [0u8; MAX_POLY];
@@ -258,7 +258,7 @@ unsafe extern "C" fn berlekamp_massey(
             break;
         }
         let mut d: u8 = *s.offset(n as (isize));
-        let mut mult: u8;
+        let mult: u8;
         let mut i: i32;
         i = 1i32;
         'loop4: loop {
@@ -307,10 +307,10 @@ unsafe extern "C" fn berlekamp_massey(
     );
 }
 
-unsafe extern "C" fn poly_eval(mut s: *const u8, mut x: u8, mut gf: *const galois_field) -> u8 {
+unsafe extern "C" fn poly_eval(s: *const u8, x: u8, gf: *const galois_field) -> u8 {
     let mut i: i32;
     let mut sum: u8 = 0u8;
-    let mut log_x: u8 = (*gf).log[x as (usize)];
+    let log_x: u8 = (*gf).log[x as (usize)];
     if x == 0 {
         *s.offset(0isize)
     } else {
@@ -319,7 +319,7 @@ unsafe extern "C" fn poly_eval(mut s: *const u8, mut x: u8, mut gf: *const galoi
             if !(i < 64i32) {
                 break;
             }
-            let mut c: u8 = *s.offset(i as (isize));
+            let c: u8 = *s.offset(i as (isize));
             if !(c == 0) {
                 sum = (sum as (i32)
                     ^ (*gf).exp[(((*gf).log[c as (usize)] as (i32) + log_x as (i32) * i) % (*gf).p)
@@ -331,7 +331,7 @@ unsafe extern "C" fn poly_eval(mut s: *const u8, mut x: u8, mut gf: *const galoi
     }
 }
 
-unsafe extern "C" fn correct_format(mut f_ret: *mut u16) -> Enum1 {
+unsafe extern "C" fn correct_format(f_ret: *mut u16) -> Enum1 {
     let mut u: u16 = *f_ret;
     let mut i: i32;
     let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
@@ -370,14 +370,14 @@ unsafe extern "C" fn correct_format(mut f_ret: *mut u16) -> Enum1 {
 }
 
 unsafe extern "C" fn read_format(
-    mut code: *const quirc_code,
+    code: *const quirc_code,
     mut data: *mut quirc_data,
-    mut which: i32,
+    which: i32,
 ) -> Enum1 {
     let mut i: i32;
     let mut format: u16 = 0u16;
-    let mut fdata: u16;
-    let mut err: Enum1;
+    let fdata: u16;
+    let err: Enum1;
     if which != 0 {
         i = 0i32;
         'loop6: loop {
@@ -428,10 +428,10 @@ unsafe extern "C" fn read_format(
     }
 }
 
-unsafe extern "C" fn reserved_cell(mut version: i32, mut i: i32, mut j: i32) -> i32 {
-    let mut ver: *const quirc_version_info =
+unsafe extern "C" fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
+    let ver: *const quirc_version_info =
         &quirc_version_db[version as (usize)] as (*const quirc_version_info);
-    let mut size: i32 = version * 4i32 + 17i32;
+    let size: i32 = version * 4i32 + 17i32;
     let mut ai: i32 = -1i32;
     let mut aj: i32 = -1i32;
     let mut a: i32;
@@ -456,7 +456,7 @@ unsafe extern "C" fn reserved_cell(mut version: i32, mut i: i32, mut j: i32) -> 
             if !(a < 7i32 && ((*ver).apat[a as (usize)] != 0)) {
                 break;
             }
-            let mut p: i32 = (*ver).apat[a as (usize)];
+            let p: i32 = (*ver).apat[a as (usize)];
             if abs(p - i) < 3i32 {
                 ai = a;
             }
@@ -479,7 +479,7 @@ unsafe extern "C" fn reserved_cell(mut version: i32, mut i: i32, mut j: i32) -> 
     }
 }
 
-unsafe extern "C" fn mask_bit(mut mask: i32, mut i: i32, mut j: i32) -> i32 {
+unsafe extern "C" fn mask_bit(mask: i32, i: i32, j: i32) -> i32 {
     if mask == 7i32 {
         ((i * j % 3i32 + (i + j) % 2i32) % 2i32 == 0) as (i32)
     } else if mask == 6i32 {
@@ -502,14 +502,14 @@ unsafe extern "C" fn mask_bit(mut mask: i32, mut i: i32, mut j: i32) -> i32 {
 }
 
 unsafe extern "C" fn read_bit(
-    mut code: *const quirc_code,
-    mut data: *mut quirc_data,
+    code: *const quirc_code,
+    data: *mut quirc_data,
     mut ds: *mut datastream,
-    mut i: i32,
-    mut j: i32,
+    i: i32,
+    j: i32,
 ) {
-    let mut bitpos: i32 = (*ds).data_bits & 7i32;
-    let mut bytepos: i32 = (*ds).data_bits >> 3i32;
+    let bitpos: i32 = (*ds).data_bits & 7i32;
+    let bytepos: i32 = (*ds).data_bits >> 3i32;
     let mut v: i32 = grid_bit(code, j, i);
     if mask_bit((*data).mask, i, j) != 0 {
         v = v ^ 1i32;
@@ -523,9 +523,9 @@ unsafe extern "C" fn read_bit(
 }
 
 unsafe extern "C" fn read_data(
-    mut code: *const quirc_code,
-    mut data: *mut quirc_data,
-    mut ds: *mut datastream,
+    code: *const quirc_code,
+    data: *mut quirc_data,
+    ds: *mut datastream,
 ) {
     let mut y: i32 = (*code).size - 1i32;
     let mut x: i32 = (*code).size - 1i32;
@@ -554,10 +554,10 @@ unsafe extern "C" fn read_data(
 }
 
 unsafe extern "C" fn block_syndromes(
-    mut data: *const u8,
-    mut bs: i32,
-    mut npar: i32,
-    mut s: *mut u8,
+    data: *const u8,
+    bs: i32,
+    npar: i32,
+    s: *mut u8,
 ) -> i32 {
     let mut nonzero: i32 = 0i32;
     let mut i: i32;
@@ -573,7 +573,7 @@ unsafe extern "C" fn block_syndromes(
             if !(j < bs) {
                 break;
             }
-            let mut c: u8 = *data.offset((bs - j - 1i32) as (isize));
+            let c: u8 = *data.offset((bs - j - 1i32) as (isize));
             if !(c == 0) {
                 let _rhs =
                     gf256_exp[((gf256_log[c as (usize)] as (i32) + i * j) % 255i32) as (usize)];
@@ -591,10 +591,10 @@ unsafe extern "C" fn block_syndromes(
 }
 
 unsafe extern "C" fn eloc_poly(
-    mut omega: *mut u8,
-    mut s: *const u8,
-    mut sigma: *const u8,
-    mut npar: i32,
+    omega: *mut u8,
+    s: *const u8,
+    sigma: *const u8,
+    npar: i32,
 ) {
     let mut i: i32;
     memset(omega as (*mut ::std::os::raw::c_void), 0i32, 64usize);
@@ -629,8 +629,8 @@ unsafe extern "C" fn eloc_poly(
     }
 }
 
-unsafe extern "C" fn correct_block(mut data: *mut u8, mut ecc: *const quirc_rs_params) -> Enum1 {
-    let mut npar: i32 = (*ecc).bs - (*ecc).dw;
+unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -> Enum1 {
+    let npar: i32 = (*ecc).bs - (*ecc).dw;
     let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
     let mut sigma: [u8; MAX_POLY] = [0u8; MAX_POLY];
     let mut sigma_deriv: [u8; MAX_POLY] = [0u8; MAX_POLY];
@@ -672,24 +672,24 @@ unsafe extern "C" fn correct_block(mut data: *mut u8, mut ecc: *const quirc_rs_p
             if !(i < (*ecc).bs) {
                 break;
             }
-            let mut xinv: u8 = gf256_exp[(255i32 - i) as (usize)];
+            let xinv: u8 = gf256_exp[(255i32 - i) as (usize)];
             if poly_eval(
                 sigma.as_mut_ptr() as (*const u8),
                 xinv,
                 &gf256 as (*const galois_field),
             ) == 0
             {
-                let mut sd_x: u8 = poly_eval(
+                let sd_x: u8 = poly_eval(
                     sigma_deriv.as_mut_ptr() as (*const u8),
                     xinv,
                     &gf256 as (*const galois_field),
                 );
-                let mut omega_x: u8 = poly_eval(
+                let omega_x: u8 = poly_eval(
                     omega.as_mut_ptr() as (*const u8),
                     xinv,
                     &gf256 as (*const galois_field),
                 );
-                let mut error: u8 = gf256_exp[((255i32 - gf256_log[sd_x as (usize)] as (i32)
+                let error: u8 = gf256_exp[((255i32 - gf256_log[sd_x as (usize)] as (i32)
                     + gf256_log[omega_x as (usize)] as (i32))
                     % 255i32) as (usize)];
                 let _rhs = error;
@@ -706,31 +706,29 @@ unsafe extern "C" fn correct_block(mut data: *mut u8, mut ecc: *const quirc_rs_p
     }
 }
 
-unsafe extern "C" fn codestream_ecc(mut data: *mut quirc_data, mut ds: *mut datastream) -> Enum1 {
-    let mut ver: *const quirc_version_info =
+unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
+    let ver: *const quirc_version_info =
         &quirc_version_db[(*data).version as (usize)] as (*const quirc_version_info);
-    let mut sb_ecc: *const quirc_rs_params =
+    let sb_ecc: *const quirc_rs_params =
         &(*ver).ecc[(*data).ecc_level as (usize)] as (*const quirc_rs_params);
     let mut lb_ecc: quirc_rs_params;
     let lb_count: i32 = ((*ver).data_bytes - (*sb_ecc).bs * (*sb_ecc).ns) / ((*sb_ecc).bs + 1i32);
     let bc: i32 = lb_count + (*sb_ecc).ns;
     let ecc_offset: i32 = (*sb_ecc).dw * bc + lb_count;
     let mut dst_offset: i32 = 0i32;
-    let mut i: i32;
     lb_ecc = *sb_ecc;
     lb_ecc.dw = lb_ecc.dw + 1;
     lb_ecc.bs = lb_ecc.bs + 1;
 
     for i in 0..bc {
-        let mut dst: *mut u8 = (*ds).data.as_mut_ptr().offset(dst_offset as (isize));
-        let mut ecc: *const quirc_rs_params = if i < (*sb_ecc).ns {
+        let dst: *mut u8 = (*ds).data.as_mut_ptr().offset(dst_offset as (isize));
+        let ecc: *const quirc_rs_params = if i < (*sb_ecc).ns {
             sb_ecc
         } else {
             &mut lb_ecc as (*mut quirc_rs_params) as (*const quirc_rs_params)
         };
         let num_ec: i32 = (*ecc).bs - (*ecc).dw;
-        let mut err: Enum1;
-        let mut j: i32;
+        let err: Enum1;
 
         for j in 0..(*ecc).dw {
             *dst.offset(j as (isize)) = (*ds).raw[(j * bc + i) as (usize)];
@@ -752,7 +750,7 @@ unsafe extern "C" fn codestream_ecc(mut data: *mut quirc_data, mut ds: *mut data
     Enum1::QUIRC_SUCCESS
 }
 
-unsafe extern "C" fn bits_remaining(mut ds: *const datastream) -> i32 {
+unsafe extern "C" fn bits_remaining(ds: *const datastream) -> i32 {
     (*ds).data_bits - (*ds).ptr
 }
 
@@ -762,8 +760,8 @@ unsafe extern "C" fn take_bits(mut ds: *mut datastream, mut len: i32) -> i32 {
         if !(len != 0 && ((*ds).ptr < (*ds).data_bits)) {
             break;
         }
-        let mut b: u8 = (*ds).data[((*ds).ptr >> 3i32) as (usize)];
-        let mut bitpos: i32 = (*ds).ptr & 7i32;
+        let b: u8 = (*ds).data[((*ds).ptr >> 3i32) as (usize)];
+        let bitpos: i32 = (*ds).ptr & 7i32;
         ret = ret << 1i32;
         if b as (i32) << bitpos & 0x80i32 != 0 {
             ret = ret | 1i32;
@@ -776,9 +774,9 @@ unsafe extern "C" fn take_bits(mut ds: *mut datastream, mut len: i32) -> i32 {
 
 unsafe extern "C" fn numeric_tuple(
     mut data: *mut quirc_data,
-    mut ds: *mut datastream,
-    mut bits: i32,
-    mut digits: i32,
+    ds: *mut datastream,
+    bits: i32,
+    digits: i32,
 ) -> i32 {
     let mut tuple: i32;
     let mut i: i32;
@@ -801,7 +799,7 @@ unsafe extern "C" fn numeric_tuple(
     }
 }
 
-unsafe extern "C" fn decode_numeric(mut data: *mut quirc_data, mut ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
     let mut _currentBlock;
     let mut bits: i32 = 14i32;
     let mut count: i32;
@@ -849,9 +847,9 @@ unsafe extern "C" fn decode_numeric(mut data: *mut quirc_data, mut ds: *mut data
 
 unsafe extern "C" fn alpha_tuple(
     mut data: *mut quirc_data,
-    mut ds: *mut datastream,
-    mut bits: i32,
-    mut digits: i32,
+    ds: *mut datastream,
+    bits: i32,
+    digits: i32,
 ) -> i32 {
     let mut tuple: i32;
     let mut i: i32;
@@ -876,7 +874,7 @@ unsafe extern "C" fn alpha_tuple(
     }
 }
 
-unsafe extern "C" fn decode_alpha(mut data: *mut quirc_data, mut ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
     let mut _currentBlock;
     let mut bits: i32 = 13i32;
     let mut count: i32;
@@ -915,9 +913,9 @@ unsafe extern "C" fn decode_alpha(mut data: *mut quirc_data, mut ds: *mut datast
     }
 }
 
-unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, mut ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
     let mut bits: i32 = 16i32;
-    let mut count: i32;
+    let count: i32;
     let mut i: i32;
     if (*data).version < 10i32 {
         bits = 8i32;
@@ -944,9 +942,9 @@ unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, mut ds: *mut datastr
     }
 }
 
-unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, mut ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
     let mut bits: i32 = 12i32;
-    let mut count: i32;
+    let count: i32;
     let mut i: i32;
     if (*data).version < 10i32 {
         bits = 8i32;
@@ -964,11 +962,11 @@ unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, mut ds: *mut datast
             if !(i < count) {
                 break;
             }
-            let mut d: i32 = take_bits(ds, 13i32);
-            let mut msB: i32 = d / 0xc0i32;
-            let mut lsB: i32 = d % 0xc0i32;
-            let mut intermediate: i32 = msB << 8i32 | lsB;
-            let mut sjw: u16;
+            let d: i32 = take_bits(ds, 13i32);
+            let msB: i32 = d / 0xc0i32;
+            let lsB: i32 = d % 0xc0i32;
+            let intermediate: i32 = msB << 8i32 | lsB;
+            let sjw: u16;
             if intermediate + 0x8140i32 <= 0x9ffci32 {
                 sjw = (intermediate + 0x8140i32) as (u16);
             } else {
@@ -990,7 +988,7 @@ unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, mut ds: *mut datast
     }
 }
 
-unsafe extern "C" fn decode_eci(mut data: *mut quirc_data, mut ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_eci(mut data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
     if bits_remaining(ds as (*const datastream)) < 8i32 {
         Enum1::QUIRC_ERROR_DATA_UNDERFLOW
     } else {
@@ -1012,7 +1010,7 @@ unsafe extern "C" fn decode_eci(mut data: *mut quirc_data, mut ds: *mut datastre
     }
 }
 
-unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, mut ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
     let mut _currentBlock;
     let mut err: Enum1 = Enum1::QUIRC_SUCCESS;
     'loop0: loop {
@@ -1020,7 +1018,7 @@ unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, mut ds: *mut data
             _currentBlock = 7;
             break;
         }
-        let mut type_: i32 = take_bits(ds, 4i32);
+        let type_: i32 = take_bits(ds, 4i32);
         if type_ == 7i32 {
             err = decode_eci(data, ds);
         } else if type_ == 8i32 {
@@ -1057,7 +1055,7 @@ unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, mut ds: *mut data
 }
 
 pub unsafe extern "C" fn quirc_decode(
-    mut code: *const quirc_code,
+    code: *const quirc_code,
     mut data: *mut quirc_data,
 ) -> Enum1 {
     let mut err: Enum1;

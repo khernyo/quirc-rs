@@ -1,3 +1,6 @@
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+#![allow(unused_variables)]
 use std::ffi::CStr;
 use std::path::Path;
 

@@ -13,6 +13,12 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#![allow(non_snake_case)]
+#![allow(unused_assignments)]
+#![allow(unused_imports)]
+#![allow(unused_must_use)]
+#![allow(unused_mut)]
+#![allow(unused_variables)]
 
 extern crate quirc_rs;
 extern crate sdl2;

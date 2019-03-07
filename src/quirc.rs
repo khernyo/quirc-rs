@@ -124,7 +124,7 @@ impl Clone for quirc {
 }
 
 pub unsafe extern "C" fn quirc_new() -> *mut quirc {
-    let mut q: *mut quirc = malloc(::std::mem::size_of::<quirc>()) as (*mut quirc);
+    let q: *mut quirc = malloc(::std::mem::size_of::<quirc>()) as (*mut quirc);
     if q.is_null() {
         0i32 as (*mut ::std::os::raw::c_void) as (*mut quirc)
     } else {
@@ -137,7 +137,7 @@ pub unsafe extern "C" fn quirc_new() -> *mut quirc {
     }
 }
 
-pub unsafe extern "C" fn quirc_destroy(mut q: *mut quirc) {
+pub unsafe extern "C" fn quirc_destroy(q: *mut quirc) {
     free((*q).image as (*mut ::std::os::raw::c_void));
     if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
         free((*q).pixels as (*mut ::std::os::raw::c_void));
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn quirc_destroy(mut q: *mut quirc) {
     free(q as (*mut ::std::os::raw::c_void));
 }
 
-pub unsafe extern "C" fn quirc_resize(mut q: *mut quirc, mut w: i32, mut h: i32) -> i32 {
+pub unsafe extern "C" fn quirc_resize(mut q: *mut quirc, w: i32, h: i32) -> i32 {
     let mut _currentBlock;
     let mut image: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
     let mut pixels: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
@@ -154,9 +154,9 @@ pub unsafe extern "C" fn quirc_resize(mut q: *mut quirc, mut w: i32, mut h: i32)
     if !(w < 0i32 || h < 0i32) {
         image = calloc(w as (usize), h as (usize)) as (*mut u8);
         if !image.is_null() {
-            let mut olddim: usize = ((*q).w * (*q).h) as (usize);
-            let mut newdim: usize = (w * h) as (usize);
-            let mut min: usize = if olddim < newdim { olddim } else { newdim };
+            let olddim: usize = ((*q).w * (*q).h) as (usize);
+            let newdim: usize = (w * h) as (usize);
+            let min: usize = if olddim < newdim { olddim } else { newdim };
             memcpy(
                 image as (*mut ::std::os::raw::c_void),
                 (*q).image as (*const ::std::os::raw::c_void),
@@ -197,7 +197,7 @@ pub unsafe extern "C" fn quirc_resize(mut q: *mut quirc, mut w: i32, mut h: i32)
     -1i32
 }
 
-pub unsafe extern "C" fn quirc_count(mut q: *const quirc) -> i32 {
+pub unsafe extern "C" fn quirc_count(q: *const quirc) -> i32 {
     (*q).num_grids
 }
 
@@ -214,7 +214,7 @@ pub enum Enum1 {
     QUIRC_ERROR_DATA_UNDERFLOW,
 }
 
-pub unsafe extern "C" fn quirc_strerror(mut err: Enum1) -> &'static str {
+pub unsafe extern "C" fn quirc_strerror(err: Enum1) -> &'static str {
     match err {
         Enum1::QUIRC_SUCCESS => "Success",
         Enum1::QUIRC_ERROR_INVALID_GRID_SIZE => "Invalid grid size",
