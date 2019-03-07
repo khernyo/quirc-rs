@@ -30,7 +30,7 @@ use quirc_rs::quirc::*;
 
 use quirc_wrapper as qw;
 
-include!("util/dbgutil.rs");
+include!("../tests/util/dbgutil.rs");
 
 static mut want_cell_dump: bool = false;
 static mut want_validate: bool = false;

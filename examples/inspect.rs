@@ -40,7 +40,7 @@ extern "C" {
     fn rint(x: c_double) -> c_double;
 }
 
-include!("util/dbgutil.rs");
+include!("../tests/util/dbgutil.rs");
 
 fn main() {
     use ::std::os::unix::ffi::OsStringExt;
