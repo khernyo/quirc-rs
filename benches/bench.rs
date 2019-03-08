@@ -14,7 +14,8 @@ use quirc_rs::decode::*;
 use quirc_rs::identify::*;
 use quirc_rs::quirc::*;
 
-include!("../tests/util/dbgutil.rs");
+use quirc_wrapper as qw;
+use test_utils::dbgutil::*;
 
 unsafe fn run(width: u32, height:u32, image_bytes: *mut u8) {
     let mut decoder: *mut quirc = quirc_new();

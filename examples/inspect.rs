@@ -42,11 +42,11 @@ use quirc_rs::quirc::*;
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
 
+use test_utils::dbgutil::*;
+
 extern "C" {
     fn rint(x: c_double) -> c_double;
 }
-
-include!("../tests/util/dbgutil.rs");
 
 fn main() {
     use ::std::os::unix::ffi::OsStringExt;

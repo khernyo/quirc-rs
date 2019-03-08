@@ -10,7 +10,7 @@ use quirc_rs::decode::*;
 use quirc_rs::identify::*;
 use quirc_rs::quirc::*;
 
-include!("util/dbgutil.rs");
+use test_utils::dbgutil::*;
 
 #[derive(Debug, Eq, PartialEq)]
 struct Data {

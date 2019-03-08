@@ -14,7 +14,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+use std::ffi::CStr;
+use std::path::Path;
+
 use image;
+use libc::{c_char, c_void, malloc, memcmp, memcpy, memset, perror, puts, timespec};
+
+use quirc_rs::decode::*;
+use quirc_rs::identify::*;
+use quirc_rs::quirc::*;
 
 use quirc_wrapper as qw;
 
@@ -33,7 +41,7 @@ impl Clone for result_info {
     fn clone(&self) -> Self { *self }
 }
 
-unsafe extern fn data_type_str(mut dt : i32) -> &'static str {
+unsafe extern fn data_type_str(dt : i32) -> &'static str {
     if dt == 8i32 {
         "KANJI"
     } else if dt == 4i32 {
@@ -47,7 +55,7 @@ unsafe extern fn data_type_str(mut dt : i32) -> &'static str {
     }
 }
 
-pub unsafe extern fn dump_data(mut data : *mut quirc_data) {
+pub unsafe extern fn dump_data(data : *mut quirc_data) {
     println!("    Version: {}", (*data).version);
     println!(
         "    ECC level: {}",
@@ -69,7 +77,7 @@ pub unsafe extern fn dump_data(mut data : *mut quirc_data) {
     }
 }
 
-pub unsafe extern fn dump_cells(mut code : *const quirc_code) {
+pub unsafe extern fn dump_cells(code : *const quirc_code) {
     let mut u : i32;
     let mut v : i32;
     print!("    {} cells, corners:", (*code).size);
@@ -97,7 +105,7 @@ pub unsafe extern fn dump_cells(mut code : *const quirc_code) {
             if !(u < (*code).size) {
                 break;
             }
-            let mut p : i32 = v * (*code).size + u;
+            let p : i32 = v * (*code).size + u;
             if (*code).cell_bitmap[
                    (p >> 3i32) as (usize)
                ] as (i32) & 1i32 << (p & 7i32) != 0 {
@@ -133,12 +141,12 @@ pub unsafe fn load_image(q: *mut quirc, path: &Path) -> i32 {
     -1i32
 }
 
-unsafe fn validate(
-    mut decoder: *mut quirc,
-    mut path : &Path,
+pub unsafe fn validate(
+    decoder: *mut quirc,
+    path : &Path,
     image: *const c_void,
 ) {
-    let mut qw_decoder : *mut qw::quirc = qw::quirc_new();
+    let qw_decoder : *mut qw::quirc = qw::quirc_new();
     assert!(qw::quirc_resize(qw_decoder, (*decoder).w, (*decoder).h) >= 0);
     let image_bytes = qw::quirc_begin(
         qw_decoder,
@@ -165,7 +173,7 @@ unsafe fn validate(
 
     for i in 0..id_count {
         let mut code: quirc_code = std::mem::uninitialized();
-        let mut decode_result;
+        let decode_result;
         let mut data: quirc_data = std::mem::uninitialized();
         quirc_extract(decoder, i, &mut code);
         decode_result = quirc_decode(&code, &mut data);

@@ -32,7 +32,7 @@ use quirc_rs::decode::*;
 use quirc_rs::identify::*;
 use quirc_rs::quirc::*;
 
-include!("../tests/util/dbgutil.rs");
+use test_utils::dbgutil::*;
 
 static mut want_cell_dump: bool = false;
 static mut want_validate: bool = false;
