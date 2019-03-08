@@ -1,6 +1,5 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
-#![allow(unused_variables)]
 use std::ffi::CStr;
 use std::path::Path;
 
@@ -67,7 +66,7 @@ unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Dat
     }).collect();
     assert_eq!(result, expected_contents);
 
-    validate(decoder, path, image_bytes);
+    validate(decoder, image_bytes);
 }
 
 macro_rules! check {

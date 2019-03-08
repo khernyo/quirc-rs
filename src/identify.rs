@@ -271,7 +271,7 @@ pub unsafe extern "C" fn threshold(q: *mut quirc) {
 
 pub unsafe extern "C" fn area_count(
     user_data: *mut ::std::os::raw::c_void,
-    y: i32,
+    _y: i32,
     left: i32,
     right: i32,
 ) {

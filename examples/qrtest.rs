@@ -16,7 +16,6 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused_imports)]
 #![allow(unused_mut)]
-#![allow(unused_variables)]
 
 extern crate clap;
 extern crate quirc_rs;
@@ -94,12 +93,10 @@ pub unsafe extern fn scan_file(
     mut info : *mut result_info
 ) -> i32 {
     let filename = path.file_name().unwrap();
-    let mut len = filename.len();
     let mut tp : libc::timespec = std::mem::uninitialized();
     let mut start : u32;
     let mut total_start : u32;
     let mut ret : i32;
-    let mut i : i32;
 
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     total_start = {
@@ -192,7 +189,7 @@ pub unsafe extern fn scan_file(
             }
         }
         if want_validate {
-            validate(decoder, path, image_bytes);
+            validate(decoder, image_bytes);
         }
         (*info).file_count = 1i32;
         1i32
@@ -253,7 +250,6 @@ pub unsafe extern fn test_scan(
 pub unsafe extern fn run_tests(paths: Vec<&str>) -> i32 {
     let mut sum : result_info = std::mem::uninitialized();
     let mut count : i32 = 0i32;
-    let mut i : i32;
     let mut decoder : *mut quirc = quirc_new();
 
     if decoder.is_null() {
@@ -309,33 +305,14 @@ pub unsafe extern fn run_tests(paths: Vec<&str>) -> i32 {
 }
 
 fn main() {
-    use ::std::os::unix::ffi::OsStringExt;
-    let mut argv_storage
-        = ::std::env::args_os().map(
-              |str| {
-                        let mut vec = str.into_vec();
-                        vec.push(b'\0');
-                        vec
-                    }
-          ).collect::<Vec<_>>(
-          );
-    let mut argv
-        = argv_storage.iter_mut().map(|vec| vec.as_mut_ptr()).chain(
-              Some(::std::ptr::null_mut())
-          ).collect::<Vec<_>>(
-          );
     let ret
         = unsafe {
-              _c_main(argv_storage.len() as (i32),argv.as_mut_ptr())
+              _c_main()
           };
     ::std::process::exit(ret);
 }
 
-pub unsafe extern fn _c_main(
-    mut argc : i32, mut argv : *mut *mut u8
-) -> i32 {
-    let mut opt : i32;
-
+pub unsafe extern fn _c_main() -> i32 {
     let cell_dump_arg_name = "cell-dump";
     let cell_dump_arg = Arg::with_name(cell_dump_arg_name).short("d").help("Dumps cell data");
     let no_validation_arg_name = "no-validate";

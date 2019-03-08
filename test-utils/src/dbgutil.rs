@@ -143,7 +143,6 @@ pub unsafe fn load_image(q: *mut quirc, path: &Path) -> i32 {
 
 pub unsafe fn validate(
     decoder: *mut quirc,
-    path : &Path,
     image: *const c_void,
 ) {
     let qw_decoder : *mut qw::quirc = qw::quirc_new();

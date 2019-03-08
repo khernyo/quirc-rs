@@ -18,7 +18,6 @@
 #![allow(unused_imports)]
 #![allow(unused_must_use)]
 #![allow(unused_mut)]
-#![allow(unused_variables)]
 
 extern crate quirc_rs;
 extern crate sdl2;
@@ -155,8 +154,6 @@ unsafe extern fn draw_frame(
     mut canvas : &mut Canvas<Window>, mut q : *mut quirc
 ) {
     let mut raw : *mut u8 = (*q).image;
-    let mut x : i32;
-    let mut y : i32;
 
     for y in 0..(*q).h {
         for x in 0..(*q).w {
@@ -202,7 +199,6 @@ unsafe extern fn draw_capstone(
     let mut cap
         : *mut quirc_capstone
         = &mut (*q).capstones[index as (usize)] as (*mut quirc_capstone);
-    let mut j : i32;
     let mut buf : [u8; 8] = std::mem::uninitialized();
     for j in 0..4 {
         let mut p0
@@ -285,9 +281,6 @@ unsafe extern fn draw_grid(
     let mut qr
         : *mut quirc_grid
         = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
-    let mut x : i32;
-    let mut y : i32;
-    let mut i : i32;
     for i in 0..3 {
         let mut cap
             : *mut quirc_capstone
