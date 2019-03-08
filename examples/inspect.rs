@@ -15,7 +15,6 @@
  */
 #![allow(non_snake_case)]
 #![allow(unused_assignments)]
-#![allow(unused_imports)]
 #![allow(unused_must_use)]
 #![allow(unused_mut)]
 
@@ -27,13 +26,13 @@ use std::ffi::CStr;
 use std::path::Path;
 use std::os::raw::c_double;
 
-use libc::{c_char, c_void, fprintf, memcmp, memcpy, memset, perror, printf, puts, snprintf, timespec, FILE};
+use libc::{c_char, fprintf, perror, printf, snprintf, FILE};
 use libc_extra::unix::stdio::stderr;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
-use sdl2::rect::{Point, Rect};
+use sdl2::rect::Rect;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 

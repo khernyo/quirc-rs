@@ -1,8 +1,6 @@
-#![allow(unused_imports)]
-use std::ffi::CStr;
 use std::path::Path;
 
-use libc::{c_char, c_void, malloc, memcmp, memcpy};
+use libc::{c_void, malloc, memcpy};
 
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;

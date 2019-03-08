@@ -1,12 +1,10 @@
-#![allow(unused_imports)]
 #![feature(test)]
 
 extern crate test;
 
-use std::ffi::CStr;
 use std::path::Path;
 
-use libc::{c_char, c_void, malloc, memcmp, memcpy};
+use libc::{c_void, memcpy};
 
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;

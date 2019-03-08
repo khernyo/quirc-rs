@@ -18,7 +18,7 @@ use std::ffi::CStr;
 use std::path::Path;
 
 use image;
-use libc::{c_char, c_void, malloc, memcmp, memcpy, memset, perror, puts, timespec};
+use libc::{c_char, c_void, memcmp, memcpy};
 
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
@@ -121,7 +121,6 @@ pub unsafe extern fn dump_cells(code : *const quirc_code) {
 }
 
 pub unsafe fn load_image(q: *mut quirc, path: &Path) -> i32 {
-    use image::{self, ColorType};
     let img = image::open(path).unwrap().grayscale().to_luma();
     let (width, height) = img.dimensions();
 

@@ -14,17 +14,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #![allow(non_upper_case_globals)]
-#![allow(unused_imports)]
 
 extern crate clap;
 extern crate quirc_rs;
 
-use std::ffi::CStr;
-use std::fs;
 use std::path::Path;
 
 use clap::{Arg, App};
-use libc::{c_char, c_void, malloc, memcmp, memcpy, memset, perror, puts, timespec};
+use libc::{c_char, c_void, malloc, memcpy, memset, perror, puts, timespec};
 
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
