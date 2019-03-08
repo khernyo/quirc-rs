@@ -14,9 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #![allow(non_snake_case)]
-#![allow(unused_assignments)]
-#![allow(unused_must_use)]
-#![allow(unused_mut)]
 
 extern crate quirc_rs;
 extern crate sdl2;
@@ -120,7 +117,7 @@ unsafe fn lineColor(
     color: Color,
 ) {
     canvas.set_draw_color(color);
-    canvas.draw_line((x1 as i32, y1 as i32), (x2 as i32, y2 as i32));
+    canvas.draw_line((x1 as i32, y1 as i32), (x2 as i32, y2 as i32)).unwrap();
 }
 
 unsafe fn stringColor(
@@ -138,7 +135,7 @@ unsafe fn stringColor(
         h,
         sdl2::pixels::PixelFormatEnum::RGBA8888,
     ).unwrap();
-    surface.blit(None, &mut screen, Rect::new(x as i32, y as i32, 0, 0));
+    surface.blit(None, &mut screen, Rect::new(x as i32, y as i32, 0, 0)).unwrap();
     let texture_creator = canvas.texture_creator();
     let tex = texture_creator
         .create_texture_from_surface(screen)
@@ -395,7 +392,7 @@ pub unsafe extern fn _c_main(
              perror((*b"can\'t create quirc object\0").as_ptr() as *const c_char);
              -1i32
          } else {
-             let mut status : i32 = -1i32;
+             let status : i32;
              status = load_image(q, &Path::new(CStr::from_ptr(*argv.offset(1isize) as (*const c_char)).to_str().unwrap()));
              (if status < 0i32 {
                   quirc_destroy(q as (*mut quirc));

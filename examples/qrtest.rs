@@ -13,8 +13,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#![allow(non_upper_case_globals)]
-
 extern crate clap;
 extern crate quirc_rs;
 
@@ -29,9 +27,9 @@ use quirc_rs::quirc::*;
 
 use test_utils::dbgutil::*;
 
-static mut want_cell_dump: bool = false;
-static mut want_validate: bool = false;
-static mut want_verbose: bool = false;
+static mut WANT_CELL_DUMP: bool = false;
+static mut WANT_VALIDATE: bool = false;
+static mut WANT_VERBOSE: bool = false;
 
 pub unsafe extern fn print_result(
     name : &str, info : *mut result_info
@@ -104,7 +102,7 @@ pub unsafe extern fn scan_file(
     (*info).load_time = ((tp.tv_sec * 1000i64 + tp.tv_nsec / 1000000i64) as (u32)).wrapping_sub(
                             start
                         );
-    let image_bytes = if want_validate {
+    let image_bytes = if WANT_VALIDATE {
         let dst = malloc(((*decoder).w * (*decoder).h) as usize);
         memcpy(dst, (*decoder).image as *const c_void, ((*decoder).w * (*decoder).h) as usize);
         dst
@@ -153,7 +151,7 @@ pub unsafe extern fn scan_file(
             (*info).id_count,
             (*info).decode_count
         );
-        if want_cell_dump || want_verbose {
+        if WANT_CELL_DUMP || WANT_VERBOSE {
             for i in 0..(*info).id_count {
                 let mut code : quirc_code = std::mem::uninitialized();
                 quirc_extract(
@@ -161,11 +159,11 @@ pub unsafe extern fn scan_file(
                     i,
                     &mut code as (*mut quirc_code)
                 );
-                if want_cell_dump {
+                if WANT_CELL_DUMP {
                     dump_cells(&mut code as (*mut quirc_code) as (*const quirc_code));
                     println!();
                 }
-                if want_verbose {
+                if WANT_VERBOSE {
                     let mut data : quirc_data = std::mem::uninitialized();
                     let err
                         : Enum1
@@ -184,7 +182,7 @@ pub unsafe extern fn scan_file(
                 }
             }
         }
-        if want_validate {
+        if WANT_VALIDATE {
             validate(decoder, image_bytes);
         }
         (*info).file_count = 1i32;
@@ -325,9 +323,9 @@ pub unsafe extern fn _c_main() -> i32 {
         .args(&[cell_dump_arg, no_validation_arg, verbose_arg, paths_arg]);
 
     let matches = args.get_matches();
-    want_cell_dump = matches.is_present(cell_dump_arg_name);
-    want_validate = !matches.is_present(no_validation_arg_name);
-    want_verbose = matches.is_present(verbose_arg_name);
+    WANT_CELL_DUMP = matches.is_present(cell_dump_arg_name);
+    WANT_VALIDATE = !matches.is_present(no_validation_arg_name);
+    WANT_VERBOSE = matches.is_present(verbose_arg_name);
     let paths = matches.values_of(paths_arg_name).unwrap();
 
     run_tests(paths.collect())
