@@ -1,5 +1,4 @@
 #![allow(unused_imports)]
-#![allow(unused_mut)]
 #![feature(test)]
 
 extern crate test;
@@ -17,7 +16,7 @@ use quirc_wrapper as qw;
 use test_utils::dbgutil::*;
 
 unsafe fn run(width: u32, height:u32, image_bytes: *mut u8) {
-    let mut decoder: *mut quirc = quirc_new();
+    let decoder: *mut quirc = quirc_new();
     quirc_resize(decoder, width as i32, height as i32);
     let quirc_image_bytes = quirc_begin(
         decoder,
@@ -45,7 +44,7 @@ unsafe fn run(width: u32, height:u32, image_bytes: *mut u8) {
 }
 
 unsafe fn run_original(width: u32, height:u32, image_bytes: *mut u8) {
-    let mut decoder: *mut qw::quirc = qw::quirc_new();
+    let decoder: *mut qw::quirc = qw::quirc_new();
     qw::quirc_resize(decoder, width as i32, height as i32);
     let quirc_image_bytes = qw::quirc_begin(
         decoder,
@@ -74,7 +73,7 @@ unsafe fn run_original(width: u32, height:u32, image_bytes: *mut u8) {
 
 unsafe fn bench(b: &mut test::Bencher, path: &Path, f: unsafe fn (width: u32, height:u32, image_bytes: *mut u8)) {
     let (width, height, image_bytes, q) = {
-        let mut decoder: *mut quirc = quirc_new();
+        let decoder: *mut quirc = quirc_new();
         // TODO move quirc setup out of load_image()
         let ret = load_image(decoder, path);
         assert_eq!(ret, 0);

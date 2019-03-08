@@ -15,7 +15,6 @@
  */
 #![allow(non_upper_case_globals)]
 #![allow(unused_imports)]
-#![allow(unused_mut)]
 
 extern crate clap;
 extern crate quirc_rs;
@@ -38,7 +37,7 @@ static mut want_validate: bool = false;
 static mut want_verbose: bool = false;
 
 pub unsafe extern fn print_result(
-    mut name : &str, mut info : *mut result_info
+    name : &str, info : *mut result_info
 ) {
     println!("-------------------------------------------------------------------------------");
     print!(
@@ -73,7 +72,7 @@ pub unsafe extern fn print_result(
 }
 
 pub unsafe extern fn add_result(
-    mut sum : *mut result_info, mut inf : *mut result_info
+    mut sum : *mut result_info, inf : *mut result_info
 ) {
     (*sum).file_count = (*sum).file_count + (*inf).file_count;
     (*sum).id_count = (*sum).id_count + (*inf).id_count;
@@ -88,15 +87,15 @@ pub unsafe extern fn add_result(
 }
 
 pub unsafe extern fn scan_file(
-    mut decoder: *mut quirc,
-    mut path : &Path,
+    decoder: *mut quirc,
+    path : &Path,
     mut info : *mut result_info
 ) -> i32 {
     let filename = path.file_name().unwrap();
     let mut tp : libc::timespec = std::mem::uninitialized();
     let mut start : u32;
-    let mut total_start : u32;
-    let mut ret : i32;
+    let total_start : u32;
+    let ret : i32;
 
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     total_start = {
@@ -171,7 +170,7 @@ pub unsafe extern fn scan_file(
                 }
                 if want_verbose {
                     let mut data : quirc_data = std::mem::uninitialized();
-                    let mut err
+                    let err
                         : Enum1
                         = quirc_decode(
                               &mut code as (*mut quirc_code) as (*const quirc_code),
@@ -197,9 +196,9 @@ pub unsafe extern fn scan_file(
 }
 
 pub unsafe extern fn scan_dir(
-    mut decoder: *mut quirc,
-    mut path : &Path,
-    mut info : *mut result_info
+    decoder: *mut quirc,
+    path : &Path,
+    info : *mut result_info
 ) -> i32 {
     let entries = path.read_dir().unwrap();
 
@@ -228,9 +227,9 @@ pub unsafe extern fn scan_dir(
 }
 
 pub unsafe extern fn test_scan(
-    mut decoder: *mut quirc,
-    mut path : &Path,
-    mut info : *mut result_info
+    decoder: *mut quirc,
+    path : &Path,
+    info : *mut result_info
 ) -> i32 {
     memset(
         info as (*mut ::std::os::raw::c_void),
@@ -250,7 +249,7 @@ pub unsafe extern fn test_scan(
 pub unsafe extern fn run_tests(paths: Vec<&str>) -> i32 {
     let mut sum : result_info = std::mem::uninitialized();
     let mut count : i32 = 0i32;
-    let mut decoder : *mut quirc = quirc_new();
+    let decoder : *mut quirc = quirc_new();
 
     if decoder.is_null() {
         perror((*b"quirc_new\0").as_ptr() as *const c_char);

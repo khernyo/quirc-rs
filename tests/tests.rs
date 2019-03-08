@@ -1,5 +1,4 @@
 #![allow(unused_imports)]
-#![allow(unused_mut)]
 use std::ffi::CStr;
 use std::path::Path;
 
@@ -35,7 +34,7 @@ impl Data {
 }
 
 unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Data>]) {
-    let mut decoder : *mut quirc = quirc_new();
+    let decoder : *mut quirc = quirc_new();
     let ret = load_image(decoder, path);
     assert_eq!(ret, 0);
 
