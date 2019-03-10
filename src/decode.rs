@@ -827,7 +827,6 @@ unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) 
         if numeric_tuple(data, ds, 4i32, 1i32) < 0i32 {
             return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
         }
-        count = count - 1;
     }
     return Enum1::QUIRC_SUCCESS;
 }
@@ -883,7 +882,6 @@ unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) ->
         if alpha_tuple(data, ds, 6i32, 1i32) < 0i32 {
             return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
         }
-        count = count - 1;
     }
     return Enum1::QUIRC_SUCCESS;
 }
