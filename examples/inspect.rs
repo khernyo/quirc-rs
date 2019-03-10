@@ -34,6 +34,7 @@ use sdl2::render::Canvas;
 use sdl2::video::Window;
 
 use quirc_rs::quirc::*;
+use quirc_rs::quirc::consts::*;
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
 
@@ -142,9 +143,6 @@ unsafe fn stringColor(
         .unwrap();
     canvas.copy(&tex, None, None).unwrap();
 }
-
-const QUIRC_PIXEL_WHITE: i32 = 0;
-const QUIRC_PIXEL_BLACK: i32 = 1;
 
 unsafe extern fn draw_frame(
     canvas : &mut Canvas<Window>, q : *mut quirc

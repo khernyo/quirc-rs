@@ -15,6 +15,7 @@
  */
 
 use crate::quirc::*;
+use crate::quirc::consts::*;
 use crate::decode::*;
 use crate::version_db::*;
 use std::os::raw::c_double;
@@ -258,9 +259,9 @@ pub unsafe extern "C" fn threshold(q: *mut quirc) {
             if *row.offset(x as (isize)) as (i32)
                 < *(*q).row_average.offset(x as (isize)) * (100i32 - 5i32) / (200i32 * threshold_s)
             {
-                *row.offset(x as (isize)) = 1u8;
+                *row.offset(x as (isize)) = QUIRC_PIXEL_BLACK as u8;
             } else {
-                *row.offset(x as (isize)) = 0u8;
+                *row.offset(x as (isize)) = QUIRC_PIXEL_WHITE as u8;
             }
             x = x + 1;
         }
@@ -288,11 +289,11 @@ pub unsafe extern "C" fn region_code(mut q: *mut quirc, x: i32, y: i32) -> i32 {
         -1i32
     } else {
         pixel = *(*q).pixels.offset((y * (*q).w + x) as (isize)) as (i32);
-        (if pixel >= 2i32 {
+        (if pixel >= QUIRC_PIXEL_REGION {
             pixel
-        } else if pixel == 0i32 {
+        } else if pixel == QUIRC_PIXEL_WHITE {
             -1i32
-        } else if (*q).num_regions >= 254i32 {
+        } else if (*q).num_regions >= QUIRC_MAX_REGIONS {
             -1i32
         } else {
             region = (*q).num_regions;
@@ -416,7 +417,7 @@ pub unsafe extern "C" fn find_region_corners(
         (*region).seed.x,
         (*region).seed.y,
         rcode,
-        1i32,
+        QUIRC_PIXEL_BLACK,
         Some(find_one_corner),
         &mut psd as (*mut polygon_score_data) as (*mut ::std::os::raw::c_void),
         0i32,
@@ -446,7 +447,7 @@ pub unsafe extern "C" fn find_region_corners(
         q,
         (*region).seed.x,
         (*region).seed.y,
-        1i32,
+        QUIRC_PIXEL_BLACK,
         rcode,
         Some(find_other_corners),
         &mut psd as (*mut polygon_score_data) as (*mut ::std::os::raw::c_void),
@@ -1237,7 +1238,7 @@ pub unsafe extern "C" fn record_qr_grid(mut q: *mut quirc, mut a: i32, b: i32, m
                             (*reg).seed.x,
                             (*reg).seed.y,
                             (*qr).align_region,
-                            1i32,
+                            QUIRC_PIXEL_BLACK,
                             None,
                             0i32 as (*mut ::std::os::raw::c_void),
                             0i32,
@@ -1246,7 +1247,7 @@ pub unsafe extern "C" fn record_qr_grid(mut q: *mut quirc, mut a: i32, b: i32, m
                             q,
                             (*reg).seed.x,
                             (*reg).seed.y,
-                            1i32,
+                            QUIRC_PIXEL_BLACK,
                             (*qr).align_region,
                             Some(find_leftmost_to_line),
                             &mut psd as (*mut polygon_score_data) as (*mut ::std::os::raw::c_void),

@@ -23,6 +23,7 @@ use libc::{c_char, c_void, memcmp, memcpy};
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
 use quirc_rs::quirc::*;
+use quirc_rs::quirc::consts::*;
 
 use quirc_wrapper as qw;
 
@@ -42,13 +43,13 @@ impl Clone for result_info {
 }
 
 unsafe extern fn data_type_str(dt : i32) -> &'static str {
-    if dt == 8i32 {
+    if dt == QUIRC_DATA_TYPE_KANJI {
         "KANJI"
-    } else if dt == 4i32 {
+    } else if dt == QUIRC_DATA_TYPE_BYTE {
         "BYTE"
-    } else if dt == 2i32 {
+    } else if dt == QUIRC_DATA_TYPE_ALPHA {
         "ALPHA"
-    } else if dt == 1i32 {
+    } else if dt == QUIRC_DATA_TYPE_NUMERIC {
         "NUMERIC"
     } else {
         "unknown"

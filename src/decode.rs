@@ -129,7 +129,7 @@ static gf256: galois_field = unsafe {
 pub struct quirc_code {
     pub corners: [quirc_point; 4],
     pub size: i32,
-    pub cell_bitmap: [u8; 3917],
+    pub cell_bitmap: [u8; QUIRC_MAX_BITMAP],
 }
 
 impl Clone for quirc_code {
@@ -994,14 +994,14 @@ unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, ds: *mut datastre
         let type_: i32 = take_bits(ds, 4i32);
         if type_ == 7i32 {
             err = decode_eci(data, ds);
-        } else if type_ == 8i32 {
+        } else if type_ == QUIRC_DATA_TYPE_KANJI {
             err = decode_kanji(data, ds);
-        } else if type_ == 4i32 {
+        } else if type_ == QUIRC_DATA_TYPE_BYTE {
             err = decode_byte(data, ds);
-        } else if type_ == 2i32 {
+        } else if type_ == QUIRC_DATA_TYPE_ALPHA {
             err = decode_alpha(data, ds);
         } else {
-            if !(type_ == 1i32) {
+            if !(type_ == QUIRC_DATA_TYPE_NUMERIC) {
                 _currentBlock = 7;
                 break;
             }
