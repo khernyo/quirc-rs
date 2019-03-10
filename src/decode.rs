@@ -800,7 +800,6 @@ unsafe extern "C" fn numeric_tuple(
 }
 
 unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
-    let mut _currentBlock;
     let mut bits: i32 = 14i32;
     let mut count: i32;
     if (*data).version < 10i32 {
@@ -810,39 +809,27 @@ unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) 
     }
     count = take_bits(ds, bits);
     if (*data).payload_len + count + 1i32 > 8896i32 {
-        Enum1::QUIRC_ERROR_DATA_OVERFLOW
-    } else {
-        'loop5: loop {
-            if !(count >= 3i32) {
-                _currentBlock = 6;
-                break;
-            }
-            if numeric_tuple(data, ds, 10i32, 3i32) < 0i32 {
-                _currentBlock = 17;
-                break;
-            }
-            count = count - 3i32;
-        }
-        (if _currentBlock == 6 {
-            if count >= 2i32 {
-                if numeric_tuple(data, ds, 7i32, 2i32) < 0i32 {
-                    return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
-                } else {
-                    count = count - 2i32;
-                }
-            }
-            if count != 0 {
-                if numeric_tuple(data, ds, 4i32, 1i32) < 0i32 {
-                    return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
-                } else {
-                    count = count - 1;
-                }
-            }
-            Enum1::QUIRC_SUCCESS
-        } else {
-            Enum1::QUIRC_ERROR_DATA_UNDERFLOW
-        })
+        return Enum1::QUIRC_ERROR_DATA_OVERFLOW;
     }
+    while count >= 3 {
+        if numeric_tuple(data, ds, 10i32, 3i32) < 0i32 {
+            return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
+        }
+        count = count - 3i32;
+    }
+    if count >= 2i32 {
+        if numeric_tuple(data, ds, 7i32, 2i32) < 0i32 {
+            return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
+        }
+        count = count - 2i32;
+    }
+    if count != 0 {
+        if numeric_tuple(data, ds, 4i32, 1i32) < 0i32 {
+            return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
+        }
+        count = count - 1;
+    }
+    return Enum1::QUIRC_SUCCESS;
 }
 
 unsafe extern "C" fn alpha_tuple(
