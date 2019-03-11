@@ -23,8 +23,9 @@ use std::ffi::CStr;
 use std::path::Path;
 use std::os::raw::c_double;
 
-use libc::{c_char, fprintf, perror, printf, snprintf, FILE};
-use libc_extra::unix::stdio::stderr;
+use clap::{Arg, App};
+
+use libc::{c_char, perror, printf, snprintf};
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -341,68 +342,48 @@ unsafe extern fn sdl_examine(q : *mut quirc) -> i32 {
 }
 
 fn main() {
-    use ::std::os::unix::ffi::OsStringExt;
-    let mut argv_storage
-        = ::std::env::args_os().map(
-        |str| {
-            let mut vec = str.into_vec();
-            vec.push(b'\0');
-            vec
-        }
-    ).collect::<Vec<_>>(
-    );
-    let mut argv
-        = argv_storage.iter_mut().map(|vec| vec.as_mut_ptr()).chain(
-        Some(::std::ptr::null_mut())
-    ).collect::<Vec<_>>(
-    );
     let ret
         = unsafe {
-        _c_main(argv_storage.len() as (i32),argv.as_mut_ptr())
-    };
+            _c_main()
+        };
     ::std::process::exit(ret);
 }
 
 pub unsafe extern fn _c_main(
-    argc : i32, argv : *mut *mut u8
 ) -> i32 {
+    let paths_arg_name = "paths";
+    let paths_arg = Arg::with_name(paths_arg_name).required(true);
+
+    let args = App::new("inspect")
+        .about("quirc inspection program")
+        .version(quirc_version())
+        .author("Copyright (C) 2010-2012 Daniel Beer <dlbeer@gmail.com>")
+        .args(&[paths_arg]);
+
+    let matches = args.get_matches();
+    let path = matches.value_of(paths_arg_name).unwrap();
+
     let q : *mut quirc;
-    printf((*b"quirc inspection program\n\0").as_ptr() as *const c_char);
-    printf(
-        (*b"Copyright (C) 2010-2012 Daniel Beer <dlbeer@gmail.com>\n\0").as_ptr(
-        ) as *const c_char
-    );
-    printf((*b"Library version: %s\n\0").as_ptr() as *const c_char,quirc_version());
-    printf((*b"\n\0").as_ptr() as *const c_char);
-    if argc < 2i32 {
-        fprintf(
-            stderr as *mut FILE,
-            (*b"Usage: %s <testfile.jpg|testfile.png>\n\0").as_ptr() as *const c_char,
-            *argv.offset(0isize)
-        );
-        -1i32
-    } else {
-        q = quirc_new() as (*mut quirc);
-        (if q.is_null() {
-             perror((*b"can\'t create quirc object\0").as_ptr() as *const c_char);
-             -1i32
-         } else {
-             let status : i32;
-             status = load_image(q, &Path::new(CStr::from_ptr(*argv.offset(1isize) as (*const c_char)).to_str().unwrap()));
-             (if status < 0i32 {
-                  quirc_destroy(q as (*mut quirc));
-                  -1i32
-              } else {
-                  quirc_end(q as (*mut quirc));
-                  dump_info(q);
-                  (if sdl_examine(q) < 0i32 {
-                       quirc_destroy(q as (*mut quirc));
-                       -1i32
-                   } else {
-                       quirc_destroy(q as (*mut quirc));
-                       0i32
-                   })
-              })
-         })
-    }
+    q = quirc_new() as (*mut quirc);
+    if q.is_null() {
+         perror((*b"can\'t create quirc object\0").as_ptr() as *const c_char);
+         -1i32
+     } else {
+         let status : i32;
+         status = load_image(q, &Path::new(path));
+         (if status < 0i32 {
+              quirc_destroy(q as (*mut quirc));
+              -1i32
+          } else {
+              quirc_end(q as (*mut quirc));
+              dump_info(q);
+              (if sdl_examine(q) < 0i32 {
+                   quirc_destroy(q as (*mut quirc));
+                   -1i32
+               } else {
+                   quirc_destroy(q as (*mut quirc));
+                   0i32
+               })
+          })
+     }
 }
