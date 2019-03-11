@@ -31,6 +31,25 @@ static mut WANT_CELL_DUMP: bool = false;
 static mut WANT_VALIDATE: bool = false;
 static mut WANT_VERBOSE: bool = false;
 
+fn ms(ts: libc::timespec) -> u32 {
+    ((ts.tv_sec * 1000) + (ts.tv_nsec / 1000000)) as u32
+}
+
+#[derive(Copy)]
+#[repr(C)]
+pub struct result_info {
+    pub file_count : i32,
+    pub id_count : i32,
+    pub decode_count : i32,
+    pub load_time : u32,
+    pub identify_time : u32,
+    pub total_time : u32,
+}
+
+impl Clone for result_info {
+    fn clone(&self) -> Self { *self }
+}
+
 pub unsafe extern fn print_result(
     name : &str, info : *mut result_info
 ) {
@@ -94,12 +113,12 @@ pub unsafe extern fn scan_file(
 
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     total_start = {
-                      start = (tp.tv_sec * 1000i64 + tp.tv_nsec / 1000000i64) as (u32);
+                      start = ms(tp);
                       start
                   };
     ret = load_image(decoder, path);
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID,&mut tp as (*mut timespec));
-    (*info).load_time = ((tp.tv_sec * 1000i64 + tp.tv_nsec / 1000000i64) as (u32)).wrapping_sub(
+    (*info).load_time = ms(tp).wrapping_sub(
                             start
                         );
     let image_bytes = if WANT_VALIDATE {
@@ -114,10 +133,10 @@ pub unsafe extern fn scan_file(
         -1i32
     } else {
         libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
-        start = (tp.tv_sec * 1000i64 + tp.tv_nsec / 1000000i64) as (u32);
+        start = ms(tp);
         quirc_end(decoder);
         libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
-        (*info).identify_time = ((tp.tv_sec * 1000i64 + tp.tv_nsec / 1000000i64) as (u32)).wrapping_sub(
+        (*info).identify_time = ms(tp).wrapping_sub(
                                     start
                                 );
         (*info).id_count = quirc_count(decoder as (*const quirc));
@@ -138,7 +157,7 @@ pub unsafe extern fn scan_file(
         }
         libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID,&mut tp as (*mut timespec));
         (*info).total_time = (*info).total_time.wrapping_add(
-                                 ((tp.tv_sec * 1000i64 + tp.tv_nsec / 1000000i64) as (u32)).wrapping_sub(
+                                 ms(tp).wrapping_sub(
                                      total_start
                                  )
                              );

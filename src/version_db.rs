@@ -14,6 +14,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+///! QR-code version information database
+
+pub const QUIRC_MAX_VERSION: usize = 40;
+pub const QUIRC_MAX_ALIGNMENT: usize = 7;
+
 #[derive(Copy)]
 #[repr(C)]
 pub struct quirc_rs_params {
@@ -27,9 +32,6 @@ impl Clone for quirc_rs_params {
         *self
     }
 }
-
-pub const QUIRC_MAX_VERSION: usize = 40;
-const QUIRC_MAX_ALIGNMENT: usize = 7;
 
 #[derive(Copy)]
 #[repr(C)]

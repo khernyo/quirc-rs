@@ -44,29 +44,6 @@ extern "C" {
     fn rint(x: c_double) -> c_double;
 }
 
-fn main() {
-    use ::std::os::unix::ffi::OsStringExt;
-    let mut argv_storage
-        = ::std::env::args_os().map(
-              |str| {
-                        let mut vec = str.into_vec();
-                        vec.push(b'\0');
-                        vec
-                    }
-          ).collect::<Vec<_>>(
-          );
-    let mut argv
-        = argv_storage.iter_mut().map(|vec| vec.as_mut_ptr()).chain(
-              Some(::std::ptr::null_mut())
-          ).collect::<Vec<_>>(
-          );
-    let ret
-        = unsafe {
-              _c_main(argv_storage.len() as (i32),argv.as_mut_ptr())
-          };
-    ::std::process::exit(ret);
-}
-
 unsafe extern fn dump_info(q : *mut quirc) {
     let count : i32 = quirc_count(q as (*const quirc));
     let mut i : i32;
@@ -187,6 +164,17 @@ unsafe extern fn draw_blob(
     }
 }
 
+unsafe extern fn draw_mark(
+    canvas : &mut Canvas<Window>, x : i32, y : i32
+) {
+    let red = Color::RGBA(0xff, 0, 0, 0xff);
+    pixelColor(canvas,x as (i16),y as (i16), red);
+    pixelColor(canvas,(x + 1i32) as (i16),y as (i16), red);
+    pixelColor(canvas,(x - 1i32) as (i16),y as (i16), red);
+    pixelColor(canvas,x as (i16),(y + 1i32) as (i16), red);
+    pixelColor(canvas,x as (i16),(y - 1i32) as (i16), red);
+}
+
 unsafe extern fn draw_capstone(
     canvas : &mut Canvas<Window>, q : *mut quirc, index : i32
 ) {
@@ -256,17 +244,6 @@ unsafe extern fn perspective_map(
 
     (*ret).x = rint(x) as i32;
     (*ret).y = rint(y) as i32;
-}
-
-unsafe extern fn draw_mark(
-    canvas : &mut Canvas<Window>, x : i32, y : i32
-) {
-    let red = Color::RGBA(0xff, 0, 0, 0xff);
-    pixelColor(canvas,x as (i16),y as (i16), red);
-    pixelColor(canvas,(x + 1i32) as (i16),y as (i16), red);
-    pixelColor(canvas,(x - 1i32) as (i16),y as (i16), red);
-    pixelColor(canvas,x as (i16),(y + 1i32) as (i16), red);
-    pixelColor(canvas,x as (i16),(y - 1i32) as (i16), red);
 }
 
 unsafe extern fn draw_grid(
@@ -364,6 +341,29 @@ unsafe extern fn sdl_examine(q : *mut quirc) -> i32 {
         }
     }
     0
+}
+
+fn main() {
+    use ::std::os::unix::ffi::OsStringExt;
+    let mut argv_storage
+        = ::std::env::args_os().map(
+        |str| {
+            let mut vec = str.into_vec();
+            vec.push(b'\0');
+            vec
+        }
+    ).collect::<Vec<_>>(
+    );
+    let mut argv
+        = argv_storage.iter_mut().map(|vec| vec.as_mut_ptr()).chain(
+        Some(::std::ptr::null_mut())
+    ).collect::<Vec<_>>(
+    );
+    let ret
+        = unsafe {
+        _c_main(argv_storage.len() as (i32),argv.as_mut_ptr())
+    };
+    ::std::process::exit(ret);
 }
 
 pub unsafe extern fn _c_main(

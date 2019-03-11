@@ -16,7 +16,6 @@
 
 use crate::quirc::*;
 use crate::quirc::consts::*;
-use crate::decode::*;
 use crate::version_db::*;
 use std::os::raw::c_double;
 
@@ -39,6 +38,10 @@ extern "C" {
     ) -> *mut ::std::os::raw::c_void;
     fn rint(x: c_double) -> c_double;
 }
+
+/************************************************************************
+ * Linear algebra routines
+ */
 
 pub unsafe extern "C" fn line_intersect(
     p0: *const quirc_point,
@@ -138,13 +141,18 @@ pub unsafe extern "C" fn perspective_unmap(
         / den;
 }
 
+const FLOOD_FILL_MAX_DEPTH: i32 = 4096;
+
+type span_func_t = unsafe extern "C" fn(user_data: *mut ::std::os::raw::c_void, y: i32, left: i32, right: i32);
+
+/// Span-based floodfill routine
 pub unsafe extern "C" fn flood_fill_seed(
     q: *mut quirc,
     x: i32,
     y: i32,
     from: i32,
     to: i32,
-    func: Option<unsafe extern "C" fn(*mut ::std::os::raw::c_void, i32, i32, i32)>,
+    func: Option<span_func_t>,
     user_data: *mut ::std::os::raw::c_void,
     depth: i32,
 ) {
@@ -152,7 +160,7 @@ pub unsafe extern "C" fn flood_fill_seed(
     let mut right: i32 = x;
     let mut i: i32;
     let mut row: *mut u8 = (*q).pixels.offset((y * (*q).w) as (isize));
-    if depth >= 4096i32 {
+    if depth >= FLOOD_FILL_MAX_DEPTH {
     } else {
         'loop1: loop {
             if !(left > 0i32 && (*row.offset((left - 1i32) as (isize)) as (i32) == from)) {
@@ -207,15 +215,20 @@ pub unsafe extern "C" fn flood_fill_seed(
     }
 }
 
+const THRESHOLD_S_MIN: i32 = 1;
+const THRESHOLD_S_DEN: i32 = 8;
+const THRESHOLD_T: i32 = 5;
+
+// Adaptive thresholding
 pub unsafe extern "C" fn threshold(q: *mut quirc) {
     let mut x: i32;
     let mut y: i32;
     let mut avg_w: i32 = 0i32;
     let mut avg_u: i32 = 0i32;
-    let mut threshold_s: i32 = (*q).w / 8i32;
+    let mut threshold_s: i32 = (*q).w / THRESHOLD_S_DEN;
     let mut row: *mut u8 = (*q).pixels;
-    if threshold_s < 1i32 {
-        threshold_s = 1i32;
+    if threshold_s < THRESHOLD_S_MIN {
+        threshold_s = THRESHOLD_S_MIN;
     }
     y = 0i32;
     'loop3: loop {
@@ -257,7 +270,7 @@ pub unsafe extern "C" fn threshold(q: *mut quirc) {
                 break;
             }
             if *row.offset(x as (isize)) as (i32)
-                < *(*q).row_average.offset(x as (isize)) * (100i32 - 5i32) / (200i32 * threshold_s)
+                < *(*q).row_average.offset(x as (isize)) * (100i32 - THRESHOLD_T) / (200i32 * threshold_s)
             {
                 *row.offset(x as (isize)) = QUIRC_PIXEL_BLACK as u8;
             } else {
@@ -461,7 +474,7 @@ pub unsafe extern "C" fn record_capstone(mut q: *mut quirc, ring: i32, stone: i3
     let mut ring_reg: *mut quirc_region = &mut (*q).regions[ring as (usize)] as (*mut quirc_region);
     let mut capstone: *mut quirc_capstone;
     let cs_index: i32;
-    if (*q).num_capstones >= 32i32 {
+    if (*q).num_capstones >= QUIRC_MAX_CAPSTONES as i32 {
     } else {
         cs_index = (*q).num_capstones;
         capstone = &mut (*q).capstones[{
@@ -702,6 +715,8 @@ pub unsafe extern "C" fn find_leftmost_to_line(
     }
 }
 
+/// Do a Bresenham scan from one point to another and count the number
+/// of black/white transitions.
 pub unsafe extern "C" fn timing_scan(
     q: *const quirc,
     p0: *const quirc_point,
@@ -778,6 +793,14 @@ pub unsafe extern "C" fn timing_scan(
     }
 }
 
+/// Try the measure the timing pattern for a given QR code. This does
+/// not require the global perspective to have been set up, but it
+/// does require that the capstone corners have been set to their
+/// canonical rotation.
+///
+/// For each capstone, we find a point in the middle of the ring band
+/// which is nearest the centre of the code. Using these points, we do
+/// a horizontal and a vertical timing scan.
 pub unsafe extern "C" fn measure_timing_pattern(q: *mut quirc, index: i32) -> i32 {
     let mut qr: *mut quirc_grid = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
     let mut i: i32;
@@ -825,6 +848,9 @@ pub unsafe extern "C" fn measure_timing_pattern(q: *mut quirc, index: i32) -> i3
     }
 }
 
+/// Read a cell from a grid using the currently set perspective
+/// transform. Returns +/- 1 for black/white, 0 for cells which are
+/// out of image bounds.
 pub unsafe extern "C" fn read_cell(
     q: *mut quirc,
     index: i32,
@@ -938,6 +964,9 @@ pub unsafe extern "C" fn fitness_capstone(
         + fitness_ring(q, index, x, y, 3i32)
 }
 
+/// Compute a fitness score for the currently configured perspective
+/// transform, using the features we expect to find by scanning the
+/// grid.
 pub unsafe extern "C" fn fitness_all(q: *mut quirc, index: i32) -> i32 {
     let qr: *const quirc_grid =
         &mut (*q).grids[index as (usize)] as (*mut quirc_grid) as (*const quirc_grid);
@@ -961,12 +990,12 @@ pub unsafe extern "C" fn fitness_all(q: *mut quirc, index: i32) -> i32 {
     score = score + fitness_capstone(q, index, 0i32, 0i32);
     score = score + fitness_capstone(q, index, (*qr).grid_size - 7i32, 0i32);
     score = score + fitness_capstone(q, index, 0i32, (*qr).grid_size - 7i32);
-    if version < 0i32 || version > 40i32 {
+    if version < 0i32 || version > QUIRC_MAX_VERSION as i32 {
         score
     } else {
         ap_count = 0i32;
         'loop4: loop {
-            if !(ap_count < 7i32 && ((*info).apat[ap_count as (usize)] != 0)) {
+            if !(ap_count < QUIRC_MAX_ALIGNMENT as i32 && ((*info).apat[ap_count as (usize)] != 0)) {
                 break;
             }
             ap_count = ap_count + 1;
@@ -1062,6 +1091,9 @@ pub unsafe extern "C" fn jiggle_perspective(q: *mut quirc, index: i32) {
     }
 }
 
+/// Once the capstones are in place and an alignment point has been
+/// chosen, we call this function to set up a grid-reading perspective
+/// transform.
 pub unsafe extern "C" fn setup_qr_perspective(q: *mut quirc, index: i32) {
     let qr: *mut quirc_grid = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
     let mut rect: [quirc_point; 4] = std::mem::uninitialized();
@@ -1097,6 +1129,8 @@ pub unsafe extern "C" fn setup_qr_perspective(q: *mut quirc, index: i32) {
     jiggle_perspective(q, index);
 }
 
+/// Rotate the capstone with so that corner 0 is the leftmost with respect
+/// to the given reference line.
 pub unsafe extern "C" fn rotate_capstone(
     cap: *mut quirc_capstone,
     h0: *const quirc_point,
@@ -1151,7 +1185,7 @@ pub unsafe extern "C" fn record_qr_grid(mut q: *mut quirc, mut a: i32, b: i32, m
     let mut i: i32;
     let qr_index: i32;
     let mut qr: *mut quirc_grid;
-    if (*q).num_grids >= 8i32 {
+    if (*q).num_grids >= QUIRC_MAX_GRIDS as i32 {
     } else {
         memcpy(
             &mut h0 as (*mut quirc_point) as (*mut ::std::os::raw::c_void),
@@ -1287,7 +1321,7 @@ impl Clone for neighbour {
 #[derive(Copy)]
 #[repr(C)]
 pub struct neighbour_list {
-    pub n: [neighbour; 32],
+    pub n: [neighbour; QUIRC_MAX_CAPSTONES],
     pub count: i32,
 }
 

@@ -27,21 +27,6 @@ use quirc_rs::quirc::consts::*;
 
 use quirc_wrapper as qw;
 
-#[derive(Copy)]
-#[repr(C)]
-pub struct result_info {
-    pub file_count : i32,
-    pub id_count : i32,
-    pub decode_count : i32,
-    pub load_time : u32,
-    pub identify_time : u32,
-    pub total_time : u32,
-}
-
-impl Clone for result_info {
-    fn clone(&self) -> Self { *self }
-}
-
 unsafe extern fn data_type_str(dt : i32) -> &'static str {
     if dt == QUIRC_DATA_TYPE_KANJI {
         "KANJI"

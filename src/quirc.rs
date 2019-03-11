@@ -30,8 +30,36 @@ extern "C" {
     ) -> *mut ::std::os::raw::c_void;
 }
 
-pub fn quirc_version() -> &'static str {
-    "1.0"
+#[derive(Copy)]
+#[repr(C)]
+pub struct quirc_code {
+    pub corners: [quirc_point; 4],
+    pub size: i32,
+    pub cell_bitmap: [u8; consts::QUIRC_MAX_BITMAP],
+}
+
+impl Clone for quirc_code {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+#[derive(Copy)]
+#[repr(C)]
+pub struct quirc_data {
+    pub version: i32,
+    pub ecc_level: i32,
+    pub mask: i32,
+    pub data_type: i32,
+    pub payload: [u8; consts::QUIRC_MAX_PAYLOAD],
+    pub payload_len: i32,
+    pub eci: u32,
+}
+
+impl Clone for quirc_data {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 #[derive(Copy, Debug)]
@@ -68,7 +96,7 @@ pub struct quirc_capstone {
     pub stone: i32,
     pub corners: [quirc_point; 4],
     pub center: quirc_point,
-    pub c: [f64; 8],
+    pub c: [f64; consts::QUIRC_PERSPECTIVE_PARAMS],
     pub qr_grid: i32,
 }
 
@@ -88,7 +116,7 @@ pub struct quirc_grid {
     pub hscan: i32,
     pub vscan: i32,
     pub grid_size: i32,
-    pub c: [f64; 8],
+    pub c: [f64; consts::QUIRC_PERSPECTIVE_PARAMS],
 }
 
 impl Clone for quirc_grid {
@@ -108,15 +136,19 @@ pub struct quirc {
     pub num_regions: i32,
     pub regions: [quirc_region; 254],
     pub num_capstones: i32,
-    pub capstones: [quirc_capstone; 32],
+    pub capstones: [quirc_capstone; consts::QUIRC_MAX_CAPSTONES],
     pub num_grids: i32,
-    pub grids: [quirc_grid; 8],
+    pub grids: [quirc_grid; consts::QUIRC_MAX_GRIDS],
 }
 
 impl Clone for quirc {
     fn clone(&self) -> Self {
         *self
     }
+}
+
+pub fn quirc_version() -> &'static str {
+    "1.0"
 }
 
 pub unsafe extern "C" fn quirc_new() -> *mut quirc {
@@ -231,6 +263,11 @@ pub mod consts {
     // TODO handle QUIRC_MAX_REGIONS > 254
     //  See https://github.com/dlbeer/quirc/commit/3a6efb3d84651f67da3ff210bc2eb0e113c0086c
     pub const QUIRC_MAX_REGIONS: i32 = 254;
+
+    pub const QUIRC_MAX_CAPSTONES: usize = 32;
+    pub const QUIRC_MAX_GRIDS: usize = 8;
+
+    pub const QUIRC_PERSPECTIVE_PARAMS: usize = 8;
 
     /* Limits on the maximum size of QR-codes and their content. */
     pub const QUIRC_MAX_BITMAP: usize = 3917;
