@@ -52,7 +52,7 @@ impl Clone for quirc_version_info {
     }
 }
 
-pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
+pub static mut QUIRC_VERSION_DB: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
     quirc_version_info {
         data_bytes: 0i32,
         apat: [0i32; 7],

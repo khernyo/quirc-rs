@@ -609,7 +609,7 @@ pub unsafe extern "C" fn finder_scan(q: *mut quirc, y: i32) {
             run_length = 0i32;
             run_count = run_count + 1;
             if color == 0 && (run_count >= 5i32) {
-                static mut check: [i32; 5] = [1i32, 1i32, 3i32, 1i32, 1i32];
+                static mut CHECK: [i32; 5] = [1i32, 1i32, 3i32, 1i32, 1i32];
                 let avg: i32;
                 let err: i32;
                 let mut i: i32;
@@ -621,8 +621,8 @@ pub unsafe extern "C" fn finder_scan(q: *mut quirc, y: i32) {
                     if !(i < 5i32) {
                         break;
                     }
-                    if pb[i as (usize)] < check[i as (usize)] * avg - err
-                        || pb[i as (usize)] > check[i as (usize)] * avg + err
+                    if pb[i as (usize)] < CHECK[i as (usize)] * avg - err
+                        || pb[i as (usize)] > CHECK[i as (usize)] * avg + err
                     {
                         ok = 0i32;
                     }
@@ -694,8 +694,8 @@ pub unsafe extern "C" fn find_alignment_pattern(q: *mut quirc, index: i32) {
     // roughly the right size. Don't look too far from the estimate
     // point.
     while step_size * step_size < size_estimate * 100 {
-        static mut dx_map: [i32; 4] = [1, 0, -1, 0];
-        static mut dy_map: [i32; 4] = [0, -1, 0, 1];
+        static mut DX_MAP: [i32; 4] = [1, 0, -1, 0];
+        static mut DY_MAP: [i32; 4] = [0, -1, 0, 1];
 
         for _ in 0..step_size {
             let code: i32 = region_code(q, b.x, b.y);
@@ -707,8 +707,8 @@ pub unsafe extern "C" fn find_alignment_pattern(q: *mut quirc, index: i32) {
                     return;
                 }
             }
-            b.x = b.x + dx_map[dir as (usize)];
-            b.y = b.y + dy_map[dir as (usize)];
+            b.x = b.x + DX_MAP[dir as (usize)];
+            b.y = b.y + DY_MAP[dir as (usize)];
         }
         dir = (dir + 1i32) % 4i32;
         if dir & 1i32 == 0 {
@@ -838,14 +838,14 @@ pub unsafe extern "C" fn measure_timing_pattern(q: *mut quirc, index: i32) -> i3
         if !(i < 3i32) {
             break;
         }
-        static mut us: [f64; 3] = [6.5, 6.5, 0.5];
-        static mut vs: [f64; 3] = [0.5, 6.5, 6.5];
+        static mut US: [f64; 3] = [6.5, 6.5, 0.5];
+        static mut VS: [f64; 3] = [0.5, 6.5, 6.5];
         let cap: *mut quirc_capstone =
             &mut (*q).capstones[(*qr).caps[i as (usize)] as (usize)] as (*mut quirc_capstone);
         perspective_map(
             (*cap).c.as_mut_ptr() as (*const f64),
-            us[i as (usize)],
-            vs[i as (usize)],
+            US[i as (usize)],
+            VS[i as (usize)],
             &mut (*qr).tpep[i as (usize)] as (*mut quirc_point),
         );
         i = i + 1;
@@ -916,12 +916,12 @@ pub unsafe extern "C" fn fitness_cell(q: *mut quirc, index: i32, x: i32, y: i32)
             if !(u < 3i32) {
                 break;
             }
-            static mut offsets: [f64; 3] = [0.3, 0.5, 0.7];
+            static mut OFFSETS: [f64; 3] = [0.3, 0.5, 0.7];
             let mut p: quirc_point = std::mem::uninitialized();
             perspective_map(
                 (*qr).c.as_mut_ptr() as (*const f64),
-                x as (f64) + offsets[u as (usize)],
-                y as (f64) + offsets[v as (usize)],
+                x as (f64) + OFFSETS[u as (usize)],
+                y as (f64) + OFFSETS[v as (usize)],
                 &mut p as (*mut quirc_point),
             );
             if !(p.y < 0i32 || p.y >= (*q).h || p.x < 0i32 || p.x >= (*q).w) {
@@ -987,7 +987,7 @@ pub unsafe extern "C" fn fitness_all(q: *mut quirc, index: i32) -> i32 {
         &mut (*q).grids[index as (usize)] as (*mut quirc_grid) as (*const quirc_grid);
     let version: i32 = ((*qr).grid_size - 17i32) / 4i32;
     let info: *const quirc_version_info =
-        &quirc_version_db[version as (usize)] as (*const quirc_version_info);
+        &QUIRC_VERSION_DB[version as (usize)] as (*const quirc_version_info);
     let mut score: i32 = 0i32;
     let mut i: i32;
     let mut j: i32;

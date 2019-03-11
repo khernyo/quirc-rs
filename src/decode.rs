@@ -38,12 +38,12 @@ const MAX_POLY: usize = 64;
  * Galois fields
  */
 
-static mut gf16_exp: [u8; 16] = [
+static mut GF16_EXP: [u8; 16] = [
     0x1u8, 0x2u8, 0x4u8, 0x8u8, 0x3u8, 0x6u8, 0xcu8, 0xbu8, 0x5u8, 0xau8, 0x7u8, 0xeu8, 0xfu8,
     0xdu8, 0x9u8, 0x1u8,
 ];
 
-static mut gf16_log: [u8; 16] = [
+static mut GF16_LOG: [u8; 16] = [
     0x0u8, 0xfu8, 0x1u8, 0x4u8, 0x2u8, 0x8u8, 0x5u8, 0xau8, 0x3u8, 0xeu8, 0x9u8, 0x7u8, 0x6u8,
     0xdu8, 0xbu8, 0xcu8,
 ];
@@ -62,15 +62,15 @@ impl Clone for galois_field {
     }
 }
 
-static gf16: galois_field = unsafe {
+static GF16: galois_field = unsafe {
     galois_field {
         p: 15i32,
-        log: &gf16_log,
-        exp: &gf16_exp,
+        log: &GF16_LOG,
+        exp: &GF16_EXP,
     }
 };
 
-static mut gf256_exp: [u8; 256] = [
+static mut GF256_EXP: [u8; 256] = [
     0x1u8, 0x2u8, 0x4u8, 0x8u8, 0x10u8, 0x20u8, 0x40u8, 0x80u8, 0x1du8, 0x3au8, 0x74u8, 0xe8u8,
     0xcdu8, 0x87u8, 0x13u8, 0x26u8, 0x4cu8, 0x98u8, 0x2du8, 0x5au8, 0xb4u8, 0x75u8, 0xeau8, 0xc9u8,
     0x8fu8, 0x3u8, 0x6u8, 0xcu8, 0x18u8, 0x30u8, 0x60u8, 0xc0u8, 0x9du8, 0x27u8, 0x4eu8, 0x9cu8,
@@ -95,7 +95,7 @@ static mut gf256_exp: [u8; 256] = [
     0xadu8, 0x47u8, 0x8eu8, 0x1u8,
 ];
 
-static mut gf256_log: [u8; 256] = [
+static mut GF256_LOG: [u8; 256] = [
     0x0u8, 0xffu8, 0x1u8, 0x19u8, 0x2u8, 0x32u8, 0x1au8, 0xc6u8, 0x3u8, 0xdfu8, 0x33u8, 0xeeu8,
     0x1bu8, 0x68u8, 0xc7u8, 0x4bu8, 0x4u8, 0x64u8, 0xe0u8, 0xeu8, 0x34u8, 0x8du8, 0xefu8, 0x81u8,
     0x1cu8, 0xc1u8, 0x69u8, 0xf8u8, 0xc8u8, 0x8u8, 0x4cu8, 0x71u8, 0x5u8, 0x8au8, 0x65u8, 0x2fu8,
@@ -120,11 +120,11 @@ static mut gf256_log: [u8; 256] = [
     0xa8u8, 0x50u8, 0x58u8, 0xafu8,
 ];
 
-static gf256: galois_field = unsafe {
+static GF256: galois_field = unsafe {
     galois_field {
         p: 255i32,
-        log: &gf256_log,
-        exp: &gf256_exp,
+        log: &GF256_LOG,
+        exp: &GF256_EXP,
     }
 };
 
@@ -281,7 +281,7 @@ unsafe extern "C" fn block_syndromes(data: *const u8, bs: i32, npar: i32, s: *mu
             let c: u8 = *data.offset((bs - j - 1i32) as (isize));
             if !(c == 0) {
                 let _rhs =
-                    gf256_exp[((gf256_log[c as (usize)] as (i32) + i * j) % 255i32) as (usize)];
+                    GF256_EXP[((GF256_LOG[c as (usize)] as (i32) + i * j) % 255i32) as (usize)];
                 let _lhs = &mut *s.offset(i as (isize));
                 *_lhs = (*_lhs as (i32) ^ _rhs as (i32)) as (u8);
             }
@@ -304,7 +304,7 @@ unsafe extern "C" fn eloc_poly(omega: *mut u8, s: *const u8, sigma: *const u8, n
             break;
         }
         let a: u8 = *sigma.offset(i as (isize));
-        let log_a: u8 = gf256_log[a as (usize)];
+        let log_a: u8 = GF256_LOG[a as (usize)];
         let mut j: i32;
         if !(a == 0) {
             j = 0i32;
@@ -317,8 +317,8 @@ unsafe extern "C" fn eloc_poly(omega: *mut u8, s: *const u8, sigma: *const u8, n
                     break;
                 }
                 if !(b == 0) {
-                    let _rhs = gf256_exp
-                        [((log_a as (i32) + gf256_log[b as (usize)] as (i32)) % 255i32) as (usize)];
+                    let _rhs = GF256_EXP
+                        [((log_a as (i32) + GF256_LOG[b as (usize)] as (i32)) % 255i32) as (usize)];
                     let _lhs = &mut *omega.offset((i + j) as (isize));
                     *_lhs = (*_lhs as (i32) ^ _rhs as (i32)) as (u8);
                 }
@@ -344,7 +344,7 @@ unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -
         berlekamp_massey(
             s.as_mut_ptr() as (*const u8),
             npar,
-            &gf256 as (*const galois_field),
+            &GF256 as (*const galois_field),
             sigma.as_mut_ptr(),
         );
 
@@ -372,25 +372,25 @@ unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -
             if !(i < (*ecc).bs) {
                 break;
             }
-            let xinv: u8 = gf256_exp[(255i32 - i) as (usize)];
+            let xinv: u8 = GF256_EXP[(255i32 - i) as (usize)];
             if poly_eval(
                 sigma.as_mut_ptr() as (*const u8),
                 xinv,
-                &gf256 as (*const galois_field),
+                &GF256 as (*const galois_field),
             ) == 0
             {
                 let sd_x: u8 = poly_eval(
                     sigma_deriv.as_mut_ptr() as (*const u8),
                     xinv,
-                    &gf256 as (*const galois_field),
+                    &GF256 as (*const galois_field),
                 );
                 let omega_x: u8 = poly_eval(
                     omega.as_mut_ptr() as (*const u8),
                     xinv,
-                    &gf256 as (*const galois_field),
+                    &GF256 as (*const galois_field),
                 );
-                let error: u8 = gf256_exp[((255i32 - gf256_log[sd_x as (usize)] as (i32)
-                    + gf256_log[omega_x as (usize)] as (i32))
+                let error: u8 = GF256_EXP[((255i32 - GF256_LOG[sd_x as (usize)] as (i32)
+                    + GF256_LOG[omega_x as (usize)] as (i32))
                     % 255i32) as (usize)];
                 let _rhs = error;
                 let _lhs = &mut *data.offset(((*ecc).bs - i - 1i32) as (isize));
@@ -433,7 +433,7 @@ unsafe extern "C" fn format_syndromes(u: u16, s: *mut u8) -> i32 {
                 break;
             }
             if u as (i32) & 1i32 << j != 0 {
-                let _rhs = gf16_exp[((i + 1i32) * j % 15i32) as (usize)];
+                let _rhs = GF16_EXP[((i + 1i32) * j % 15i32) as (usize)];
                 let _lhs = &mut *s.offset(i as (isize));
                 *_lhs = (*_lhs as (i32) ^ _rhs as (i32)) as (u8);
             }
@@ -461,7 +461,7 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> DecodeResult {
         berlekamp_massey(
             s.as_mut_ptr() as (*const u8),
             FORMAT_SYNDROMES,
-            &gf16 as (*const galois_field),
+            &GF16 as (*const galois_field),
             sigma.as_mut_ptr(),
         );
 
@@ -473,8 +473,8 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> DecodeResult {
             }
             if poly_eval(
                 sigma.as_mut_ptr() as (*const u8),
-                gf16_exp[(15i32 - i) as (usize)],
-                &gf16 as (*const galois_field),
+                GF16_EXP[(15i32 - i) as (usize)],
+                &GF16 as (*const galois_field),
             ) == 0
             {
                 u = (u as (i32) ^ 1i32 << i) as (u16);
@@ -543,11 +543,11 @@ unsafe extern "C" fn read_format(
             i = i + 1;
         }
     } else {
-        static mut xs: [i32; 15] = [
+        static mut XS: [i32; 15] = [
             8i32, 8i32, 8i32, 8i32, 8i32, 8i32, 8i32, 8i32, 7i32, 5i32, 4i32, 3i32, 2i32, 1i32,
             0i32,
         ];
-        static mut ys: [i32; 15] = [
+        static mut YS: [i32; 15] = [
             0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 7i32, 8i32, 8i32, 8i32, 8i32, 8i32, 8i32, 8i32,
             8i32,
         ];
@@ -556,7 +556,7 @@ unsafe extern "C" fn read_format(
             if !(i >= 0i32) {
                 break;
             }
-            format = (format as (i32) << 1i32 | grid_bit(code, xs[i as (usize)], ys[i as (usize)]))
+            format = (format as (i32) << 1i32 | grid_bit(code, XS[i as (usize)], YS[i as (usize)]))
                 as (u16);
             i = i - 1;
         }
@@ -597,7 +597,7 @@ unsafe extern "C" fn mask_bit(mask: i32, i: i32, j: i32) -> i32 {
 
 unsafe extern "C" fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
     let ver: *const quirc_version_info =
-        &quirc_version_db[version as (usize)] as (*const quirc_version_info);
+        &QUIRC_VERSION_DB[version as (usize)] as (*const quirc_version_info);
     let size: i32 = version * 4i32 + 17i32;
     let mut ai: i32 = -1i32;
     let mut aj: i32 = -1i32;
@@ -720,7 +720,7 @@ unsafe extern "C" fn read_data(
 
 unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
     let ver: *const quirc_version_info =
-        &quirc_version_db[(*data).version as (usize)] as (*const quirc_version_info);
+        &QUIRC_VERSION_DB[(*data).version as (usize)] as (*const quirc_version_info);
     let sb_ecc: *const quirc_rs_params =
         &(*ver).ecc[(*data).ecc_level as (usize)] as (*const quirc_rs_params);
     let mut lb_ecc: quirc_rs_params;
@@ -860,10 +860,10 @@ unsafe extern "C" fn alpha_tuple(
             if !(i < digits) {
                 break;
             }
-            static mut alpha_map: *const u8 =
+            static mut ALPHA_MAP: *const u8 =
                 (*b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:\0").as_ptr();
             (*data).payload[((*data).payload_len + digits - i - 1i32) as (usize)] =
-                *alpha_map.offset((tuple % 45i32) as (isize));
+                *ALPHA_MAP.offset((tuple % 45i32) as (isize));
             tuple = tuple / 45i32;
             i = i + 1;
         }

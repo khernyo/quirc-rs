@@ -13,8 +13,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#![allow(non_snake_case)]
-
 extern crate quirc_rs;
 extern crate sdl2;
 extern crate sdl2_unifont;
@@ -74,19 +72,26 @@ unsafe extern "C" fn dump_info(q: *mut quirc) {
     }
 }
 
-unsafe fn pixelColor(canvas: &mut Canvas<Window>, x: i16, y: i16, color: Color) {
+unsafe fn pixel_color(canvas: &mut Canvas<Window>, x: i16, y: i16, color: Color) {
     canvas.set_draw_color(color);
     canvas.draw_point((x as i32, y as i32)).unwrap();
 }
 
-unsafe fn lineColor(canvas: &mut Canvas<Window>, x1: i16, y1: i16, x2: i16, y2: i16, color: Color) {
+unsafe fn line_color(
+    canvas: &mut Canvas<Window>,
+    x1: i16,
+    y1: i16,
+    x2: i16,
+    y2: i16,
+    color: Color,
+) {
     canvas.set_draw_color(color);
     canvas
         .draw_line((x1 as i32, y1 as i32), (x2 as i32, y2 as i32))
         .unwrap();
 }
 
-unsafe fn stringColor(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, color: Color) {
+unsafe fn string_color(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, color: Color) {
     let renderer = sdl2_unifont::renderer::SurfaceRenderer::new(color, Color::RGBA(0, 0, 0, 0));
     let surface = renderer.draw(s).unwrap();
     let (w, h) = canvas.output_size().unwrap();
@@ -122,7 +127,7 @@ unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: *mut quirc) {
                     }
                 }
             };
-            pixelColor(canvas, x as i16, y as i16, color);
+            pixel_color(canvas, x as i16, y as i16, color);
         }
     }
 }
@@ -130,7 +135,7 @@ unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: *mut quirc) {
 unsafe extern "C" fn draw_blob(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     for i in -2..=2 {
         for j in -2..=2 {
-            pixelColor(
+            pixel_color(
                 canvas,
                 (x + i) as (i16),
                 (y + j) as (i16),
@@ -142,11 +147,11 @@ unsafe extern "C" fn draw_blob(canvas: &mut Canvas<Window>, x: i32, y: i32) {
 
 unsafe extern "C" fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     let red = Color::RGBA(0xff, 0, 0, 0xff);
-    pixelColor(canvas, x as (i16), y as (i16), red);
-    pixelColor(canvas, (x + 1i32) as (i16), y as (i16), red);
-    pixelColor(canvas, (x - 1i32) as (i16), y as (i16), red);
-    pixelColor(canvas, x as (i16), (y + 1i32) as (i16), red);
-    pixelColor(canvas, x as (i16), (y - 1i32) as (i16), red);
+    pixel_color(canvas, x as (i16), y as (i16), red);
+    pixel_color(canvas, (x + 1i32) as (i16), y as (i16), red);
+    pixel_color(canvas, (x - 1i32) as (i16), y as (i16), red);
+    pixel_color(canvas, x as (i16), (y + 1i32) as (i16), red);
+    pixel_color(canvas, x as (i16), (y - 1i32) as (i16), red);
 }
 
 unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: *mut quirc, index: i32) {
@@ -155,7 +160,7 @@ unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: *mut quirc, i
         let p0: *mut quirc_point = &mut (*cap).corners[j as (usize)] as (*mut quirc_point);
         let p1: *mut quirc_point =
             &mut (*cap).corners[((j + 1i32) % 4i32) as (usize)] as (*mut quirc_point);
-        lineColor(
+        line_color(
             canvas,
             (*p0).x as (i16),
             (*p0).y as (i16),
@@ -167,7 +172,7 @@ unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: *mut quirc, i
     draw_blob(canvas, (*cap).corners[0usize].x, (*cap).corners[0usize].y);
     if (*cap).qr_grid < 0i32 {
         let s = format!("?{}", index);
-        stringColor(
+        string_color(
             canvas,
             (*cap).center.x as (i16),
             (*cap).center.y as (i16),
@@ -192,7 +197,7 @@ unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: *mut quirc, index
         let cap: *mut quirc_capstone =
             &mut (*q).capstones[(*qr).caps[i as (usize)] as (usize)] as (*mut quirc_capstone);
         let s = format!("{}.{}", index, "ABC".chars().nth(i).unwrap());
-        stringColor(
+        string_color(
             canvas,
             (*cap).center.x as (i16),
             (*cap).center.y as (i16),
@@ -200,7 +205,7 @@ unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: *mut quirc, index
             Color::RGB(0, 0, 0),
         );
     }
-    lineColor(
+    line_color(
         canvas,
         (*qr).tpep[0usize].x as (i16),
         (*qr).tpep[0usize].y as (i16),
@@ -208,7 +213,7 @@ unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: *mut quirc, index
         (*qr).tpep[1usize].y as (i16),
         Color::RGBA(0xff, 0, 0xff, 0xff),
     );
-    lineColor(
+    line_color(
         canvas,
         (*qr).tpep[1usize].x as (i16),
         (*qr).tpep[1usize].y as (i16),
