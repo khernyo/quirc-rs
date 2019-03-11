@@ -25,7 +25,7 @@ use std::path::Path;
 
 use clap::{App, Arg};
 
-use libc::{c_char, perror, printf, snprintf};
+use libc::{c_char, perror, snprintf};
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -48,10 +48,7 @@ extern "C" {
 unsafe extern "C" fn dump_info(q: *mut quirc) {
     let count: i32 = quirc_count(q as (*const quirc));
     let mut i: i32;
-    printf(
-        (*b"%d QR-codes found:\n\n\0").as_ptr() as *const c_char,
-        count,
-    );
+    println!("{} QR-codes found:\n", count);
     i = 0i32;
     'loop1: loop {
         if !(i < count) {
@@ -66,14 +63,14 @@ unsafe extern "C" fn dump_info(q: *mut quirc) {
             &mut data as (*mut quirc_data),
         );
         dump_cells(&mut code as (*mut quirc_code) as (*const quirc_code));
-        printf((*b"\n\0").as_ptr() as *const c_char);
+        println!();
         if err != QuircDecodeResult::QUIRC_SUCCESS {
             println!("  Decoding FAILED: {}", quirc_strerror(err));
         } else {
-            printf((*b"  Decoding successful:\n\0").as_ptr() as *const c_char);
+            println!("  Decoding successful:");
             dump_data(&mut data as (*mut quirc_data));
         }
-        printf((*b"\n\0").as_ptr() as *const c_char);
+        println!();
         i = i + 1;
     }
 }
