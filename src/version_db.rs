@@ -22,8 +22,13 @@ pub const QUIRC_MAX_ALIGNMENT: usize = 7;
 #[derive(Copy)]
 #[repr(C)]
 pub struct quirc_rs_params {
+    /// Small block size
     pub bs: i32,
+
+    /// Small data words
     pub dw: i32,
+
+    /// Number of small blocks
     pub ns: i32,
 }
 
@@ -57,6 +62,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             ns: 0,
         }; 4],
     },
+    // Version 1
     quirc_version_info {
         data_bytes: 26i32,
         apat: [0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32],
@@ -83,6 +89,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 2
     quirc_version_info {
         data_bytes: 44i32,
         apat: [6i32, 18i32, 0i32, 0i32, 0i32, 0i32, 0i32],
@@ -109,6 +116,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 3
     quirc_version_info {
         data_bytes: 70i32,
         apat: [6i32, 22i32, 0i32, 0i32, 0i32, 0i32, 0i32],
@@ -135,6 +143,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 4
     quirc_version_info {
         data_bytes: 100i32,
         apat: [6i32, 26i32, 0i32, 0i32, 0i32, 0i32, 0i32],
@@ -161,6 +170,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 5
     quirc_version_info {
         data_bytes: 134i32,
         apat: [6i32, 30i32, 0i32, 0i32, 0i32, 0i32, 0i32],
@@ -187,6 +197,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 6
     quirc_version_info {
         data_bytes: 172i32,
         apat: [6i32, 34i32, 0i32, 0i32, 0i32, 0i32, 0i32],
@@ -213,6 +224,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 7
     quirc_version_info {
         data_bytes: 196i32,
         apat: [6i32, 22i32, 38i32, 0i32, 0i32, 0i32, 0i32],
@@ -239,6 +251,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 8
     quirc_version_info {
         data_bytes: 242i32,
         apat: [6i32, 24i32, 42i32, 0i32, 0i32, 0i32, 0i32],
@@ -265,6 +278,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 9
     quirc_version_info {
         data_bytes: 292i32,
         apat: [6i32, 26i32, 46i32, 0i32, 0i32, 0i32, 0i32],
@@ -291,6 +305,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 10
     quirc_version_info {
         data_bytes: 346i32,
         apat: [6i32, 28i32, 50i32, 0i32, 0i32, 0i32, 0i32],
@@ -317,6 +332,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 11
     quirc_version_info {
         data_bytes: 404i32,
         apat: [6i32, 30i32, 54i32, 0i32, 0i32, 0i32, 0i32],
@@ -343,6 +359,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 12
     quirc_version_info {
         data_bytes: 466i32,
         apat: [6i32, 32i32, 58i32, 0i32, 0i32, 0i32, 0i32],
@@ -369,6 +386,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 13
     quirc_version_info {
         data_bytes: 532i32,
         apat: [6i32, 34i32, 62i32, 0i32, 0i32, 0i32, 0i32],
@@ -395,6 +413,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 14
     quirc_version_info {
         data_bytes: 581i32,
         apat: [6i32, 26i32, 46i32, 66i32, 0i32, 0i32, 0i32],
@@ -421,6 +440,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 15
     quirc_version_info {
         data_bytes: 655i32,
         apat: [6i32, 26i32, 48i32, 70i32, 0i32, 0i32, 0i32],
@@ -447,6 +467,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 16
     quirc_version_info {
         data_bytes: 733i32,
         apat: [6i32, 26i32, 50i32, 74i32, 0i32, 0i32, 0i32],
@@ -473,6 +494,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 17
     quirc_version_info {
         data_bytes: 815i32,
         apat: [6i32, 30i32, 54i32, 78i32, 0i32, 0i32, 0i32],
@@ -499,6 +521,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 18
     quirc_version_info {
         data_bytes: 901i32,
         apat: [6i32, 30i32, 56i32, 82i32, 0i32, 0i32, 0i32],
@@ -525,6 +548,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 19
     quirc_version_info {
         data_bytes: 991i32,
         apat: [6i32, 30i32, 58i32, 86i32, 0i32, 0i32, 0i32],
@@ -551,6 +575,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 20
     quirc_version_info {
         data_bytes: 1085i32,
         apat: [6i32, 34i32, 62i32, 90i32, 0i32, 0i32, 0i32],
@@ -577,6 +602,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 21
     quirc_version_info {
         data_bytes: 1156i32,
         apat: [6i32, 28i32, 50i32, 72i32, 92i32, 0i32, 0i32],
@@ -603,6 +629,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 22
     quirc_version_info {
         data_bytes: 1258i32,
         apat: [6i32, 26i32, 50i32, 74i32, 98i32, 0i32, 0i32],
@@ -629,6 +656,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 23
     quirc_version_info {
         data_bytes: 1364i32,
         apat: [6i32, 30i32, 54i32, 78i32, 102i32, 0i32, 0i32],
@@ -655,6 +683,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 24
     quirc_version_info {
         data_bytes: 1474i32,
         apat: [6i32, 28i32, 54i32, 80i32, 106i32, 0i32, 0i32],
@@ -681,6 +710,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 25
     quirc_version_info {
         data_bytes: 1588i32,
         apat: [6i32, 32i32, 58i32, 84i32, 110i32, 0i32, 0i32],
@@ -707,6 +737,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 26
     quirc_version_info {
         data_bytes: 1706i32,
         apat: [6i32, 30i32, 58i32, 86i32, 114i32, 0i32, 0i32],
@@ -733,6 +764,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 27
     quirc_version_info {
         data_bytes: 1828i32,
         apat: [6i32, 34i32, 62i32, 90i32, 118i32, 0i32, 0i32],
@@ -759,6 +791,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 28
     quirc_version_info {
         data_bytes: 1921i32,
         apat: [6i32, 26i32, 50i32, 74i32, 98i32, 122i32, 0i32],
@@ -785,6 +818,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 29
     quirc_version_info {
         data_bytes: 2051i32,
         apat: [6i32, 30i32, 54i32, 78i32, 102i32, 126i32, 0i32],
@@ -811,6 +845,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 30
     quirc_version_info {
         data_bytes: 2185i32,
         apat: [6i32, 26i32, 52i32, 78i32, 104i32, 130i32, 0i32],
@@ -837,6 +872,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 31
     quirc_version_info {
         data_bytes: 2323i32,
         apat: [6i32, 30i32, 56i32, 82i32, 108i32, 134i32, 0i32],
@@ -863,6 +899,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 32
     quirc_version_info {
         data_bytes: 2465i32,
         apat: [6i32, 34i32, 60i32, 86i32, 112i32, 138i32, 0i32],
@@ -889,6 +926,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 33
     quirc_version_info {
         data_bytes: 2611i32,
         apat: [6i32, 30i32, 58i32, 86i32, 114i32, 142i32, 0i32],
@@ -915,6 +953,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 34
     quirc_version_info {
         data_bytes: 2761i32,
         apat: [6i32, 34i32, 62i32, 90i32, 118i32, 146i32, 0i32],
@@ -941,6 +980,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 35
     quirc_version_info {
         data_bytes: 2876i32,
         apat: [6i32, 30i32, 54i32, 78i32, 102i32, 126i32, 150i32],
@@ -967,6 +1007,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 36
     quirc_version_info {
         data_bytes: 3034i32,
         apat: [6i32, 24i32, 50i32, 76i32, 102i32, 128i32, 154i32],
@@ -993,6 +1034,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 37
     quirc_version_info {
         data_bytes: 3196i32,
         apat: [6i32, 28i32, 54i32, 80i32, 106i32, 132i32, 158i32],
@@ -1019,6 +1061,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 38
     quirc_version_info {
         data_bytes: 3362i32,
         apat: [6i32, 32i32, 58i32, 84i32, 110i32, 136i32, 162i32],
@@ -1045,6 +1088,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 39
     quirc_version_info {
         data_bytes: 3532i32,
         apat: [6i32, 26i32, 54i32, 82i32, 110i32, 138i32, 166i32],
@@ -1071,6 +1115,7 @@ pub static mut quirc_version_db: [quirc_version_info; QUIRC_MAX_VERSION + 1] = [
             },
         ],
     },
+    // Version 40
     quirc_version_info {
         data_bytes: 3706i32,
         apat: [6i32, 30i32, 58i32, 86i32, 114i32, 142i32, 170i32],

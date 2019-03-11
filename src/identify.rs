@@ -1546,6 +1546,14 @@ pub unsafe extern "C" fn pixels_setup(mut q: *mut quirc) {
     }
 }
 
+/// These functions are used to process images for QR-code recognition.
+/// quirc_begin() must first be called to obtain access to a buffer into
+/// which the input image should be placed. Optionally, the current
+/// width and height may be returned.
+///
+/// After filling the buffer, quirc_end() should be called to process
+/// the image for QR-code recognition. The locations and content of each
+/// code may be obtained using accessor functions described below.
 pub unsafe extern "C" fn quirc_begin(
     mut q: *mut quirc,
     w: *mut i32,
@@ -1585,6 +1593,7 @@ pub unsafe extern "C" fn quirc_end(q: *mut quirc) {
     }
 }
 
+/// Extract the QR-code specified by the given index.
 pub unsafe extern "C" fn quirc_extract(
     q: *mut quirc,
     index: i32,

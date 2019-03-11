@@ -41,6 +41,7 @@ unsafe extern fn data_type_str(dt : i32) -> &'static str {
     }
 }
 
+/// Dump decoded information on stdout.
 pub unsafe extern fn dump_data(data : *mut quirc_data) {
     println!("    Version: {}", (*data).version);
     println!(
@@ -63,6 +64,7 @@ pub unsafe extern fn dump_data(data : *mut quirc_data) {
     }
 }
 
+/// Dump a grid cell map on stdout.
 pub unsafe extern fn dump_cells(code : *const quirc_code) {
     let mut u : i32;
     let mut v : i32;
@@ -106,6 +108,10 @@ pub unsafe extern fn dump_cells(code : *const quirc_code) {
     }
 }
 
+/// Read an image into the decoder.
+///
+/// Note that you must call quirc_end() if the function returns
+/// successfully (0).
 pub unsafe fn load_image(q: *mut quirc, path: &Path) -> i32 {
     let img = image::open(path).unwrap().grayscale().to_luma();
     let (width, height) = img.dimensions();

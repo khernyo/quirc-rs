@@ -1052,6 +1052,7 @@ unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, ds: *mut datastre
     }
 }
 
+/// Decode a QR-code, returning the payload data.
 pub unsafe extern "C" fn quirc_decode(
     code: *const quirc_code,
     mut data: *mut quirc_data,
