@@ -19,7 +19,7 @@ extern crate quirc_rs;
 use std::path::Path;
 
 use clap::{App, Arg};
-use libc::{c_char, c_void, malloc, memcpy, memset, perror, puts, timespec};
+use libc::{c_char, c_void, malloc, memcpy, memset, perror, timespec};
 
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
@@ -216,7 +216,7 @@ pub unsafe extern "C" fn scan_dir(decoder: *mut quirc, path: &Path, info: *mut r
 
     if count > 1i32 {
         print_result(path.file_name().unwrap().to_str().unwrap(), info);
-        puts((*b"\0").as_ptr() as *const c_char);
+        println!();
     }
     (count > 0i32) as (i32)
 }
