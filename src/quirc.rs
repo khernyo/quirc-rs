@@ -167,6 +167,8 @@ pub unsafe extern "C" fn quirc_new() -> *mut quirc {
 
 pub unsafe extern "C" fn quirc_destroy(q: *mut quirc) {
     free((*q).image as (*mut ::std::os::raw::c_void));
+    // q->pixels may alias q->image when their type representation is of the
+    // same size, so we need to be careful here to avoid a double free
     if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
         free((*q).pixels as (*mut ::std::os::raw::c_void));
     }
@@ -179,17 +181,32 @@ pub unsafe extern "C" fn quirc_resize(mut q: *mut quirc, w: i32, h: i32) -> i32 
     let mut image: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
     let mut pixels: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
     let mut row_average: *mut i32 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut i32);
+
+    // XXX: w and h should be size_t (or at least unsigned) as negatives
+    // values would not make much sense. The downside is that it would break
+    // both the API and ABI. Thus, at the moment, let's just do a sanity
+    // check.
     if !(w < 0i32 || h < 0i32) {
+        // alloc a new buffer for q->image. We avoid realloc(3) because we want
+        // on failure to be leave `q` in a consistant, unmodified state.
         image = calloc(w as (usize), h as (usize)) as (*mut u8);
         if !image.is_null() {
+            // compute the "old" (i.e. currently allocated) and the "new"
+            // (i.e. requested) image dimensions
             let olddim: usize = ((*q).w * (*q).h) as (usize);
             let newdim: usize = (w * h) as (usize);
             let min: usize = if olddim < newdim { olddim } else { newdim };
+
+            // copy the data into the new buffer, avoiding (a) to read beyond the
+            // old buffer when the new size is greater and (b) to write beyond the
+            // new buffer when the new size is smaller, hence the min computation.
             memcpy(
                 image as (*mut ::std::os::raw::c_void),
                 (*q).image as (*const ::std::os::raw::c_void),
                 min,
             );
+
+            // alloc a new buffer for q->pixels if needed
             if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
                 pixels = calloc(newdim, ::std::mem::size_of::<u8>()) as (*mut u8);
                 if pixels.is_null() {
@@ -202,8 +219,11 @@ pub unsafe extern "C" fn quirc_resize(mut q: *mut quirc, w: i32, h: i32) -> i32 
             }
             if _currentBlock == 8 {
             } else {
+
+                // alloc a new buffer for q->row_average
                 row_average = calloc(w as (usize), ::std::mem::size_of::<i32>()) as (*mut i32);
                 if !row_average.is_null() {
+                    // alloc succeeded, update `q` with the new size and buffers
                     (*q).w = w;
                     (*q).h = h;
                     free((*q).image as (*mut ::std::os::raw::c_void));
