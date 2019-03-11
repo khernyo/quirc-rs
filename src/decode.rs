@@ -1001,48 +1001,32 @@ unsafe extern "C" fn decode_payload(
     mut data: *mut quirc_data,
     ds: *mut datastream,
 ) -> DecodeResult {
-    let mut _currentBlock;
-    let mut err: DecodeResult = DecodeResult::Success;
-    'loop0: loop {
-        if !(bits_remaining(ds as (*const datastream)) >= 4i32) {
-            _currentBlock = 7;
-            break;
-        }
+    while bits_remaining(ds as (*const datastream)) >= 4i32 {
         let type_: i32 = take_bits(ds, 4i32);
-        if type_ == 7i32 {
-            err = decode_eci(data, ds);
-        } else if type_ == QUIRC_DATA_TYPE_KANJI {
-            err = decode_kanji(data, ds);
-        } else if type_ == QUIRC_DATA_TYPE_BYTE {
-            err = decode_byte(data, ds);
-        } else if type_ == QUIRC_DATA_TYPE_ALPHA {
-            err = decode_alpha(data, ds);
-        } else {
-            if !(type_ == QUIRC_DATA_TYPE_NUMERIC) {
-                _currentBlock = 7;
-                break;
-            }
-            err = decode_numeric(data, ds);
-        }
+        let err = match type_ {
+            QUIRC_DATA_TYPE_NUMERIC => decode_numeric(data, ds),
+            QUIRC_DATA_TYPE_ALPHA => decode_alpha(data, ds),
+            QUIRC_DATA_TYPE_BYTE => decode_byte(data, ds),
+            QUIRC_DATA_TYPE_KANJI => decode_kanji(data, ds),
+            7 => decode_eci(data, ds),
+            _ => break,
+        };
+
         if err != DecodeResult::Success {
-            _currentBlock = 18;
-            break;
+            return err;
         }
-        if !(type_ & type_ - 1i32 == 0 && (type_ > (*data).data_type)) {
-            continue;
+
+        if type_ & type_ - 1i32 == 0 && (type_ > (*data).data_type) {
+            (*data).data_type = type_;
         }
-        (*data).data_type = type_;
     }
-    if _currentBlock == 7 {
-        // Add nul terminator to all payloads
-        if (*data).payload_len as (usize) >= ::std::mem::size_of::<[u8; 8896]>() {
-            (*data).payload_len = (*data).payload_len - 1;
-        }
-        (*data).payload[(*data).payload_len as (usize)] = 0u8;
-        DecodeResult::Success
-    } else {
-        err
+
+    // Add nul terminator to all payloads
+    if (*data).payload_len as (usize) >= ::std::mem::size_of::<[u8; 8896]>() {
+        (*data).payload_len = (*data).payload_len - 1;
     }
+    (*data).payload[(*data).payload_len as (usize)] = 0u8;
+    DecodeResult::Success
 }
 
 /// Decode a QR-code, returning the payload data.
