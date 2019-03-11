@@ -19,13 +19,12 @@ extern crate quirc_rs;
 extern crate sdl2;
 extern crate sdl2_unifont;
 
-use std::ffi::CStr;
 use std::os::raw::c_double;
 use std::path::Path;
 
 use clap::{App, Arg};
 
-use libc::{c_char, perror, snprintf};
+use libc::{c_char, perror};
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -87,11 +86,9 @@ unsafe fn lineColor(canvas: &mut Canvas<Window>, x1: i16, y1: i16, x2: i16, y2: 
         .unwrap();
 }
 
-unsafe fn stringColor(canvas: &mut Canvas<Window>, x: i16, y: i16, s: *const u8, color: Color) {
+unsafe fn stringColor(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, color: Color) {
     let renderer = sdl2_unifont::renderer::SurfaceRenderer::new(color, Color::RGBA(0, 0, 0, 0));
-    let surface = renderer
-        .draw(CStr::from_ptr(s as *const c_char).to_str().unwrap())
-        .unwrap();
+    let surface = renderer.draw(s).unwrap();
     let (w, h) = canvas.output_size().unwrap();
     let mut screen =
         sdl2::surface::Surface::new(w, h, sdl2::pixels::PixelFormatEnum::RGBA8888).unwrap();
@@ -154,7 +151,6 @@ unsafe extern "C" fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
 
 unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: *mut quirc, index: i32) {
     let cap: *mut quirc_capstone = &mut (*q).capstones[index as (usize)] as (*mut quirc_capstone);
-    let mut buf: [u8; 8] = std::mem::uninitialized();
     for j in 0..4 {
         let p0: *mut quirc_point = &mut (*cap).corners[j as (usize)] as (*mut quirc_point);
         let p1: *mut quirc_point =
@@ -170,17 +166,12 @@ unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: *mut quirc, i
     }
     draw_blob(canvas, (*cap).corners[0usize].x, (*cap).corners[0usize].y);
     if (*cap).qr_grid < 0i32 {
-        snprintf(
-            buf.as_mut_ptr() as *mut c_char,
-            ::std::mem::size_of::<[u8; 8]>(),
-            (*b"?%d\0").as_ptr() as *const c_char,
-            index,
-        );
+        let s = format!("?{}", index);
         stringColor(
             canvas,
             (*cap).center.x as (i16),
             (*cap).center.y as (i16),
-            buf.as_mut_ptr() as (*const u8),
+            &s,
             Color::RGB(0, 0, 0),
         );
     }
@@ -200,19 +191,12 @@ unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: *mut quirc, index
     for i in 0..3 {
         let cap: *mut quirc_capstone =
             &mut (*q).capstones[(*qr).caps[i as (usize)] as (usize)] as (*mut quirc_capstone);
-        let mut buf: [u8; 8] = std::mem::uninitialized();
-        snprintf(
-            buf.as_mut_ptr() as *mut c_char,
-            ::std::mem::size_of::<[u8; 8]>(),
-            (*b"%d.%c\0").as_ptr() as *const c_char,
-            index,
-            (*b"ABC\0")[i as (usize)] as (i32),
-        );
+        let s = format!("{}.{}", index, "ABC".chars().nth(i).unwrap());
         stringColor(
             canvas,
             (*cap).center.x as (i16),
             (*cap).center.y as (i16),
-            buf.as_mut_ptr() as (*const u8),
+            &s,
             Color::RGB(0, 0, 0),
         );
     }
