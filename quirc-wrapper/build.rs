@@ -12,9 +12,15 @@ fn main() -> Result<(), io::Error> {
     let out_dir = env::var("OUT_DIR").unwrap();
     let out_path = Path::new(&out_dir);
 
-    Command::new("make").current_dir(quirc_path).arg(lib_filename).status()?;
+    Command::new("make")
+        .current_dir(quirc_path)
+        .arg(lib_filename)
+        .status()?;
     fs::copy(quirc_path.join(lib_filename), out_path.join(lib_filename))?;
-    Command::new("make").current_dir(quirc_path).arg("clean").status()?;
+    Command::new("make")
+        .current_dir(quirc_path)
+        .arg("clean")
+        .status()?;
 
     println!("cargo:rustc-link-lib=static=quirc");
     println!("cargo:rustc-link-search=native={}", out_dir);

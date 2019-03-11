@@ -14,8 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-use crate::quirc::*;
 use crate::quirc::consts::*;
+use crate::quirc::*;
 use crate::version_db::*;
 use std::os::raw::c_double;
 
@@ -80,12 +80,7 @@ pub unsafe extern "C" fn line_intersect(
     }
 }
 
-pub unsafe extern "C" fn perspective_setup(
-    c: *mut f64,
-    rect: *const quirc_point,
-    w: f64,
-    h: f64,
-) {
+pub unsafe extern "C" fn perspective_setup(c: *mut f64, rect: *const quirc_point, w: f64, h: f64) {
     let x0: f64 = (*rect.offset(0isize)).x as (f64);
     let y0: f64 = (*rect.offset(0isize)).y as (f64);
     let x1: f64 = (*rect.offset(1isize)).x as (f64);
@@ -118,12 +113,7 @@ pub unsafe extern "C" fn perspective_setup(
         (-x2 * y3 + x1 * y3 + x3 * y2 + x0 * (y1 - y2) - x3 * y1 + (x2 - x1) * y0) / hden;
 }
 
-pub unsafe extern "C" fn perspective_map(
-    c: *const f64,
-    u: f64,
-    v: f64,
-    mut ret: *mut quirc_point,
-) {
+pub unsafe extern "C" fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mut quirc_point) {
     let den: f64 = *c.offset(6isize) * u + *c.offset(7isize) * v + 1.0f64;
     let x: f64 = (*c.offset(0isize) * u + *c.offset(1isize) * v + *c.offset(2isize)) / den;
     let y: f64 = (*c.offset(3isize) * u + *c.offset(4isize) * v + *c.offset(5isize)) / den;
@@ -157,7 +147,8 @@ pub unsafe extern "C" fn perspective_unmap(
 
 const FLOOD_FILL_MAX_DEPTH: i32 = 4096;
 
-type span_func_t = unsafe extern "C" fn(user_data: *mut ::std::os::raw::c_void, y: i32, left: i32, right: i32);
+type span_func_t =
+    unsafe extern "C" fn(user_data: *mut ::std::os::raw::c_void, y: i32, left: i32, right: i32);
 
 /// Span-based floodfill routine
 pub unsafe extern "C" fn flood_fill_seed(
@@ -293,7 +284,8 @@ pub unsafe extern "C" fn threshold(q: *mut quirc) {
                 break;
             }
             if *row.offset(x as (isize)) as (i32)
-                < *(*q).row_average.offset(x as (isize)) * (100i32 - THRESHOLD_T) / (200i32 * threshold_s)
+                < *(*q).row_average.offset(x as (isize)) * (100i32 - THRESHOLD_T)
+                    / (200i32 * threshold_s)
             {
                 *row.offset(x as (isize)) = QUIRC_PIXEL_BLACK as u8;
             } else {
@@ -540,12 +532,7 @@ pub unsafe extern "C" fn record_capstone(mut q: *mut quirc, ring: i32, stone: i3
     }
 }
 
-pub unsafe extern "C" fn test_capstone(
-    q: *mut quirc,
-    x: i32,
-    y: i32,
-    pb: *mut i32,
-) {
+pub unsafe extern "C" fn test_capstone(q: *mut quirc, x: i32, y: i32, pb: *mut i32) {
     let ring_right: i32 = region_code(q, x - *pb.offset(4isize), y);
     let stone: i32 = region_code(
         q,
@@ -894,12 +881,7 @@ pub unsafe extern "C" fn measure_timing_pattern(q: *mut quirc, index: i32) -> i3
 /// Read a cell from a grid using the currently set perspective
 /// transform. Returns +/- 1 for black/white, 0 for cells which are
 /// out of image bounds.
-pub unsafe extern "C" fn read_cell(
-    q: *mut quirc,
-    index: i32,
-    x: i32,
-    y: i32,
-) -> i32 {
+pub unsafe extern "C" fn read_cell(q: *mut quirc, index: i32, x: i32, y: i32) -> i32 {
     let qr: *mut quirc_grid =
         &mut (*q).grids[index as (usize)] as (*mut quirc_grid) as (*mut quirc_grid);
     let mut p: quirc_point = std::mem::uninitialized();
@@ -918,12 +900,7 @@ pub unsafe extern "C" fn read_cell(
     }
 }
 
-pub unsafe extern "C" fn fitness_cell(
-    q: *mut quirc,
-    index: i32,
-    x: i32,
-    y: i32,
-) -> i32 {
+pub unsafe extern "C" fn fitness_cell(q: *mut quirc, index: i32, x: i32, y: i32) -> i32 {
     let qr: *mut quirc_grid =
         &mut (*q).grids[index as (usize)] as (*mut quirc_grid) as (*mut quirc_grid);
     let mut score: i32 = 0i32;
@@ -984,12 +961,7 @@ pub unsafe extern "C" fn fitness_ring(
     score
 }
 
-pub unsafe extern "C" fn fitness_apat(
-    q: *mut quirc,
-    index: i32,
-    cx: i32,
-    cy: i32,
-) -> i32 {
+pub unsafe extern "C" fn fitness_apat(q: *mut quirc, index: i32, cx: i32, cy: i32) -> i32 {
     fitness_cell(q, index, cx, cy) - fitness_ring(q, index, cx, cy, 1i32)
         + fitness_ring(q, index, cx, cy, 2i32)
 }
@@ -1044,7 +1016,8 @@ pub unsafe extern "C" fn fitness_all(q: *mut quirc, index: i32) -> i32 {
         // Check alignment patterns
         ap_count = 0i32;
         'loop4: loop {
-            if !(ap_count < QUIRC_MAX_ALIGNMENT as i32 && ((*info).apat[ap_count as (usize)] != 0)) {
+            if !(ap_count < QUIRC_MAX_ALIGNMENT as i32 && ((*info).apat[ap_count as (usize)] != 0))
+            {
                 break;
             }
             ap_count = ap_count + 1;
@@ -1554,11 +1527,7 @@ pub unsafe extern "C" fn pixels_setup(mut q: *mut quirc) {
 /// After filling the buffer, quirc_end() should be called to process
 /// the image for QR-code recognition. The locations and content of each
 /// code may be obtained using accessor functions described below.
-pub unsafe extern "C" fn quirc_begin(
-    mut q: *mut quirc,
-    w: *mut i32,
-    h: *mut i32,
-) -> *mut u8 {
+pub unsafe extern "C" fn quirc_begin(mut q: *mut quirc, w: *mut i32, h: *mut i32) -> *mut u8 {
     (*q).num_regions = QUIRC_PIXEL_REGION;
     (*q).num_capstones = 0i32;
     (*q).num_grids = 0i32;
@@ -1594,11 +1563,7 @@ pub unsafe extern "C" fn quirc_end(q: *mut quirc) {
 }
 
 /// Extract the QR-code specified by the given index.
-pub unsafe extern "C" fn quirc_extract(
-    q: *mut quirc,
-    index: i32,
-    mut code: *mut quirc_code,
-) {
+pub unsafe extern "C" fn quirc_extract(q: *mut quirc, index: i32, mut code: *mut quirc_code) {
     let qr: *mut quirc_grid =
         &mut (*q).grids[index as (usize)] as (*mut quirc_grid) as (*mut quirc_grid);
     let mut y: i32;

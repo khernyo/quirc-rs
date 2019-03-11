@@ -264,7 +264,6 @@ pub unsafe extern "C" fn quirc_resize(mut q: *mut quirc, w: i32, h: i32) -> i32 
             }
             if _currentBlock == 8 {
             } else {
-
                 // alloc a new buffer for q->row_average
                 row_average = calloc(w as (usize), ::std::mem::size_of::<i32>()) as (*mut i32);
                 if !row_average.is_null() {

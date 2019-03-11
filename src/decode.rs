@@ -179,7 +179,7 @@ unsafe extern "C" fn poly_eval(s: *const u8, x: u8, gf: *const galois_field) -> 
             if !(c == 0) {
                 sum = (sum as (i32)
                     ^ (*gf).exp[(((*gf).log[c as (usize)] as (i32) + log_x as (i32) * i) % (*gf).p)
-                    as (usize)] as (i32)) as (u8);
+                        as (usize)] as (i32)) as (u8);
             }
             i = i + 1;
         }
@@ -218,8 +218,8 @@ unsafe extern "C" fn berlekamp_massey(
             if !!(C[i as (usize)] != 0 && (*s.offset((n - i) as (isize)) != 0)) {
                 d = (d as (i32)
                     ^ (*gf).exp[(((*gf).log[C[i as (usize)] as (usize)] as (i32)
-                    + (*gf).log[*s.offset((n - i) as (isize)) as (usize)] as (i32))
-                    % (*gf).p) as (usize)] as (i32)) as (u8);
+                        + (*gf).log[*s.offset((n - i) as (isize)) as (usize)] as (i32))
+                        % (*gf).p) as (usize)] as (i32)) as (u8);
             }
             i = i + 1;
         }
@@ -263,12 +263,7 @@ unsafe extern "C" fn berlekamp_massey(
  * Generator polynomial for GF(2^8) is x^8 + x^4 + x^3 + x^2 + 1
  */
 
-unsafe extern "C" fn block_syndromes(
-    data: *const u8,
-    bs: i32,
-    npar: i32,
-    s: *mut u8,
-) -> i32 {
+unsafe extern "C" fn block_syndromes(data: *const u8, bs: i32, npar: i32, s: *mut u8) -> i32 {
     let mut nonzero: i32 = 0i32;
     let mut i: i32;
     memset(s as (*mut ::std::os::raw::c_void), 0i32, MAX_POLY);
@@ -300,12 +295,7 @@ unsafe extern "C" fn block_syndromes(
     nonzero
 }
 
-unsafe extern "C" fn eloc_poly(
-    omega: *mut u8,
-    s: *const u8,
-    sigma: *const u8,
-    npar: i32,
-) {
+unsafe extern "C" fn eloc_poly(omega: *mut u8, s: *const u8, sigma: *const u8, npar: i32) {
     let mut i: i32;
     memset(omega as (*mut ::std::os::raw::c_void), 0i32, MAX_POLY);
     i = 0i32;
@@ -339,7 +329,10 @@ unsafe extern "C" fn eloc_poly(
     }
 }
 
-unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -> QuircDecodeResult {
+unsafe extern "C" fn correct_block(
+    data: *mut u8,
+    ecc: *const quirc_rs_params,
+) -> QuircDecodeResult {
     let npar: i32 = (*ecc).bs - (*ecc).dw;
     let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
     let mut sigma: [u8; MAX_POLY] = [0u8; MAX_POLY];
@@ -728,7 +721,10 @@ unsafe extern "C" fn read_data(
     }
 }
 
-unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
+unsafe extern "C" fn codestream_ecc(
+    data: *mut quirc_data,
+    ds: *mut datastream,
+) -> QuircDecodeResult {
     let ver: *const quirc_version_info =
         &quirc_version_db[(*data).version as (usize)] as (*const quirc_version_info);
     let sb_ecc: *const quirc_rs_params =
@@ -821,7 +817,10 @@ unsafe extern "C" fn numeric_tuple(
     }
 }
 
-unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
+unsafe extern "C" fn decode_numeric(
+    data: *mut quirc_data,
+    ds: *mut datastream,
+) -> QuircDecodeResult {
     let mut bits: i32 = 14i32;
     let mut count: i32;
     if (*data).version < 10i32 {
@@ -908,7 +907,10 @@ unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) ->
     return QuircDecodeResult::QUIRC_SUCCESS;
 }
 
-unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
+unsafe extern "C" fn decode_byte(
+    mut data: *mut quirc_data,
+    ds: *mut datastream,
+) -> QuircDecodeResult {
     let mut bits: i32 = 16i32;
     let count: i32;
     let mut i: i32;
@@ -937,7 +939,10 @@ unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream)
     }
 }
 
-unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
+unsafe extern "C" fn decode_kanji(
+    mut data: *mut quirc_data,
+    ds: *mut datastream,
+) -> QuircDecodeResult {
     let mut bits: i32 = 12i32;
     let count: i32;
     let mut i: i32;
@@ -985,7 +990,10 @@ unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream
     }
 }
 
-unsafe extern "C" fn decode_eci(mut data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
+unsafe extern "C" fn decode_eci(
+    mut data: *mut quirc_data,
+    ds: *mut datastream,
+) -> QuircDecodeResult {
     if bits_remaining(ds as (*const datastream)) < 8i32 {
         QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW
     } else {
@@ -1007,7 +1015,10 @@ unsafe extern "C" fn decode_eci(mut data: *mut quirc_data, ds: *mut datastream) 
     }
 }
 
-unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
+unsafe extern "C" fn decode_payload(
+    mut data: *mut quirc_data,
+    ds: *mut datastream,
+) -> QuircDecodeResult {
     let mut _currentBlock;
     let mut err: QuircDecodeResult = QuircDecodeResult::QUIRC_SUCCESS;
     'loop0: loop {
