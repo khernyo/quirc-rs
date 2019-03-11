@@ -37,7 +37,7 @@ fn ms(ts: libc::timespec) -> u32 {
 
 #[derive(Copy)]
 #[repr(C)]
-pub struct result_info {
+pub struct ResultInfo {
     pub file_count: i32,
     pub id_count: i32,
     pub decode_count: i32,
@@ -46,13 +46,13 @@ pub struct result_info {
     pub total_time: u32,
 }
 
-impl Clone for result_info {
+impl Clone for ResultInfo {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-pub unsafe extern "C" fn print_result(name: &str, info: *mut result_info) {
+pub unsafe extern "C" fn print_result(name: &str, info: *mut ResultInfo) {
     println!("-------------------------------------------------------------------------------");
     print!(
         "{}: {} files, {} codes, {} decoded ({} failures)",
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn print_result(name: &str, info: *mut result_info) {
     }
 }
 
-pub unsafe extern "C" fn add_result(mut sum: *mut result_info, inf: *mut result_info) {
+pub unsafe extern "C" fn add_result(mut sum: *mut ResultInfo, inf: *mut ResultInfo) {
     (*sum).file_count = (*sum).file_count + (*inf).file_count;
     (*sum).id_count = (*sum).id_count + (*inf).id_count;
     (*sum).decode_count = (*sum).decode_count + (*inf).decode_count;
@@ -97,9 +97,9 @@ pub unsafe extern "C" fn add_result(mut sum: *mut result_info, inf: *mut result_
 }
 
 pub unsafe extern "C" fn scan_file(
-    decoder: *mut quirc,
+    decoder: *mut Quirc,
     path: &Path,
-    mut info: *mut result_info,
+    mut info: *mut ResultInfo,
 ) -> i32 {
     let filename = path.file_name().unwrap();
     let mut tp: libc::timespec = std::mem::uninitialized();
@@ -135,14 +135,14 @@ pub unsafe extern "C" fn scan_file(
         quirc_end(decoder);
         libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
         (*info).identify_time = ms(tp).wrapping_sub(start);
-        (*info).id_count = quirc_count(decoder as (*const quirc));
+        (*info).id_count = quirc_count(decoder as (*const Quirc));
         for i in 0..(*info).id_count {
-            let mut code: quirc_code = std::mem::uninitialized();
-            let mut data: quirc_data = std::mem::uninitialized();
-            quirc_extract(decoder as (*mut quirc), i, &mut code as (*mut quirc_code));
+            let mut code: QuircCode = std::mem::uninitialized();
+            let mut data: QuircData = std::mem::uninitialized();
+            quirc_extract(decoder as (*mut Quirc), i, &mut code as (*mut QuircCode));
             if quirc_decode(
-                &mut code as (*mut quirc_code) as (*const quirc_code),
-                &mut data as (*mut quirc_data),
+                &mut code as (*mut QuircCode) as (*const QuircCode),
+                &mut data as (*mut QuircData),
             ) == DecodeResult::Success
             {
                 (*info).decode_count = (*info).decode_count + 1;
@@ -163,24 +163,24 @@ pub unsafe extern "C" fn scan_file(
         );
         if WANT_CELL_DUMP || WANT_VERBOSE {
             for i in 0..(*info).id_count {
-                let mut code: quirc_code = std::mem::uninitialized();
-                quirc_extract(decoder as (*mut quirc), i, &mut code as (*mut quirc_code));
+                let mut code: QuircCode = std::mem::uninitialized();
+                quirc_extract(decoder as (*mut Quirc), i, &mut code as (*mut QuircCode));
                 if WANT_CELL_DUMP {
-                    dump_cells(&mut code as (*mut quirc_code) as (*const quirc_code));
+                    dump_cells(&mut code as (*mut QuircCode) as (*const QuircCode));
                     println!();
                 }
                 if WANT_VERBOSE {
-                    let mut data: quirc_data = std::mem::uninitialized();
+                    let mut data: QuircData = std::mem::uninitialized();
                     let err: DecodeResult = quirc_decode(
-                        &mut code as (*mut quirc_code) as (*const quirc_code),
-                        &mut data as (*mut quirc_data),
+                        &mut code as (*mut QuircCode) as (*const QuircCode),
+                        &mut data as (*mut QuircData),
                     );
                     if err != DecodeResult::Success {
                         println!("  ERROR: {}", quirc_strerror(err));
                         println!();
                     } else {
                         println!("  Decode successful:");
-                        dump_data(&mut data as (*mut quirc_data));
+                        dump_data(&mut data as (*mut QuircData));
                         println!();
                     }
                 }
@@ -194,7 +194,7 @@ pub unsafe extern "C" fn scan_file(
     }
 }
 
-pub unsafe extern "C" fn scan_dir(decoder: *mut quirc, path: &Path, info: *mut result_info) -> i32 {
+pub unsafe extern "C" fn scan_dir(decoder: *mut Quirc, path: &Path, info: *mut ResultInfo) -> i32 {
     let entries = path.read_dir().unwrap();
 
     println!("{}:", path.display());
@@ -203,12 +203,12 @@ pub unsafe extern "C" fn scan_dir(decoder: *mut quirc, path: &Path, info: *mut r
     for entry in entries {
         let entry = entry.unwrap();
         if entry.file_name().to_str().unwrap().chars().next().unwrap() != '.' {
-            let mut sub: result_info = std::mem::uninitialized();
+            let mut sub: ResultInfo = std::mem::uninitialized();
             let p = entry.path();
             let fullpath = p.as_path();
 
-            if test_scan(decoder, fullpath, &mut sub as (*mut result_info)) > 0i32 {
-                add_result(info, &mut sub as (*mut result_info));
+            if test_scan(decoder, fullpath, &mut sub as (*mut ResultInfo)) > 0i32 {
+                add_result(info, &mut sub as (*mut ResultInfo));
                 count = count + 1;
             }
         }
@@ -221,15 +221,11 @@ pub unsafe extern "C" fn scan_dir(decoder: *mut quirc, path: &Path, info: *mut r
     (count > 0i32) as (i32)
 }
 
-pub unsafe extern "C" fn test_scan(
-    decoder: *mut quirc,
-    path: &Path,
-    info: *mut result_info,
-) -> i32 {
+pub unsafe extern "C" fn test_scan(decoder: *mut Quirc, path: &Path, info: *mut ResultInfo) -> i32 {
     memset(
         info as (*mut ::std::os::raw::c_void),
         0i32,
-        ::std::mem::size_of::<result_info>(),
+        ::std::mem::size_of::<ResultInfo>(),
     );
 
     if path.is_file() {
@@ -242,9 +238,9 @@ pub unsafe extern "C" fn test_scan(
 }
 
 pub unsafe extern "C" fn run_tests(paths: Vec<&str>) -> i32 {
-    let mut sum: result_info = std::mem::uninitialized();
+    let mut sum: ResultInfo = std::mem::uninitialized();
     let mut count: i32 = 0i32;
-    let decoder: *mut quirc = quirc_new();
+    let decoder: *mut Quirc = quirc_new();
 
     if decoder.is_null() {
         perror((*b"quirc_new\0").as_ptr() as *const c_char);
@@ -257,22 +253,22 @@ pub unsafe extern "C" fn run_tests(paths: Vec<&str>) -> i32 {
         );
         println!("-------------------------------------------------------------------------------");
         memset(
-            &mut sum as (*mut result_info) as (*mut ::std::os::raw::c_void),
+            &mut sum as (*mut ResultInfo) as (*mut ::std::os::raw::c_void),
             0i32,
-            ::std::mem::size_of::<result_info>(),
+            ::std::mem::size_of::<ResultInfo>(),
         );
         for path in paths {
-            let mut info: result_info = std::mem::uninitialized();
-            if test_scan(decoder, Path::new(path), &mut info as (*mut result_info)) > 0i32 {
+            let mut info: ResultInfo = std::mem::uninitialized();
+            if test_scan(decoder, Path::new(path), &mut info as (*mut ResultInfo)) > 0i32 {
                 add_result(
-                    &mut sum as (*mut result_info),
-                    &mut info as (*mut result_info),
+                    &mut sum as (*mut ResultInfo),
+                    &mut info as (*mut ResultInfo),
                 );
                 count = count + 1;
             }
         }
         if count > 1i32 {
-            print_result("TOTAL", &mut sum as (*mut result_info));
+            print_result("TOTAL", &mut sum as (*mut ResultInfo));
         }
         quirc_destroy(decoder);
         0i32

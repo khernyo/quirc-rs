@@ -39,7 +39,7 @@ impl Data {
 }
 
 unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Data>]) {
-    let decoder: *mut quirc = quirc_new();
+    let decoder: *mut Quirc = quirc_new();
     let ret = load_image(decoder, path);
     assert_eq!(ret, 0);
 
@@ -55,14 +55,14 @@ unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Dat
 
     quirc_end(decoder);
 
-    let result: Vec<_> = (0..quirc_count(decoder as (*const quirc)))
+    let result: Vec<_> = (0..quirc_count(decoder as (*const Quirc)))
         .map(|i| {
-            let mut code: quirc_code = std::mem::uninitialized();
-            let mut data: quirc_data = std::mem::uninitialized();
-            quirc_extract(decoder as (*mut quirc), i, &mut code as (*mut quirc_code));
+            let mut code: QuircCode = std::mem::uninitialized();
+            let mut data: QuircData = std::mem::uninitialized();
+            quirc_extract(decoder as (*mut Quirc), i, &mut code as (*mut QuircCode));
             if quirc_decode(
-                &mut code as (*mut quirc_code) as (*const quirc_code),
-                &mut data as (*mut quirc_data),
+                &mut code as (*mut QuircCode) as (*const QuircCode),
+                &mut data as (*mut QuircData),
             ) == DecodeResult::Success
             {
                 Some(Data::new(

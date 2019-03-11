@@ -14,7 +14,7 @@ use quirc_wrapper as qw;
 use test_utils::dbgutil::*;
 
 unsafe fn run(width: u32, height: u32, image_bytes: *mut u8) {
-    let decoder: *mut quirc = quirc_new();
+    let decoder: *mut Quirc = quirc_new();
     quirc_resize(decoder, width as i32, height as i32);
     let quirc_image_bytes = quirc_begin(
         decoder,
@@ -28,14 +28,14 @@ unsafe fn run(width: u32, height: u32, image_bytes: *mut u8) {
     );
     quirc_end(decoder);
 
-    let id_count = quirc_count(decoder as (*const quirc));
+    let id_count = quirc_count(decoder as (*const Quirc));
     for i in 0..id_count {
-        let mut code: quirc_code = std::mem::uninitialized();
-        let mut data: quirc_data = std::mem::uninitialized();
-        quirc_extract(decoder as (*mut quirc), i, &mut code as (*mut quirc_code));
+        let mut code: QuircCode = std::mem::uninitialized();
+        let mut data: QuircData = std::mem::uninitialized();
+        quirc_extract(decoder as (*mut Quirc), i, &mut code as (*mut QuircCode));
         quirc_decode(
-            &mut code as (*mut quirc_code) as (*const quirc_code),
-            &mut data as (*mut quirc_data),
+            &mut code as (*mut QuircCode) as (*const QuircCode),
+            &mut data as (*mut QuircData),
         );
     }
     quirc_destroy(decoder);
@@ -79,7 +79,7 @@ unsafe fn bench(
     f: unsafe fn(width: u32, height: u32, image_bytes: *mut u8),
 ) {
     let (width, height, image_bytes, q) = {
-        let decoder: *mut quirc = quirc_new();
+        let decoder: *mut Quirc = quirc_new();
         // TODO move quirc setup out of load_image()
         let ret = load_image(decoder, path);
         assert_eq!(ret, 0);

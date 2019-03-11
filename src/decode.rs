@@ -50,20 +50,20 @@ static mut GF16_LOG: [u8; 16] = [
 
 #[derive(Copy)]
 #[repr(C)]
-pub struct galois_field {
+pub struct GaloisField {
     pub p: i32,
     pub log: &'static [u8],
     pub exp: &'static [u8],
 }
 
-impl Clone for galois_field {
+impl Clone for GaloisField {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-static GF16: galois_field = unsafe {
-    galois_field {
+static GF16: GaloisField = unsafe {
+    GaloisField {
         p: 15i32,
         log: &GF16_LOG,
         exp: &GF16_EXP,
@@ -120,8 +120,8 @@ static mut GF256_LOG: [u8; 256] = [
     0xa8u8, 0x50u8, 0x58u8, 0xafu8,
 ];
 
-static GF256: galois_field = unsafe {
-    galois_field {
+static GF256: GaloisField = unsafe {
+    GaloisField {
         p: 255i32,
         log: &GF256_LOG,
         exp: &GF256_EXP,
@@ -137,7 +137,7 @@ unsafe extern "C" fn poly_add(
     src: *const u8,
     c: u8,
     shift: i32,
-    gf: *const galois_field,
+    gf: *const GaloisField,
 ) {
     let mut i: i32;
     let log_c: i32 = (*gf).log[c as (usize)] as (i32);
@@ -163,7 +163,7 @@ unsafe extern "C" fn poly_add(
     }
 }
 
-unsafe extern "C" fn poly_eval(s: *const u8, x: u8, gf: *const galois_field) -> u8 {
+unsafe extern "C" fn poly_eval(s: *const u8, x: u8, gf: *const GaloisField) -> u8 {
     let mut i: i32;
     let mut sum: u8 = 0u8;
     let log_x: u8 = (*gf).log[x as (usize)];
@@ -191,7 +191,7 @@ unsafe extern "C" fn poly_eval(s: *const u8, x: u8, gf: *const galois_field) -> 
 unsafe extern "C" fn berlekamp_massey(
     s: *const u8,
     N: i32,
-    gf: *const galois_field,
+    gf: *const GaloisField,
     sigma: *mut u8,
 ) {
     let mut C: [u8; MAX_POLY] = [0u8; MAX_POLY];
@@ -329,7 +329,7 @@ unsafe extern "C" fn eloc_poly(omega: *mut u8, s: *const u8, sigma: *const u8, n
     }
 }
 
-unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -> DecodeResult {
+unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const RsParams) -> DecodeResult {
     let npar: i32 = (*ecc).bs - (*ecc).dw;
     let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
     let mut sigma: [u8; MAX_POLY] = [0u8; MAX_POLY];
@@ -344,7 +344,7 @@ unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -
         berlekamp_massey(
             s.as_mut_ptr() as (*const u8),
             npar,
-            &GF256 as (*const galois_field),
+            &GF256 as (*const GaloisField),
             sigma.as_mut_ptr(),
         );
 
@@ -376,18 +376,18 @@ unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -
             if poly_eval(
                 sigma.as_mut_ptr() as (*const u8),
                 xinv,
-                &GF256 as (*const galois_field),
+                &GF256 as (*const GaloisField),
             ) == 0
             {
                 let sd_x: u8 = poly_eval(
                     sigma_deriv.as_mut_ptr() as (*const u8),
                     xinv,
-                    &GF256 as (*const galois_field),
+                    &GF256 as (*const GaloisField),
                 );
                 let omega_x: u8 = poly_eval(
                     omega.as_mut_ptr() as (*const u8),
                     xinv,
-                    &GF256 as (*const galois_field),
+                    &GF256 as (*const GaloisField),
                 );
                 let error: u8 = GF256_EXP[((255i32 - GF256_LOG[sd_x as (usize)] as (i32)
                     + GF256_LOG[omega_x as (usize)] as (i32))
@@ -461,7 +461,7 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> DecodeResult {
         berlekamp_massey(
             s.as_mut_ptr() as (*const u8),
             FORMAT_SYNDROMES,
-            &GF16 as (*const galois_field),
+            &GF16 as (*const GaloisField),
             sigma.as_mut_ptr(),
         );
 
@@ -474,7 +474,7 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> DecodeResult {
             if poly_eval(
                 sigma.as_mut_ptr() as (*const u8),
                 GF16_EXP[(15i32 - i) as (usize)],
-                &GF16 as (*const galois_field),
+                &GF16 as (*const GaloisField),
             ) == 0
             {
                 u = (u as (i32) ^ 1i32 << i) as (u16);
@@ -496,27 +496,27 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> DecodeResult {
 
 #[derive(Copy)]
 #[repr(C)]
-pub struct datastream {
-    pub raw: [u8; QUIRC_MAX_PAYLOAD],
+pub struct DataStream {
+    pub raw: [u8; MAX_PAYLOAD],
     pub data_bits: i32,
     pub ptr: i32,
-    pub data: [u8; QUIRC_MAX_PAYLOAD],
+    pub data: [u8; MAX_PAYLOAD],
 }
 
-impl Clone for datastream {
+impl Clone for DataStream {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-unsafe extern "C" fn grid_bit(code: *const quirc_code, x: i32, y: i32) -> i32 {
+unsafe extern "C" fn grid_bit(code: *const QuircCode, x: i32, y: i32) -> i32 {
     let p: i32 = y * (*code).size + x;
     (*code).cell_bitmap[(p >> 3i32) as (usize)] as (i32) >> (p & 7i32) & 1i32
 }
 
 unsafe extern "C" fn read_format(
-    code: *const quirc_code,
-    mut data: *mut quirc_data,
+    code: *const QuircCode,
+    mut data: *mut QuircData,
     which: i32,
 ) -> DecodeResult {
     let mut i: i32;
@@ -596,8 +596,7 @@ unsafe extern "C" fn mask_bit(mask: i32, i: i32, j: i32) -> i32 {
 }
 
 unsafe extern "C" fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
-    let ver: *const quirc_version_info =
-        &QUIRC_VERSION_DB[version as (usize)] as (*const quirc_version_info);
+    let ver: *const VersionInfo = &VERSION_DB[version as (usize)] as (*const VersionInfo);
     let size: i32 = version * 4i32 + 17i32;
     let mut ai: i32 = -1i32;
     let mut aj: i32 = -1i32;
@@ -667,9 +666,9 @@ unsafe extern "C" fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
 }
 
 unsafe extern "C" fn read_bit(
-    code: *const quirc_code,
-    data: *mut quirc_data,
-    mut ds: *mut datastream,
+    code: *const QuircCode,
+    data: *mut QuircData,
+    mut ds: *mut DataStream,
     i: i32,
     j: i32,
 ) {
@@ -687,11 +686,7 @@ unsafe extern "C" fn read_bit(
     (*ds).data_bits = (*ds).data_bits + 1;
 }
 
-unsafe extern "C" fn read_data(
-    code: *const quirc_code,
-    data: *mut quirc_data,
-    ds: *mut datastream,
-) {
+unsafe extern "C" fn read_data(code: *const QuircCode, data: *mut QuircData, ds: *mut DataStream) {
     let mut y: i32 = (*code).size - 1i32;
     let mut x: i32 = (*code).size - 1i32;
     let mut dir: i32 = -1i32;
@@ -718,12 +713,10 @@ unsafe extern "C" fn read_data(
     }
 }
 
-unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
-    let ver: *const quirc_version_info =
-        &QUIRC_VERSION_DB[(*data).version as (usize)] as (*const quirc_version_info);
-    let sb_ecc: *const quirc_rs_params =
-        &(*ver).ecc[(*data).ecc_level as (usize)] as (*const quirc_rs_params);
-    let mut lb_ecc: quirc_rs_params;
+unsafe extern "C" fn codestream_ecc(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+    let ver: *const VersionInfo = &VERSION_DB[(*data).version as (usize)] as (*const VersionInfo);
+    let sb_ecc: *const RsParams = &(*ver).ecc[(*data).ecc_level as (usize)] as (*const RsParams);
+    let mut lb_ecc: RsParams;
     let lb_count: i32 = ((*ver).data_bytes - (*sb_ecc).bs * (*sb_ecc).ns) / ((*sb_ecc).bs + 1i32);
     let bc: i32 = lb_count + (*sb_ecc).ns;
     let ecc_offset: i32 = (*sb_ecc).dw * bc + lb_count;
@@ -734,10 +727,10 @@ unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) 
 
     for i in 0..bc {
         let dst: *mut u8 = (*ds).data.as_mut_ptr().offset(dst_offset as (isize));
-        let ecc: *const quirc_rs_params = if i < (*sb_ecc).ns {
+        let ecc: *const RsParams = if i < (*sb_ecc).ns {
             sb_ecc
         } else {
-            &mut lb_ecc as (*mut quirc_rs_params) as (*const quirc_rs_params)
+            &mut lb_ecc as (*mut RsParams) as (*const RsParams)
         };
         let num_ec: i32 = (*ecc).bs - (*ecc).dw;
         let err: DecodeResult;
@@ -762,11 +755,11 @@ unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) 
     DecodeResult::Success
 }
 
-unsafe extern "C" fn bits_remaining(ds: *const datastream) -> i32 {
+unsafe extern "C" fn bits_remaining(ds: *const DataStream) -> i32 {
     (*ds).data_bits - (*ds).ptr
 }
 
-unsafe extern "C" fn take_bits(mut ds: *mut datastream, mut len: i32) -> i32 {
+unsafe extern "C" fn take_bits(mut ds: *mut DataStream, mut len: i32) -> i32 {
     let mut ret: i32 = 0i32;
     'loop1: loop {
         if !(len != 0 && ((*ds).ptr < (*ds).data_bits)) {
@@ -785,14 +778,14 @@ unsafe extern "C" fn take_bits(mut ds: *mut datastream, mut len: i32) -> i32 {
 }
 
 unsafe extern "C" fn numeric_tuple(
-    mut data: *mut quirc_data,
-    ds: *mut datastream,
+    mut data: *mut QuircData,
+    ds: *mut DataStream,
     bits: i32,
     digits: i32,
 ) -> i32 {
     let mut tuple: i32;
     let mut i: i32;
-    if bits_remaining(ds as (*const datastream)) < bits {
+    if bits_remaining(ds as (*const DataStream)) < bits {
         -1i32
     } else {
         tuple = take_bits(ds, bits);
@@ -811,7 +804,7 @@ unsafe extern "C" fn numeric_tuple(
     }
 }
 
-unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
+unsafe extern "C" fn decode_numeric(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
     let mut bits: i32 = 14i32;
     let mut count: i32;
     if (*data).version < 10i32 {
@@ -820,7 +813,7 @@ unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) 
         bits = 12i32;
     }
     count = take_bits(ds, bits);
-    if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
+    if (*data).payload_len + count + 1i32 > MAX_PAYLOAD as i32 {
         return DecodeResult::ErrorDataOverflow;
     }
     while count >= 3 {
@@ -844,14 +837,14 @@ unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) 
 }
 
 unsafe extern "C" fn alpha_tuple(
-    mut data: *mut quirc_data,
-    ds: *mut datastream,
+    mut data: *mut QuircData,
+    ds: *mut DataStream,
     bits: i32,
     digits: i32,
 ) -> i32 {
     let mut tuple: i32;
     let mut i: i32;
-    if bits_remaining(ds as (*const datastream)) < bits {
+    if bits_remaining(ds as (*const DataStream)) < bits {
         -1i32
     } else {
         tuple = take_bits(ds, bits);
@@ -872,7 +865,7 @@ unsafe extern "C" fn alpha_tuple(
     }
 }
 
-unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
+unsafe extern "C" fn decode_alpha(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
     let mut bits: i32 = 13i32;
     let mut count: i32;
     if (*data).version < 10i32 {
@@ -881,7 +874,7 @@ unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) ->
         bits = 11i32;
     }
     count = take_bits(ds, bits);
-    if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
+    if (*data).payload_len + count + 1i32 > MAX_PAYLOAD as i32 {
         return DecodeResult::ErrorDataOverflow;
     }
     while count >= 2 {
@@ -898,7 +891,7 @@ unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) ->
     return DecodeResult::Success;
 }
 
-unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
+unsafe extern "C" fn decode_byte(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
     let mut bits: i32 = 16i32;
     let count: i32;
     let mut i: i32;
@@ -906,9 +899,9 @@ unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream)
         bits = 8i32;
     }
     count = take_bits(ds, bits);
-    if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
+    if (*data).payload_len + count + 1i32 > MAX_PAYLOAD as i32 {
         DecodeResult::ErrorDataOverflow
-    } else if bits_remaining(ds as (*const datastream)) < count * 8i32 {
+    } else if bits_remaining(ds as (*const DataStream)) < count * 8i32 {
         DecodeResult::ErrorDataUnderflow
     } else {
         i = 0i32;
@@ -927,7 +920,7 @@ unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream)
     }
 }
 
-unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
+unsafe extern "C" fn decode_kanji(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
     let mut bits: i32 = 12i32;
     let count: i32;
     let mut i: i32;
@@ -937,9 +930,9 @@ unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream
         bits = 10i32;
     }
     count = take_bits(ds, bits);
-    if (*data).payload_len + count * 2i32 + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
+    if (*data).payload_len + count * 2i32 + 1i32 > MAX_PAYLOAD as i32 {
         DecodeResult::ErrorDataOverflow
-    } else if bits_remaining(ds as (*const datastream)) < count * 13i32 {
+    } else if bits_remaining(ds as (*const DataStream)) < count * 13i32 {
         DecodeResult::ErrorDataUnderflow
     } else {
         i = 0i32;
@@ -975,19 +968,19 @@ unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream
     }
 }
 
-unsafe extern "C" fn decode_eci(mut data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
-    if bits_remaining(ds as (*const datastream)) < 8i32 {
+unsafe extern "C" fn decode_eci(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+    if bits_remaining(ds as (*const DataStream)) < 8i32 {
         DecodeResult::ErrorDataUnderflow
     } else {
         (*data).eci = take_bits(ds, 8i32) as (u32);
         if (*data).eci & 0xc0u32 == 0x80u32 {
-            if bits_remaining(ds as (*const datastream)) < 8i32 {
+            if bits_remaining(ds as (*const DataStream)) < 8i32 {
                 return DecodeResult::ErrorDataUnderflow;
             } else {
                 (*data).eci = (*data).eci << 8i32 | take_bits(ds, 8i32) as (u32);
             }
         } else if (*data).eci & 0xe0u32 == 0xc0u32 {
-            if bits_remaining(ds as (*const datastream)) < 16i32 {
+            if bits_remaining(ds as (*const DataStream)) < 16i32 {
                 return DecodeResult::ErrorDataUnderflow;
             } else {
                 (*data).eci = (*data).eci << 16i32 | take_bits(ds, 16i32) as (u32);
@@ -997,17 +990,14 @@ unsafe extern "C" fn decode_eci(mut data: *mut quirc_data, ds: *mut datastream) 
     }
 }
 
-unsafe extern "C" fn decode_payload(
-    mut data: *mut quirc_data,
-    ds: *mut datastream,
-) -> DecodeResult {
-    while bits_remaining(ds as (*const datastream)) >= 4i32 {
+unsafe extern "C" fn decode_payload(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+    while bits_remaining(ds as (*const DataStream)) >= 4i32 {
         let type_: i32 = take_bits(ds, 4i32);
         let err = match type_ {
-            QUIRC_DATA_TYPE_NUMERIC => decode_numeric(data, ds),
-            QUIRC_DATA_TYPE_ALPHA => decode_alpha(data, ds),
-            QUIRC_DATA_TYPE_BYTE => decode_byte(data, ds),
-            QUIRC_DATA_TYPE_KANJI => decode_kanji(data, ds),
+            DATA_TYPE_NUMERIC => decode_numeric(data, ds),
+            DATA_TYPE_ALPHA => decode_alpha(data, ds),
+            DATA_TYPE_BYTE => decode_byte(data, ds),
+            DATA_TYPE_KANJI => decode_kanji(data, ds),
             7 => decode_eci(data, ds),
             _ => break,
         };
@@ -1031,15 +1021,15 @@ unsafe extern "C" fn decode_payload(
 
 /// Decode a QR-code, returning the payload data.
 pub unsafe extern "C" fn quirc_decode(
-    code: *const quirc_code,
-    mut data: *mut quirc_data,
+    code: *const QuircCode,
+    mut data: *mut QuircData,
 ) -> DecodeResult {
     let mut err: DecodeResult;
-    let mut ds: datastream = datastream {
-        raw: [0u8; QUIRC_MAX_PAYLOAD],
+    let mut ds: DataStream = DataStream {
+        raw: [0u8; MAX_PAYLOAD],
         data_bits: 0,
         ptr: 0,
-        data: [0u8; QUIRC_MAX_PAYLOAD],
+        data: [0u8; MAX_PAYLOAD],
     };
     if ((*code).size - 17i32) % 4i32 != 0 {
         DecodeResult::ErrorInvalidGridSize
@@ -1047,7 +1037,7 @@ pub unsafe extern "C" fn quirc_decode(
         memset(
             data as (*mut ::std::os::raw::c_void),
             0i32,
-            ::std::mem::size_of::<quirc_data>(),
+            ::std::mem::size_of::<QuircData>(),
         );
         (*data).version = ((*code).size - 17i32) / 4i32;
         (if (*data).version < 1i32 || (*data).version > QUIRC_MAX_VERSION as i32 {
@@ -1061,12 +1051,12 @@ pub unsafe extern "C" fn quirc_decode(
             (if err != DecodeResult::Success {
                 err
             } else {
-                read_data(code, data, &mut ds as (*mut datastream));
-                err = codestream_ecc(data, &mut ds as (*mut datastream));
+                read_data(code, data, &mut ds as (*mut DataStream));
+                err = codestream_ecc(data, &mut ds as (*mut DataStream));
                 (if err != DecodeResult::Success {
                     err
                 } else {
-                    err = decode_payload(data, &mut ds as (*mut datastream));
+                    err = decode_payload(data, &mut ds as (*mut DataStream));
                     (if err != DecodeResult::Success {
                         err
                     } else {

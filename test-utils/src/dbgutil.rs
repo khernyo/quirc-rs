@@ -28,13 +28,13 @@ use quirc_rs::quirc::*;
 use quirc_wrapper as qw;
 
 unsafe extern "C" fn data_type_str(dt: i32) -> &'static str {
-    if dt == QUIRC_DATA_TYPE_KANJI {
+    if dt == DATA_TYPE_KANJI {
         "KANJI"
-    } else if dt == QUIRC_DATA_TYPE_BYTE {
+    } else if dt == DATA_TYPE_BYTE {
         "BYTE"
-    } else if dt == QUIRC_DATA_TYPE_ALPHA {
+    } else if dt == DATA_TYPE_ALPHA {
         "ALPHA"
-    } else if dt == QUIRC_DATA_TYPE_NUMERIC {
+    } else if dt == DATA_TYPE_NUMERIC {
         "NUMERIC"
     } else {
         "unknown"
@@ -42,7 +42,7 @@ unsafe extern "C" fn data_type_str(dt: i32) -> &'static str {
 }
 
 /// Dump decoded information on stdout.
-pub unsafe extern "C" fn dump_data(data: *mut quirc_data) {
+pub unsafe extern "C" fn dump_data(data: *mut QuircData) {
     println!("    Version: {}", (*data).version);
     println!(
         "    ECC level: {}",
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn dump_data(data: *mut quirc_data) {
 }
 
 /// Dump a grid cell map on stdout.
-pub unsafe extern "C" fn dump_cells(code: *const quirc_code) {
+pub unsafe extern "C" fn dump_cells(code: *const QuircCode) {
     let mut u: i32;
     let mut v: i32;
     print!("    {} cells, corners:", (*code).size);
@@ -112,7 +112,7 @@ pub unsafe extern "C" fn dump_cells(code: *const quirc_code) {
 ///
 /// Note that you must call quirc_end() if the function returns
 /// successfully (0).
-pub unsafe fn load_image(q: *mut quirc, path: &Path) -> i32 {
+pub unsafe fn load_image(q: *mut Quirc, path: &Path) -> i32 {
     let img = image::open(path).unwrap().grayscale().to_luma();
     let (width, height) = img.dimensions();
 
@@ -136,7 +136,7 @@ pub unsafe fn load_image(q: *mut quirc, path: &Path) -> i32 {
     -1i32
 }
 
-pub unsafe fn validate(decoder: *mut quirc, image: *const c_void) {
+pub unsafe fn validate(decoder: *mut Quirc, image: *const c_void) {
     let qw_decoder: *mut qw::quirc = qw::quirc_new();
     assert!(qw::quirc_resize(qw_decoder, (*decoder).w, (*decoder).h) >= 0);
     let image_bytes = qw::quirc_begin(
@@ -209,9 +209,9 @@ pub unsafe fn validate(decoder: *mut quirc, image: *const c_void) {
     assert_eq!(id_count, qw::quirc_count(qw_decoder));
 
     for i in 0..id_count {
-        let mut code: quirc_code = std::mem::uninitialized();
+        let mut code: QuircCode = std::mem::uninitialized();
         let decode_result;
-        let mut data: quirc_data = std::mem::uninitialized();
+        let mut data: QuircData = std::mem::uninitialized();
         quirc_extract(decoder, i, &mut code);
         decode_result = quirc_decode(&code, &mut data);
 

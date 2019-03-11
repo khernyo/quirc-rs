@@ -42,8 +42,8 @@ extern "C" {
     fn rint(x: c_double) -> c_double;
 }
 
-unsafe extern "C" fn dump_info(q: *mut quirc) {
-    let count: i32 = quirc_count(q as (*const quirc));
+unsafe extern "C" fn dump_info(q: *mut Quirc) {
+    let count: i32 = quirc_count(q as (*const Quirc));
     let mut i: i32;
     println!("{} QR-codes found:\n", count);
     i = 0i32;
@@ -51,21 +51,21 @@ unsafe extern "C" fn dump_info(q: *mut quirc) {
         if !(i < count) {
             break;
         }
-        let mut code: quirc_code = std::mem::uninitialized();
-        let mut data: quirc_data = std::mem::uninitialized();
+        let mut code: QuircCode = std::mem::uninitialized();
+        let mut data: QuircData = std::mem::uninitialized();
         let err: DecodeResult;
-        quirc_extract(q as (*mut quirc), i, &mut code as (*mut quirc_code));
+        quirc_extract(q as (*mut Quirc), i, &mut code as (*mut QuircCode));
         err = quirc_decode(
-            &mut code as (*mut quirc_code) as (*const quirc_code),
-            &mut data as (*mut quirc_data),
+            &mut code as (*mut QuircCode) as (*const QuircCode),
+            &mut data as (*mut QuircData),
         );
-        dump_cells(&mut code as (*mut quirc_code) as (*const quirc_code));
+        dump_cells(&mut code as (*mut QuircCode) as (*const QuircCode));
         println!();
         if err != DecodeResult::Success {
             println!("  Decoding FAILED: {}", quirc_strerror(err));
         } else {
             println!("  Decoding successful:");
-            dump_data(&mut data as (*mut quirc_data));
+            dump_data(&mut data as (*mut QuircData));
         }
         println!();
         i = i + 1;
@@ -105,7 +105,7 @@ unsafe fn string_color(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, col
     canvas.copy(&tex, None, None).unwrap();
 }
 
-unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: *mut quirc) {
+unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: *mut Quirc) {
     let mut raw: *mut u8 = (*q).image;
 
     for y in 0..(*q).h {
@@ -115,10 +115,10 @@ unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: *mut quirc) {
                 raw = raw.offset(1isize);
                 _old
             };
-            let reg: *mut quirc_region = &mut (*q).regions[v as (usize)] as (*mut quirc_region);
+            let reg: *mut Region = &mut (*q).regions[v as (usize)] as (*mut Region);
             let color = match v as (i32) {
-                QUIRC_PIXEL_BLACK => Color::RGB(0, 0, 0),
-                QUIRC_PIXEL_WHITE => Color::RGB(0xff, 0xff, 0xff),
+                PIXEL_BLACK => Color::RGB(0, 0, 0),
+                PIXEL_WHITE => Color::RGB(0xff, 0xff, 0xff),
                 _ => {
                     if (*reg).capstone >= 0i32 {
                         Color::RGB(0, 0x80, 0)
@@ -154,12 +154,11 @@ unsafe extern "C" fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     pixel_color(canvas, x as (i16), (y - 1i32) as (i16), red);
 }
 
-unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: *mut quirc, index: i32) {
-    let cap: *mut quirc_capstone = &mut (*q).capstones[index as (usize)] as (*mut quirc_capstone);
+unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: *mut Quirc, index: i32) {
+    let cap: *mut Capstone = &mut (*q).capstones[index as (usize)] as (*mut Capstone);
     for j in 0..4 {
-        let p0: *mut quirc_point = &mut (*cap).corners[j as (usize)] as (*mut quirc_point);
-        let p1: *mut quirc_point =
-            &mut (*cap).corners[((j + 1i32) % 4i32) as (usize)] as (*mut quirc_point);
+        let p0: *mut Point = &mut (*cap).corners[j as (usize)] as (*mut Point);
+        let p1: *mut Point = &mut (*cap).corners[((j + 1i32) % 4i32) as (usize)] as (*mut Point);
         line_color(
             canvas,
             (*p0).x as (i16),
@@ -182,7 +181,7 @@ unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: *mut quirc, i
     }
 }
 
-unsafe extern "C" fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mut quirc_point) {
+unsafe extern "C" fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mut Point) {
     let den: f64 = *c.offset(6isize) * u + *c.offset(7isize) * v + 1.0f64;
     let x: f64 = (*c.offset(0isize) * u + *c.offset(1isize) * v + *c.offset(2isize)) / den;
     let y: f64 = (*c.offset(3isize) * u + *c.offset(4isize) * v + *c.offset(5isize)) / den;
@@ -191,11 +190,11 @@ unsafe extern "C" fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mu
     (*ret).y = rint(y) as i32;
 }
 
-unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: *mut quirc, index: i32) {
-    let qr: *mut quirc_grid = &mut (*q).grids[index as (usize)] as (*mut quirc_grid);
+unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: *mut Quirc, index: i32) {
+    let qr: *mut Grid = &mut (*q).grids[index as (usize)] as (*mut Grid);
     for i in 0..3 {
-        let cap: *mut quirc_capstone =
-            &mut (*q).capstones[(*qr).caps[i as (usize)] as (usize)] as (*mut quirc_capstone);
+        let cap: *mut Capstone =
+            &mut (*q).capstones[(*qr).caps[i as (usize)] as (usize)] as (*mut Capstone);
         let s = format!("{}.{}", index, "ABC".chars().nth(i).unwrap());
         string_color(
             canvas,
@@ -228,19 +227,19 @@ unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: *mut quirc, index
         for x in 0..(*qr).grid_size {
             let u: f64 = x as (f64) + 0.5f64;
             let v: f64 = y as (f64) + 0.5f64;
-            let mut p: quirc_point = std::mem::uninitialized();
+            let mut p: Point = std::mem::uninitialized();
             perspective_map(
                 (*qr).c.as_mut_ptr() as (*const f64),
                 u,
                 v,
-                &mut p as (*mut quirc_point),
+                &mut p as (*mut Point),
             );
             draw_mark(canvas, p.x, p.y);
         }
     }
 }
 
-unsafe extern "C" fn sdl_examine(q: *mut quirc) -> i32 {
+unsafe extern "C" fn sdl_examine(q: *mut Quirc) -> i32 {
     let sdl_context = sdl2::init().unwrap();
 
     let video_subsystem = sdl_context.video().unwrap();
@@ -295,8 +294,8 @@ pub unsafe extern "C" fn _c_main() -> i32 {
     let matches = args.get_matches();
     let path = matches.value_of(paths_arg_name).unwrap();
 
-    let q: *mut quirc;
-    q = quirc_new() as (*mut quirc);
+    let q: *mut Quirc;
+    q = quirc_new() as (*mut Quirc);
     if q.is_null() {
         perror((*b"can\'t create quirc object\0").as_ptr() as *const c_char);
         -1i32
@@ -304,16 +303,16 @@ pub unsafe extern "C" fn _c_main() -> i32 {
         let status: i32;
         status = load_image(q, &Path::new(path));
         (if status < 0i32 {
-            quirc_destroy(q as (*mut quirc));
+            quirc_destroy(q as (*mut Quirc));
             -1i32
         } else {
-            quirc_end(q as (*mut quirc));
+            quirc_end(q as (*mut Quirc));
             dump_info(q);
             (if sdl_examine(q) < 0i32 {
-                quirc_destroy(q as (*mut quirc));
+                quirc_destroy(q as (*mut Quirc));
                 -1i32
             } else {
-                quirc_destroy(q as (*mut quirc));
+                quirc_destroy(q as (*mut Quirc));
                 0i32
             })
         })
