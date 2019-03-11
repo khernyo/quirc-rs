@@ -151,7 +151,7 @@ pub unsafe extern fn scan_file(
             if quirc_decode(
                    &mut code as (*mut quirc_code) as (*const quirc_code),
                    &mut data as (*mut quirc_data)
-               ) == Enum1::QUIRC_SUCCESS {
+               ) == QuircDecodeResult::QUIRC_SUCCESS {
                 (*info).decode_count = (*info).decode_count + 1;
             }
         }
@@ -185,12 +185,12 @@ pub unsafe extern fn scan_file(
                 if WANT_VERBOSE {
                     let mut data : quirc_data = std::mem::uninitialized();
                     let err
-                        : Enum1
+                        : QuircDecodeResult
                         = quirc_decode(
                               &mut code as (*mut quirc_code) as (*const quirc_code),
                               &mut data as (*mut quirc_data)
                           );
-                    if err != Enum1::QUIRC_SUCCESS {
+                    if err != QuircDecodeResult::QUIRC_SUCCESS {
                         println!("  ERROR: {}", quirc_strerror(err));
                         println!();
                     } else {

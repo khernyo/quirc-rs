@@ -55,7 +55,7 @@ unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Dat
         if quirc_decode(
             &mut code as (*mut quirc_code) as (*const quirc_code),
             &mut data as (*mut quirc_data)
-        ) == Enum1::QUIRC_SUCCESS {
+        ) == QuircDecodeResult::QUIRC_SUCCESS {
             Some(Data::new(data.version, data.data_type, data.ecc_level, data.eci, data.mask, String::from_utf8(data.payload[0..data.payload_len as usize].to_vec()).unwrap()))
         } else {
             None

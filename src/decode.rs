@@ -339,7 +339,7 @@ unsafe extern "C" fn eloc_poly(
     }
 }
 
-unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -> Enum1 {
+unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -> QuircDecodeResult {
     let npar: i32 = (*ecc).bs - (*ecc).dw;
     let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
     let mut sigma: [u8; MAX_POLY] = [0u8; MAX_POLY];
@@ -349,7 +349,7 @@ unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -
 
     /* Compute syndrome vector */
     if block_syndromes(data as (*const u8), (*ecc).bs, npar, s.as_mut_ptr()) == 0 {
-        Enum1::QUIRC_SUCCESS
+        QuircDecodeResult::QUIRC_SUCCESS
     } else {
         berlekamp_massey(
             s.as_mut_ptr() as (*const u8),
@@ -409,9 +409,9 @@ unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -
             i = i + 1;
         }
         (if block_syndromes(data as (*const u8), (*ecc).bs, npar, s.as_mut_ptr()) != 0 {
-            Enum1::QUIRC_ERROR_DATA_ECC
+            QuircDecodeResult::QUIRC_ERROR_DATA_ECC
         } else {
-            Enum1::QUIRC_SUCCESS
+            QuircDecodeResult::QUIRC_SUCCESS
         })
     }
 }
@@ -457,7 +457,7 @@ unsafe extern "C" fn format_syndromes(u: u16, s: *mut u8) -> i32 {
     nonzero
 }
 
-unsafe extern "C" fn correct_format(f_ret: *mut u16) -> Enum1 {
+unsafe extern "C" fn correct_format(f_ret: *mut u16) -> QuircDecodeResult {
     let mut u: u16 = *f_ret;
     let mut i: i32;
     let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
@@ -466,7 +466,7 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> Enum1 {
     // Evaluate U (received codeword) at each of alpha_1 .. alpha_6
     // to get S_1 .. S_6 (but we index them from 0).
     if format_syndromes(u, s.as_mut_ptr()) == 0 {
-        Enum1::QUIRC_SUCCESS
+        QuircDecodeResult::QUIRC_SUCCESS
     } else {
         berlekamp_massey(
             s.as_mut_ptr() as (*const u8),
@@ -492,10 +492,10 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> Enum1 {
             i = i + 1;
         }
         (if format_syndromes(u, s.as_mut_ptr()) != 0 {
-            Enum1::QUIRC_ERROR_FORMAT_ECC
+            QuircDecodeResult::QUIRC_ERROR_FORMAT_ECC
         } else {
             *f_ret = u;
-            Enum1::QUIRC_SUCCESS
+            QuircDecodeResult::QUIRC_SUCCESS
         })
     }
 }
@@ -528,11 +528,11 @@ unsafe extern "C" fn read_format(
     code: *const quirc_code,
     mut data: *mut quirc_data,
     which: i32,
-) -> Enum1 {
+) -> QuircDecodeResult {
     let mut i: i32;
     let mut format: u16 = 0u16;
     let fdata: u16;
-    let err: Enum1;
+    let err: QuircDecodeResult;
     if which != 0 {
         i = 0i32;
         'loop6: loop {
@@ -573,13 +573,13 @@ unsafe extern "C" fn read_format(
     }
     format = (format as (i32) ^ 0x5412i32) as (u16);
     err = correct_format(&mut format as (*mut u16));
-    if err != Enum1::QUIRC_SUCCESS {
+    if err != QuircDecodeResult::QUIRC_SUCCESS {
         err
     } else {
         fdata = (format as (i32) >> 10i32) as (u16);
         (*data).ecc_level = fdata as (i32) >> 3i32;
         (*data).mask = fdata as (i32) & 7i32;
-        Enum1::QUIRC_SUCCESS
+        QuircDecodeResult::QUIRC_SUCCESS
     }
 }
 
@@ -728,7 +728,7 @@ unsafe extern "C" fn read_data(
     }
 }
 
-unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
     let ver: *const quirc_version_info =
         &quirc_version_db[(*data).version as (usize)] as (*const quirc_version_info);
     let sb_ecc: *const quirc_rs_params =
@@ -750,7 +750,7 @@ unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) 
             &mut lb_ecc as (*mut quirc_rs_params) as (*const quirc_rs_params)
         };
         let num_ec: i32 = (*ecc).bs - (*ecc).dw;
-        let err: Enum1;
+        let err: QuircDecodeResult;
 
         for j in 0..(*ecc).dw {
             *dst.offset(j as (isize)) = (*ds).raw[(j * bc + i) as (usize)];
@@ -761,7 +761,7 @@ unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) 
         }
 
         err = correct_block(dst, ecc);
-        if err != Enum1::QUIRC_SUCCESS {
+        if err != QuircDecodeResult::QUIRC_SUCCESS {
             return err;
         }
 
@@ -769,7 +769,7 @@ unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) 
     }
 
     (*ds).data_bits = dst_offset * 8i32;
-    Enum1::QUIRC_SUCCESS
+    QuircDecodeResult::QUIRC_SUCCESS
 }
 
 unsafe extern "C" fn bits_remaining(ds: *const datastream) -> i32 {
@@ -821,7 +821,7 @@ unsafe extern "C" fn numeric_tuple(
     }
 }
 
-unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
     let mut bits: i32 = 14i32;
     let mut count: i32;
     if (*data).version < 10i32 {
@@ -831,26 +831,26 @@ unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) 
     }
     count = take_bits(ds, bits);
     if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
-        return Enum1::QUIRC_ERROR_DATA_OVERFLOW;
+        return QuircDecodeResult::QUIRC_ERROR_DATA_OVERFLOW;
     }
     while count >= 3 {
         if numeric_tuple(data, ds, 10i32, 3i32) < 0i32 {
-            return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
+            return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
         }
         count = count - 3i32;
     }
     if count >= 2i32 {
         if numeric_tuple(data, ds, 7i32, 2i32) < 0i32 {
-            return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
+            return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
         }
         count = count - 2i32;
     }
     if count != 0 {
         if numeric_tuple(data, ds, 4i32, 1i32) < 0i32 {
-            return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
+            return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
         }
     }
-    return Enum1::QUIRC_SUCCESS;
+    return QuircDecodeResult::QUIRC_SUCCESS;
 }
 
 unsafe extern "C" fn alpha_tuple(
@@ -882,7 +882,7 @@ unsafe extern "C" fn alpha_tuple(
     }
 }
 
-unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
     let mut bits: i32 = 13i32;
     let mut count: i32;
     if (*data).version < 10i32 {
@@ -892,23 +892,23 @@ unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) ->
     }
     count = take_bits(ds, bits);
     if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
-        return Enum1::QUIRC_ERROR_DATA_OVERFLOW;
+        return QuircDecodeResult::QUIRC_ERROR_DATA_OVERFLOW;
     }
     while count >= 2 {
         if alpha_tuple(data, ds, 11i32, 2i32) < 0i32 {
-            return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
+            return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
         }
         count = count - 2i32;
     }
     if count != 0 {
         if alpha_tuple(data, ds, 6i32, 1i32) < 0i32 {
-            return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
+            return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
         }
     }
-    return Enum1::QUIRC_SUCCESS;
+    return QuircDecodeResult::QUIRC_SUCCESS;
 }
 
-unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
     let mut bits: i32 = 16i32;
     let count: i32;
     let mut i: i32;
@@ -917,9 +917,9 @@ unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream)
     }
     count = take_bits(ds, bits);
     if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
-        Enum1::QUIRC_ERROR_DATA_OVERFLOW
+        QuircDecodeResult::QUIRC_ERROR_DATA_OVERFLOW
     } else if bits_remaining(ds as (*const datastream)) < count * 8i32 {
-        Enum1::QUIRC_ERROR_DATA_UNDERFLOW
+        QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW
     } else {
         i = 0i32;
         'loop5: loop {
@@ -933,11 +933,11 @@ unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream)
             } as (usize)] = take_bits(ds, 8i32) as (u8);
             i = i + 1;
         }
-        Enum1::QUIRC_SUCCESS
+        QuircDecodeResult::QUIRC_SUCCESS
     }
 }
 
-unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
     let mut bits: i32 = 12i32;
     let count: i32;
     let mut i: i32;
@@ -948,9 +948,9 @@ unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream
     }
     count = take_bits(ds, bits);
     if (*data).payload_len + count * 2i32 + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
-        Enum1::QUIRC_ERROR_DATA_OVERFLOW
+        QuircDecodeResult::QUIRC_ERROR_DATA_OVERFLOW
     } else if bits_remaining(ds as (*const datastream)) < count * 13i32 {
-        Enum1::QUIRC_ERROR_DATA_UNDERFLOW
+        QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW
     } else {
         i = 0i32;
         'loop7: loop {
@@ -981,35 +981,35 @@ unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream
             } as (usize)] = (sjw as (i32) & 0xffi32) as (u8);
             i = i + 1;
         }
-        Enum1::QUIRC_SUCCESS
+        QuircDecodeResult::QUIRC_SUCCESS
     }
 }
 
-unsafe extern "C" fn decode_eci(mut data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_eci(mut data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
     if bits_remaining(ds as (*const datastream)) < 8i32 {
-        Enum1::QUIRC_ERROR_DATA_UNDERFLOW
+        QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW
     } else {
         (*data).eci = take_bits(ds, 8i32) as (u32);
         if (*data).eci & 0xc0u32 == 0x80u32 {
             if bits_remaining(ds as (*const datastream)) < 8i32 {
-                return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
+                return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
             } else {
                 (*data).eci = (*data).eci << 8i32 | take_bits(ds, 8i32) as (u32);
             }
         } else if (*data).eci & 0xe0u32 == 0xc0u32 {
             if bits_remaining(ds as (*const datastream)) < 16i32 {
-                return Enum1::QUIRC_ERROR_DATA_UNDERFLOW;
+                return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
             } else {
                 (*data).eci = (*data).eci << 16i32 | take_bits(ds, 16i32) as (u32);
             }
         }
-        Enum1::QUIRC_SUCCESS
+        QuircDecodeResult::QUIRC_SUCCESS
     }
 }
 
-unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, ds: *mut datastream) -> Enum1 {
+unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
     let mut _currentBlock;
-    let mut err: Enum1 = Enum1::QUIRC_SUCCESS;
+    let mut err: QuircDecodeResult = QuircDecodeResult::QUIRC_SUCCESS;
     'loop0: loop {
         if !(bits_remaining(ds as (*const datastream)) >= 4i32) {
             _currentBlock = 7;
@@ -1031,7 +1031,7 @@ unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, ds: *mut datastre
             }
             err = decode_numeric(data, ds);
         }
-        if err != Enum1::QUIRC_SUCCESS {
+        if err != QuircDecodeResult::QUIRC_SUCCESS {
             _currentBlock = 18;
             break;
         }
@@ -1046,7 +1046,7 @@ unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, ds: *mut datastre
             (*data).payload_len = (*data).payload_len - 1;
         }
         (*data).payload[(*data).payload_len as (usize)] = 0u8;
-        Enum1::QUIRC_SUCCESS
+        QuircDecodeResult::QUIRC_SUCCESS
     } else {
         err
     }
@@ -1056,8 +1056,8 @@ unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, ds: *mut datastre
 pub unsafe extern "C" fn quirc_decode(
     code: *const quirc_code,
     mut data: *mut quirc_data,
-) -> Enum1 {
-    let mut err: Enum1;
+) -> QuircDecodeResult {
+    let mut err: QuircDecodeResult;
     let mut ds: datastream = datastream {
         raw: [0u8; QUIRC_MAX_PAYLOAD],
         data_bits: 0,
@@ -1065,7 +1065,7 @@ pub unsafe extern "C" fn quirc_decode(
         data: [0u8; QUIRC_MAX_PAYLOAD],
     };
     if ((*code).size - 17i32) % 4i32 != 0 {
-        Enum1::QUIRC_ERROR_INVALID_GRID_SIZE
+        QuircDecodeResult::QUIRC_ERROR_INVALID_GRID_SIZE
     } else {
         memset(
             data as (*mut ::std::os::raw::c_void),
@@ -1074,26 +1074,26 @@ pub unsafe extern "C" fn quirc_decode(
         );
         (*data).version = ((*code).size - 17i32) / 4i32;
         (if (*data).version < 1i32 || (*data).version > QUIRC_MAX_VERSION as i32 {
-            Enum1::QUIRC_ERROR_INVALID_VERSION
+            QuircDecodeResult::QUIRC_ERROR_INVALID_VERSION
         } else {
             // Read format information -- try both locations
             err = read_format(code, data, 0i32);
-            if err != Enum1::QUIRC_SUCCESS {
+            if err != QuircDecodeResult::QUIRC_SUCCESS {
                 err = read_format(code, data, 1i32);
             }
-            (if err != Enum1::QUIRC_SUCCESS {
+            (if err != QuircDecodeResult::QUIRC_SUCCESS {
                 err
             } else {
                 read_data(code, data, &mut ds as (*mut datastream));
                 err = codestream_ecc(data, &mut ds as (*mut datastream));
-                (if err != Enum1::QUIRC_SUCCESS {
+                (if err != QuircDecodeResult::QUIRC_SUCCESS {
                     err
                 } else {
                     err = decode_payload(data, &mut ds as (*mut datastream));
-                    (if err != Enum1::QUIRC_SUCCESS {
+                    (if err != QuircDecodeResult::QUIRC_SUCCESS {
                         err
                     } else {
-                        Enum1::QUIRC_SUCCESS
+                        QuircDecodeResult::QUIRC_SUCCESS
                     })
                 })
             })

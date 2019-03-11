@@ -56,7 +56,7 @@ unsafe extern fn dump_info(q : *mut quirc) {
         }
         let mut code : quirc_code = std::mem::uninitialized();
         let mut data : quirc_data = std::mem::uninitialized();
-        let err : Enum1;
+        let err : QuircDecodeResult;
         quirc_extract(
             q as (*mut quirc),
             i,
@@ -68,7 +68,7 @@ unsafe extern fn dump_info(q : *mut quirc) {
               );
         dump_cells(&mut code as (*mut quirc_code) as (*const quirc_code));
         printf((*b"\n\0").as_ptr() as *const c_char);
-        if err != Enum1::QUIRC_SUCCESS {
+        if err != QuircDecodeResult::QUIRC_SUCCESS {
             println!("  Decoding FAILED: {}", quirc_strerror(err));
         } else {
             printf((*b"  Decoding successful:\n\0").as_ptr() as *const c_char);
