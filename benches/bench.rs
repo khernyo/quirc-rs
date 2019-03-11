@@ -187,47 +187,47 @@ bench!(
     "QRcode_-_De_Verdieping_van_Nederland_(4).JPG"
 );
 bench!(
-    bench_image_16,
+    bench_image_15,
     bench_image_15_original,
     "QR_code_for_QRpedia.png"
 );
 bench!(
-    bench_image_17,
+    bench_image_16,
     bench_image_16_original,
     "QR_Code,_Museum_für_Hamburgische_Geschichte_IMG_1607_original.jpg"
 );
 bench!(
-    bench_image_18,
+    bench_image_17,
     bench_image_17_original,
     "QR-code-Open-research.png"
 );
 bench!(
-    bench_image_19,
+    bench_image_18,
     bench_image_18_original,
     "QR-Code_so_nicht.jpg"
 );
 bench!(
-    bench_image_20,
+    bench_image_19,
     bench_image_19_original,
     "Qr-code-ver-10.png"
 );
 bench!(
-    bench_image_21,
+    bench_image_20,
     bench_image_20_original,
     "Qrcode_wikipedia_fr_v2clean.png"
 );
 bench!(
-    bench_image_22,
+    bench_image_21,
     bench_image_21_original,
     "QRpedia_code_for_Ohrenqualle_at_Phyletisches_Museum_-_IMAG6096.jpg"
 );
 bench!(
-    bench_image_23,
+    bench_image_22,
     bench_image_22_original,
     "QRpedia_Infotafel,_Bauhof_am_Deichtor,_MHG,_Hamburg,_Deutschland_IMG_5461_edit.jpg"
 );
 bench!(
-    bench_image_24,
+    bench_image_23,
     bench_image_23_original,
     "Sk.wikipedia.org_QR_Code.png"
 );
