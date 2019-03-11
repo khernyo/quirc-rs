@@ -68,10 +68,7 @@ unsafe extern fn dump_info(q : *mut quirc) {
         dump_cells(&mut code as (*mut quirc_code) as (*const quirc_code));
         printf((*b"\n\0").as_ptr() as *const c_char);
         if err != Enum1::QUIRC_SUCCESS {
-            printf(
-                (*b"  Decoding FAILED: %s\n\0").as_ptr() as *const c_char,
-                quirc_strerror(err)
-            );
+            println!("  Decoding FAILED: {}", quirc_strerror(err));
         } else {
             printf((*b"  Decoding successful:\n\0").as_ptr() as *const c_char);
             dump_data(&mut data as (*mut quirc_data));
