@@ -63,7 +63,7 @@ unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Dat
             if quirc_decode(
                 &mut code as (*mut quirc_code) as (*const quirc_code),
                 &mut data as (*mut quirc_data),
-            ) == QuircDecodeResult::QUIRC_SUCCESS
+            ) == DecodeResult::Success
             {
                 Some(Data::new(
                     data.version,

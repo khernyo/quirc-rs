@@ -147,7 +147,7 @@ pub unsafe extern "C" fn perspective_unmap(
 
 const FLOOD_FILL_MAX_DEPTH: i32 = 4096;
 
-type span_func_t =
+type SpanFunc =
     unsafe extern "C" fn(user_data: *mut ::std::os::raw::c_void, y: i32, left: i32, right: i32);
 
 /// Span-based floodfill routine
@@ -157,7 +157,7 @@ pub unsafe extern "C" fn flood_fill_seed(
     y: i32,
     from: i32,
     to: i32,
-    func: Option<span_func_t>,
+    func: Option<SpanFunc>,
     user_data: *mut ::std::os::raw::c_void,
     depth: i32,
 ) {

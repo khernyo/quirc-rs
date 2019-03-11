@@ -329,10 +329,7 @@ unsafe extern "C" fn eloc_poly(omega: *mut u8, s: *const u8, sigma: *const u8, n
     }
 }
 
-unsafe extern "C" fn correct_block(
-    data: *mut u8,
-    ecc: *const quirc_rs_params,
-) -> QuircDecodeResult {
+unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -> DecodeResult {
     let npar: i32 = (*ecc).bs - (*ecc).dw;
     let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
     let mut sigma: [u8; MAX_POLY] = [0u8; MAX_POLY];
@@ -342,7 +339,7 @@ unsafe extern "C" fn correct_block(
 
     /* Compute syndrome vector */
     if block_syndromes(data as (*const u8), (*ecc).bs, npar, s.as_mut_ptr()) == 0 {
-        QuircDecodeResult::QUIRC_SUCCESS
+        DecodeResult::Success
     } else {
         berlekamp_massey(
             s.as_mut_ptr() as (*const u8),
@@ -402,9 +399,9 @@ unsafe extern "C" fn correct_block(
             i = i + 1;
         }
         (if block_syndromes(data as (*const u8), (*ecc).bs, npar, s.as_mut_ptr()) != 0 {
-            QuircDecodeResult::QUIRC_ERROR_DATA_ECC
+            DecodeResult::ErrorDataEcc
         } else {
-            QuircDecodeResult::QUIRC_SUCCESS
+            DecodeResult::Success
         })
     }
 }
@@ -450,7 +447,7 @@ unsafe extern "C" fn format_syndromes(u: u16, s: *mut u8) -> i32 {
     nonzero
 }
 
-unsafe extern "C" fn correct_format(f_ret: *mut u16) -> QuircDecodeResult {
+unsafe extern "C" fn correct_format(f_ret: *mut u16) -> DecodeResult {
     let mut u: u16 = *f_ret;
     let mut i: i32;
     let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
@@ -459,7 +456,7 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> QuircDecodeResult {
     // Evaluate U (received codeword) at each of alpha_1 .. alpha_6
     // to get S_1 .. S_6 (but we index them from 0).
     if format_syndromes(u, s.as_mut_ptr()) == 0 {
-        QuircDecodeResult::QUIRC_SUCCESS
+        DecodeResult::Success
     } else {
         berlekamp_massey(
             s.as_mut_ptr() as (*const u8),
@@ -485,10 +482,10 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> QuircDecodeResult {
             i = i + 1;
         }
         (if format_syndromes(u, s.as_mut_ptr()) != 0 {
-            QuircDecodeResult::QUIRC_ERROR_FORMAT_ECC
+            DecodeResult::ErrorFormatEcc
         } else {
             *f_ret = u;
-            QuircDecodeResult::QUIRC_SUCCESS
+            DecodeResult::Success
         })
     }
 }
@@ -521,11 +518,11 @@ unsafe extern "C" fn read_format(
     code: *const quirc_code,
     mut data: *mut quirc_data,
     which: i32,
-) -> QuircDecodeResult {
+) -> DecodeResult {
     let mut i: i32;
     let mut format: u16 = 0u16;
     let fdata: u16;
-    let err: QuircDecodeResult;
+    let err: DecodeResult;
     if which != 0 {
         i = 0i32;
         'loop6: loop {
@@ -566,13 +563,13 @@ unsafe extern "C" fn read_format(
     }
     format = (format as (i32) ^ 0x5412i32) as (u16);
     err = correct_format(&mut format as (*mut u16));
-    if err != QuircDecodeResult::QUIRC_SUCCESS {
+    if err != DecodeResult::Success {
         err
     } else {
         fdata = (format as (i32) >> 10i32) as (u16);
         (*data).ecc_level = fdata as (i32) >> 3i32;
         (*data).mask = fdata as (i32) & 7i32;
-        QuircDecodeResult::QUIRC_SUCCESS
+        DecodeResult::Success
     }
 }
 
@@ -721,10 +718,7 @@ unsafe extern "C" fn read_data(
     }
 }
 
-unsafe extern "C" fn codestream_ecc(
-    data: *mut quirc_data,
-    ds: *mut datastream,
-) -> QuircDecodeResult {
+unsafe extern "C" fn codestream_ecc(data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
     let ver: *const quirc_version_info =
         &quirc_version_db[(*data).version as (usize)] as (*const quirc_version_info);
     let sb_ecc: *const quirc_rs_params =
@@ -746,7 +740,7 @@ unsafe extern "C" fn codestream_ecc(
             &mut lb_ecc as (*mut quirc_rs_params) as (*const quirc_rs_params)
         };
         let num_ec: i32 = (*ecc).bs - (*ecc).dw;
-        let err: QuircDecodeResult;
+        let err: DecodeResult;
 
         for j in 0..(*ecc).dw {
             *dst.offset(j as (isize)) = (*ds).raw[(j * bc + i) as (usize)];
@@ -757,7 +751,7 @@ unsafe extern "C" fn codestream_ecc(
         }
 
         err = correct_block(dst, ecc);
-        if err != QuircDecodeResult::QUIRC_SUCCESS {
+        if err != DecodeResult::Success {
             return err;
         }
 
@@ -765,7 +759,7 @@ unsafe extern "C" fn codestream_ecc(
     }
 
     (*ds).data_bits = dst_offset * 8i32;
-    QuircDecodeResult::QUIRC_SUCCESS
+    DecodeResult::Success
 }
 
 unsafe extern "C" fn bits_remaining(ds: *const datastream) -> i32 {
@@ -817,10 +811,7 @@ unsafe extern "C" fn numeric_tuple(
     }
 }
 
-unsafe extern "C" fn decode_numeric(
-    data: *mut quirc_data,
-    ds: *mut datastream,
-) -> QuircDecodeResult {
+unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
     let mut bits: i32 = 14i32;
     let mut count: i32;
     if (*data).version < 10i32 {
@@ -830,26 +821,26 @@ unsafe extern "C" fn decode_numeric(
     }
     count = take_bits(ds, bits);
     if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
-        return QuircDecodeResult::QUIRC_ERROR_DATA_OVERFLOW;
+        return DecodeResult::ErrorDataOverflow;
     }
     while count >= 3 {
         if numeric_tuple(data, ds, 10i32, 3i32) < 0i32 {
-            return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
+            return DecodeResult::ErrorDataUnderflow;
         }
         count = count - 3i32;
     }
     if count >= 2i32 {
         if numeric_tuple(data, ds, 7i32, 2i32) < 0i32 {
-            return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
+            return DecodeResult::ErrorDataUnderflow;
         }
         count = count - 2i32;
     }
     if count != 0 {
         if numeric_tuple(data, ds, 4i32, 1i32) < 0i32 {
-            return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
+            return DecodeResult::ErrorDataUnderflow;
         }
     }
-    return QuircDecodeResult::QUIRC_SUCCESS;
+    return DecodeResult::Success;
 }
 
 unsafe extern "C" fn alpha_tuple(
@@ -881,7 +872,7 @@ unsafe extern "C" fn alpha_tuple(
     }
 }
 
-unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) -> QuircDecodeResult {
+unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
     let mut bits: i32 = 13i32;
     let mut count: i32;
     if (*data).version < 10i32 {
@@ -891,26 +882,23 @@ unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) ->
     }
     count = take_bits(ds, bits);
     if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
-        return QuircDecodeResult::QUIRC_ERROR_DATA_OVERFLOW;
+        return DecodeResult::ErrorDataOverflow;
     }
     while count >= 2 {
         if alpha_tuple(data, ds, 11i32, 2i32) < 0i32 {
-            return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
+            return DecodeResult::ErrorDataUnderflow;
         }
         count = count - 2i32;
     }
     if count != 0 {
         if alpha_tuple(data, ds, 6i32, 1i32) < 0i32 {
-            return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
+            return DecodeResult::ErrorDataUnderflow;
         }
     }
-    return QuircDecodeResult::QUIRC_SUCCESS;
+    return DecodeResult::Success;
 }
 
-unsafe extern "C" fn decode_byte(
-    mut data: *mut quirc_data,
-    ds: *mut datastream,
-) -> QuircDecodeResult {
+unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
     let mut bits: i32 = 16i32;
     let count: i32;
     let mut i: i32;
@@ -919,9 +907,9 @@ unsafe extern "C" fn decode_byte(
     }
     count = take_bits(ds, bits);
     if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
-        QuircDecodeResult::QUIRC_ERROR_DATA_OVERFLOW
+        DecodeResult::ErrorDataOverflow
     } else if bits_remaining(ds as (*const datastream)) < count * 8i32 {
-        QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW
+        DecodeResult::ErrorDataUnderflow
     } else {
         i = 0i32;
         'loop5: loop {
@@ -935,14 +923,11 @@ unsafe extern "C" fn decode_byte(
             } as (usize)] = take_bits(ds, 8i32) as (u8);
             i = i + 1;
         }
-        QuircDecodeResult::QUIRC_SUCCESS
+        DecodeResult::Success
     }
 }
 
-unsafe extern "C" fn decode_kanji(
-    mut data: *mut quirc_data,
-    ds: *mut datastream,
-) -> QuircDecodeResult {
+unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
     let mut bits: i32 = 12i32;
     let count: i32;
     let mut i: i32;
@@ -953,9 +938,9 @@ unsafe extern "C" fn decode_kanji(
     }
     count = take_bits(ds, bits);
     if (*data).payload_len + count * 2i32 + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
-        QuircDecodeResult::QUIRC_ERROR_DATA_OVERFLOW
+        DecodeResult::ErrorDataOverflow
     } else if bits_remaining(ds as (*const datastream)) < count * 13i32 {
-        QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW
+        DecodeResult::ErrorDataUnderflow
     } else {
         i = 0i32;
         'loop7: loop {
@@ -963,9 +948,9 @@ unsafe extern "C" fn decode_kanji(
                 break;
             }
             let d: i32 = take_bits(ds, 13i32);
-            let msB: i32 = d / 0xc0i32;
-            let lsB: i32 = d % 0xc0i32;
-            let intermediate: i32 = msB << 8i32 | lsB;
+            let ms_byte: i32 = d / 0xc0i32;
+            let ls_byte: i32 = d % 0xc0i32;
+            let intermediate: i32 = ms_byte << 8i32 | ls_byte;
             let sjw: u16;
             if intermediate + 0x8140i32 <= 0x9ffci32 {
                 // bytes are in the range 0x8140 to 0x9FFC
@@ -986,41 +971,38 @@ unsafe extern "C" fn decode_kanji(
             } as (usize)] = (sjw as (i32) & 0xffi32) as (u8);
             i = i + 1;
         }
-        QuircDecodeResult::QUIRC_SUCCESS
+        DecodeResult::Success
     }
 }
 
-unsafe extern "C" fn decode_eci(
-    mut data: *mut quirc_data,
-    ds: *mut datastream,
-) -> QuircDecodeResult {
+unsafe extern "C" fn decode_eci(mut data: *mut quirc_data, ds: *mut datastream) -> DecodeResult {
     if bits_remaining(ds as (*const datastream)) < 8i32 {
-        QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW
+        DecodeResult::ErrorDataUnderflow
     } else {
         (*data).eci = take_bits(ds, 8i32) as (u32);
         if (*data).eci & 0xc0u32 == 0x80u32 {
             if bits_remaining(ds as (*const datastream)) < 8i32 {
-                return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
+                return DecodeResult::ErrorDataUnderflow;
             } else {
                 (*data).eci = (*data).eci << 8i32 | take_bits(ds, 8i32) as (u32);
             }
         } else if (*data).eci & 0xe0u32 == 0xc0u32 {
             if bits_remaining(ds as (*const datastream)) < 16i32 {
-                return QuircDecodeResult::QUIRC_ERROR_DATA_UNDERFLOW;
+                return DecodeResult::ErrorDataUnderflow;
             } else {
                 (*data).eci = (*data).eci << 16i32 | take_bits(ds, 16i32) as (u32);
             }
         }
-        QuircDecodeResult::QUIRC_SUCCESS
+        DecodeResult::Success
     }
 }
 
 unsafe extern "C" fn decode_payload(
     mut data: *mut quirc_data,
     ds: *mut datastream,
-) -> QuircDecodeResult {
+) -> DecodeResult {
     let mut _currentBlock;
-    let mut err: QuircDecodeResult = QuircDecodeResult::QUIRC_SUCCESS;
+    let mut err: DecodeResult = DecodeResult::Success;
     'loop0: loop {
         if !(bits_remaining(ds as (*const datastream)) >= 4i32) {
             _currentBlock = 7;
@@ -1042,7 +1024,7 @@ unsafe extern "C" fn decode_payload(
             }
             err = decode_numeric(data, ds);
         }
-        if err != QuircDecodeResult::QUIRC_SUCCESS {
+        if err != DecodeResult::Success {
             _currentBlock = 18;
             break;
         }
@@ -1057,7 +1039,7 @@ unsafe extern "C" fn decode_payload(
             (*data).payload_len = (*data).payload_len - 1;
         }
         (*data).payload[(*data).payload_len as (usize)] = 0u8;
-        QuircDecodeResult::QUIRC_SUCCESS
+        DecodeResult::Success
     } else {
         err
     }
@@ -1067,8 +1049,8 @@ unsafe extern "C" fn decode_payload(
 pub unsafe extern "C" fn quirc_decode(
     code: *const quirc_code,
     mut data: *mut quirc_data,
-) -> QuircDecodeResult {
-    let mut err: QuircDecodeResult;
+) -> DecodeResult {
+    let mut err: DecodeResult;
     let mut ds: datastream = datastream {
         raw: [0u8; QUIRC_MAX_PAYLOAD],
         data_bits: 0,
@@ -1076,7 +1058,7 @@ pub unsafe extern "C" fn quirc_decode(
         data: [0u8; QUIRC_MAX_PAYLOAD],
     };
     if ((*code).size - 17i32) % 4i32 != 0 {
-        QuircDecodeResult::QUIRC_ERROR_INVALID_GRID_SIZE
+        DecodeResult::ErrorInvalidGridSize
     } else {
         memset(
             data as (*mut ::std::os::raw::c_void),
@@ -1085,26 +1067,26 @@ pub unsafe extern "C" fn quirc_decode(
         );
         (*data).version = ((*code).size - 17i32) / 4i32;
         (if (*data).version < 1i32 || (*data).version > QUIRC_MAX_VERSION as i32 {
-            QuircDecodeResult::QUIRC_ERROR_INVALID_VERSION
+            DecodeResult::ErrorInvalidVersion
         } else {
             // Read format information -- try both locations
             err = read_format(code, data, 0i32);
-            if err != QuircDecodeResult::QUIRC_SUCCESS {
+            if err != DecodeResult::Success {
                 err = read_format(code, data, 1i32);
             }
-            (if err != QuircDecodeResult::QUIRC_SUCCESS {
+            (if err != DecodeResult::Success {
                 err
             } else {
                 read_data(code, data, &mut ds as (*mut datastream));
                 err = codestream_ecc(data, &mut ds as (*mut datastream));
-                (if err != QuircDecodeResult::QUIRC_SUCCESS {
+                (if err != DecodeResult::Success {
                     err
                 } else {
                     err = decode_payload(data, &mut ds as (*mut datastream));
-                    (if err != QuircDecodeResult::QUIRC_SUCCESS {
+                    (if err != DecodeResult::Success {
                         err
                     } else {
-                        QuircDecodeResult::QUIRC_SUCCESS
+                        DecodeResult::Success
                     })
                 })
             })

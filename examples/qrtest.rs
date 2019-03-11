@@ -143,7 +143,7 @@ pub unsafe extern "C" fn scan_file(
             if quirc_decode(
                 &mut code as (*mut quirc_code) as (*const quirc_code),
                 &mut data as (*mut quirc_data),
-            ) == QuircDecodeResult::QUIRC_SUCCESS
+            ) == DecodeResult::Success
             {
                 (*info).decode_count = (*info).decode_count + 1;
             }
@@ -171,11 +171,11 @@ pub unsafe extern "C" fn scan_file(
                 }
                 if WANT_VERBOSE {
                     let mut data: quirc_data = std::mem::uninitialized();
-                    let err: QuircDecodeResult = quirc_decode(
+                    let err: DecodeResult = quirc_decode(
                         &mut code as (*mut quirc_code) as (*const quirc_code),
                         &mut data as (*mut quirc_data),
                     );
-                    if err != QuircDecodeResult::QUIRC_SUCCESS {
+                    if err != DecodeResult::Success {
                         println!("  ERROR: {}", quirc_strerror(err));
                         println!();
                     } else {
