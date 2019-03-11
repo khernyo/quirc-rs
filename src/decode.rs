@@ -145,12 +145,12 @@ unsafe extern "C" fn poly_add(
     } else {
         i = 0i32;
         'loop2: loop {
-            if !(i < 64i32) {
+            if !(i < MAX_POLY as i32) {
                 break;
             }
             let p: i32 = i + shift;
             let v: u8 = *src.offset(i as (isize));
-            if !(p < 0i32 || p >= 64i32) {
+            if !(p < 0i32 || p >= MAX_POLY as i32) {
                 if !(v == 0) {
                     let _rhs = (*gf).exp
                         [(((*gf).log[v as (usize)] as (i32) + log_c) % (*gf).p) as (usize)];
@@ -172,7 +172,7 @@ unsafe extern "C" fn poly_eval(s: *const u8, x: u8, gf: *const galois_field) -> 
     } else {
         i = 0i32;
         'loop2: loop {
-            if !(i < 64i32) {
+            if !(i < MAX_POLY as i32) {
                 break;
             }
             let c: u8 = *s.offset(i as (isize));
@@ -253,7 +253,7 @@ unsafe extern "C" fn berlekamp_massey(
     memcpy(
         sigma as (*mut ::std::os::raw::c_void),
         C.as_mut_ptr() as (*const ::std::os::raw::c_void),
-        64usize,
+        MAX_POLY,
     );
 }
 
@@ -271,7 +271,7 @@ unsafe extern "C" fn block_syndromes(
 ) -> i32 {
     let mut nonzero: i32 = 0i32;
     let mut i: i32;
-    memset(s as (*mut ::std::os::raw::c_void), 0i32, 64usize);
+    memset(s as (*mut ::std::os::raw::c_void), 0i32, MAX_POLY);
     i = 0i32;
     'loop1: loop {
         if !(i < npar) {
@@ -307,7 +307,7 @@ unsafe extern "C" fn eloc_poly(
     npar: i32,
 ) {
     let mut i: i32;
-    memset(omega as (*mut ::std::os::raw::c_void), 0i32, 64usize);
+    memset(omega as (*mut ::std::os::raw::c_void), 0i32, MAX_POLY);
     i = 0i32;
     'loop1: loop {
         if !(i < npar) {
@@ -319,7 +319,7 @@ unsafe extern "C" fn eloc_poly(
         if !(a == 0) {
             j = 0i32;
             'loop5: loop {
-                if !(j + 1i32 < 64i32) {
+                if !(j + 1i32 < MAX_POLY as i32) {
                     break;
                 }
                 let b: u8 = *s.offset((j + 1i32) as (isize));
@@ -361,7 +361,7 @@ unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const quirc_rs_params) -
         /* Compute derivative of sigma */
         i = 0i32;
         'loop2: loop {
-            if !(i + 1i32 < 64i32) {
+            if !(i + 1i32 < MAX_POLY as i32) {
                 break;
             }
             sigma_deriv[i as (usize)] = sigma[(i + 1i32) as (usize)];
@@ -462,15 +462,20 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> Enum1 {
     let mut i: i32;
     let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
     let mut sigma: [u8; MAX_POLY] = [0u8; MAX_POLY];
+
+    // Evaluate U (received codeword) at each of alpha_1 .. alpha_6
+    // to get S_1 .. S_6 (but we index them from 0).
     if format_syndromes(u, s.as_mut_ptr()) == 0 {
         Enum1::QUIRC_SUCCESS
     } else {
         berlekamp_massey(
             s.as_mut_ptr() as (*const u8),
-            3i32 * 2i32,
+            FORMAT_SYNDROMES,
             &gf16 as (*const galois_field),
             sigma.as_mut_ptr(),
         );
+
+        // Now, find the roots of the polynomial
         i = 0i32;
         'loop2: loop {
             if !(i < 15i32) {
@@ -607,48 +612,68 @@ unsafe extern "C" fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
     let mut ai: i32 = -1i32;
     let mut aj: i32 = -1i32;
     let mut a: i32;
+
+    // Finder + format: top left
     if i < 9i32 && (j < 9i32) {
-        1i32
-    } else if i + 8i32 >= size && (j < 9i32) {
-        1i32
-    } else if i < 9i32 && (j + 8i32 >= size) {
-        1i32
-    } else if i == 6i32 || j == 6i32 {
-        1i32
-    } else {
-        if version >= 7i32 {
-            if i < 6i32 && (j + 11i32 >= size) {
-                return 1i32;
-            } else if i + 11i32 >= size && (j < 6i32) {
-                return 1i32;
-            }
-        }
-        a = 0i32;
-        'loop8: loop {
-            if !(a < QUIRC_MAX_ALIGNMENT as i32 && ((*ver).apat[a as (usize)] != 0)) {
-                break;
-            }
-            let p: i32 = (*ver).apat[a as (usize)];
-            if abs(p - i) < 3i32 {
-                ai = a;
-            }
-            if abs(p - j) < 3i32 {
-                aj = a;
-            }
-            a = a + 1;
-        }
-        if ai >= 0i32 && (aj >= 0i32) {
-            a = a - 1;
-            if ai > 0i32 && (ai < a) {
-                return 1i32;
-            } else if aj > 0i32 && (aj < a) {
-                return 1i32;
-            } else if aj == a && (ai == a) {
-                return 1i32;
-            }
-        }
-        0i32
+        return 1i32;
     }
+
+    // Finder + format: bottom left
+    if i + 8i32 >= size && (j < 9i32) {
+        return 1i32;
+    }
+
+    // Finder + format: top right
+    if i < 9i32 && (j + 8i32 >= size) {
+        return 1i32;
+    }
+
+    // Exclude timing patterns
+    if i == 6i32 || j == 6i32 {
+        return 1i32;
+    }
+
+    // Exclude version info, if it exists. Version info sits adjacent to
+    // the top-right and bottom-left finders in three rows, bounded by
+    // the timing pattern.
+    if version >= 7i32 {
+        if i < 6i32 && (j + 11i32 >= size) {
+            return 1i32;
+        }
+        if i + 11i32 >= size && (j < 6i32) {
+            return 1i32;
+        }
+    }
+
+    // Exclude alignment patterns
+    a = 0i32;
+    'loop8: loop {
+        if !(a < QUIRC_MAX_ALIGNMENT as i32 && ((*ver).apat[a as (usize)] != 0)) {
+            break;
+        }
+        let p: i32 = (*ver).apat[a as (usize)];
+        if abs(p - i) < 3i32 {
+            ai = a;
+        }
+        if abs(p - j) < 3i32 {
+            aj = a;
+        }
+        a = a + 1;
+    }
+
+    if ai >= 0i32 && (aj >= 0i32) {
+        a = a - 1;
+        if ai > 0i32 && (ai < a) {
+            return 1i32;
+        }
+        if aj > 0i32 && (aj < a) {
+            return 1i32;
+        }
+        if aj == a && (ai == a) {
+            return 1i32;
+        }
+    }
+    0i32
 }
 
 unsafe extern "C" fn read_bit(
@@ -805,7 +830,7 @@ unsafe extern "C" fn decode_numeric(data: *mut quirc_data, ds: *mut datastream) 
         bits = 12i32;
     }
     count = take_bits(ds, bits);
-    if (*data).payload_len + count + 1i32 > 8896i32 {
+    if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
         return Enum1::QUIRC_ERROR_DATA_OVERFLOW;
     }
     while count >= 3 {
@@ -866,7 +891,7 @@ unsafe extern "C" fn decode_alpha(data: *mut quirc_data, ds: *mut datastream) ->
         bits = 11i32;
     }
     count = take_bits(ds, bits);
-    if (*data).payload_len + count + 1i32 > 8896i32 {
+    if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
         return Enum1::QUIRC_ERROR_DATA_OVERFLOW;
     }
     while count >= 2 {
@@ -891,7 +916,7 @@ unsafe extern "C" fn decode_byte(mut data: *mut quirc_data, ds: *mut datastream)
         bits = 8i32;
     }
     count = take_bits(ds, bits);
-    if (*data).payload_len + count + 1i32 > 8896i32 {
+    if (*data).payload_len + count + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
         Enum1::QUIRC_ERROR_DATA_OVERFLOW
     } else if bits_remaining(ds as (*const datastream)) < count * 8i32 {
         Enum1::QUIRC_ERROR_DATA_UNDERFLOW
@@ -922,7 +947,7 @@ unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream
         bits = 10i32;
     }
     count = take_bits(ds, bits);
-    if (*data).payload_len + count * 2i32 + 1i32 > 8896i32 {
+    if (*data).payload_len + count * 2i32 + 1i32 > QUIRC_MAX_PAYLOAD as i32 {
         Enum1::QUIRC_ERROR_DATA_OVERFLOW
     } else if bits_remaining(ds as (*const datastream)) < count * 13i32 {
         Enum1::QUIRC_ERROR_DATA_UNDERFLOW
@@ -938,8 +963,10 @@ unsafe extern "C" fn decode_kanji(mut data: *mut quirc_data, ds: *mut datastream
             let intermediate: i32 = msB << 8i32 | lsB;
             let sjw: u16;
             if intermediate + 0x8140i32 <= 0x9ffci32 {
+                // bytes are in the range 0x8140 to 0x9FFC
                 sjw = (intermediate + 0x8140i32) as (u16);
             } else {
+                // bytes are in the range 0xE040 to 0xEBBF
                 sjw = (intermediate + 0xc140i32) as (u16);
             }
             (*data).payload[{
@@ -1014,6 +1041,7 @@ unsafe extern "C" fn decode_payload(mut data: *mut quirc_data, ds: *mut datastre
         (*data).data_type = type_;
     }
     if _currentBlock == 7 {
+        // Add nul terminator to all payloads
         if (*data).payload_len as (usize) >= ::std::mem::size_of::<[u8; 8896]>() {
             (*data).payload_len = (*data).payload_len - 1;
         }
@@ -1047,6 +1075,7 @@ pub unsafe extern "C" fn quirc_decode(
         (if (*data).version < 1i32 || (*data).version > QUIRC_MAX_VERSION as i32 {
             Enum1::QUIRC_ERROR_INVALID_VERSION
         } else {
+            // Read format information -- try both locations
             err = read_format(code, data, 0i32);
             if err != Enum1::QUIRC_SUCCESS {
                 err = read_format(code, data, 1i32);
