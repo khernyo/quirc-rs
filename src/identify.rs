@@ -138,7 +138,7 @@ type SpanFunc =
     unsafe extern "C" fn(user_data: *mut ::std::os::raw::c_void, y: i32, left: i32, right: i32);
 
 /// Span-based floodfill routine
-pub unsafe extern "C" fn flood_fill_seed(
+unsafe fn flood_fill_seed(
     q: &mut Quirc,
     x: i32,
     y: i32,
@@ -150,62 +150,53 @@ pub unsafe extern "C" fn flood_fill_seed(
 ) {
     let mut left: i32 = x;
     let mut right: i32 = x;
-    let mut i: i32;
     let mut row: *mut u8 = q.pixels.as_mut_ptr().offset((y * q.w) as isize);
     if depth >= FLOOD_FILL_MAX_DEPTH {
-    } else {
-        'loop1: loop {
-            if !(left > 0i32 && (*row.offset((left - 1i32) as (isize)) as (i32) == from)) {
-                break;
-            }
-            left = left - 1;
-        }
-        'loop2: loop {
-            if !(right < q.w - 1i32 && (*row.offset((right + 1i32) as (isize)) as (i32) == from)) {
-                break;
-            }
-            right = right + 1;
-        }
+        return;
+    }
 
-        // Fill the extent
-        i = left;
-        'loop4: loop {
-            if !(i <= right) {
-                break;
-            }
-            *row.offset(i as (isize)) = to as (u8);
-            i = i + 1;
-        }
-        if let Some(f) = func {
-            f(user_data, y, left, right);
-        }
+    while left > 0i32 && (*row.offset((left - 1i32) as (isize)) as (i32) == from) {
+        left = left - 1;
+    }
 
-        // Seed new flood-fills
-        if y > 0i32 {
-            row = q.pixels.as_mut_ptr().offset(((y - 1i32) * q.w) as isize);
-            i = left;
-            'loop9: loop {
-                if !(i <= right) {
-                    break;
-                }
-                if *row.offset(i as (isize)) as (i32) == from {
-                    flood_fill_seed(q, i, y - 1i32, from, to, func, user_data, depth + 1i32);
-                }
-                i = i + 1;
+    while right < q.w - 1i32 && (*row.offset((right + 1i32) as (isize)) as (i32) == from) {
+        right = right + 1;
+    }
+
+    // Fill the extent
+    // TODO Use a simple for statement (currently, it causes a stack overflow during tests)
+    let mut i = left;
+    while i <= right {
+        *row.offset(i as isize) = to as u8;
+        i += 1;
+    }
+
+    if let Some(f) = func {
+        f(user_data, y, left, right);
+    }
+
+    // Seed new flood-fills
+    if y > 0i32 {
+        row = q.pixels.as_mut_ptr().offset(((y - 1i32) * q.w) as isize);
+
+        let mut i = left;
+        while i <= right {
+            if *row.offset(i as (isize)) as (i32) == from {
+                flood_fill_seed(q, i, y - 1i32, from, to, func, user_data, depth + 1i32);
             }
+            i += 1;
         }
-        if y < q.h - 1i32 {
-            row = q.pixels.as_mut_ptr().offset(((y + 1i32) * q.w) as isize);
-            i = left;
-            'loop12: loop {
-                if !(i <= right) {
-                    break;
-                }
-                if *row.offset(i as (isize)) as (i32) == from {
-                    flood_fill_seed(q, i, y + 1i32, from, to, func, user_data, depth + 1i32);
-                }
-                i = i + 1;
+    }
+
+    if y < q.h - 1i32 {
+        row = q.pixels.as_mut_ptr().offset(((y + 1i32) * q.w) as isize);
+
+        let mut i = left;
+        while i <= right {
+            if *row.offset(i as (isize)) as (i32) == from {
+                flood_fill_seed(q, i, y + 1i32, from, to, func, user_data, depth + 1i32);
             }
+            i += 1;
         }
     }
 }
