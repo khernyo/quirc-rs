@@ -13,7 +13,7 @@ use quirc_rs::quirc::*;
 use quirc_wrapper as qw;
 use test_utils::dbgutil::*;
 
-unsafe fn run(width: u32, height: u32, image_bytes: *mut u8) {
+unsafe fn run(width: u32, height: u32, image_bytes: &[u8]) {
     let mut decoder = Quirc::new();
     quirc_resize(&mut decoder, width as i32, height as i32);
     let quirc_image_bytes = quirc_begin(
@@ -21,11 +21,7 @@ unsafe fn run(width: u32, height: u32, image_bytes: *mut u8) {
         0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
         0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
     );
-    memcpy(
-        quirc_image_bytes as *mut c_void,
-        image_bytes as *mut c_void,
-        (width * height) as usize,
-    );
+    quirc_image_bytes.copy_from_slice(image_bytes);
     quirc_end(&mut decoder);
 
     let id_count = quirc_count(&decoder);
@@ -37,7 +33,7 @@ unsafe fn run(width: u32, height: u32, image_bytes: *mut u8) {
     }
 }
 
-unsafe fn run_original(width: u32, height: u32, image_bytes: *mut u8) {
+unsafe fn run_original(width: u32, height: u32, image_bytes: &[u8]) {
     let decoder: *mut qw::quirc = qw::quirc_new();
     qw::quirc_resize(decoder, width as i32, height as i32);
     let quirc_image_bytes = qw::quirc_begin(
@@ -47,7 +43,7 @@ unsafe fn run_original(width: u32, height: u32, image_bytes: *mut u8) {
     );
     memcpy(
         quirc_image_bytes as *mut c_void,
-        image_bytes as *mut c_void,
+        image_bytes.as_ptr() as *mut c_void,
         (width * height) as usize,
     );
     qw::quirc_end(decoder);
@@ -72,18 +68,18 @@ unsafe fn run_original(width: u32, height: u32, image_bytes: *mut u8) {
 unsafe fn bench(
     b: &mut test::Bencher,
     path: &Path,
-    f: unsafe fn(width: u32, height: u32, image_bytes: *mut u8),
+    f: unsafe fn(width: u32, height: u32, image_bytes: &[u8]),
 ) {
-    let (width, height, image_bytes, _q) = {
+    let (width, height, q) = {
         let mut decoder = Quirc::new();
         // TODO move quirc setup out of load_image()
         let ret = load_image(&mut decoder, path);
         assert_eq!(ret, 0);
 
-        (decoder.w as u32, decoder.h as u32, decoder.image, decoder)
+        (decoder.w as u32, decoder.h as u32, decoder)
     };
 
-    b.iter(|| f(width, height, image_bytes));
+    b.iter(|| f(width, height, &q.image));
 }
 
 macro_rules! bench {

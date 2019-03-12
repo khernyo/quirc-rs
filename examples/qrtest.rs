@@ -19,7 +19,7 @@ extern crate quirc_rs;
 use std::path::Path;
 
 use clap::{App, Arg};
-use libc::{c_void, malloc, memcpy, memset, timespec};
+use libc::{memset, timespec};
 
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
@@ -116,15 +116,9 @@ pub unsafe extern "C" fn scan_file(
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     (*info).load_time = ms(tp).wrapping_sub(start);
     let image_bytes = if WANT_VALIDATE {
-        let dst = malloc(((*decoder).w * (*decoder).h) as usize);
-        memcpy(
-            dst,
-            (*decoder).image as *const c_void,
-            ((*decoder).w * (*decoder).h) as usize,
-        );
-        dst
+        decoder.image.clone()
     } else {
-        0 as *const c_void
+        Vec::new()
     };
     if ret < 0i32 {
         eprintln!("{}: load failed", filename.to_str().unwrap());
@@ -180,7 +174,7 @@ pub unsafe extern "C" fn scan_file(
             }
         }
         if WANT_VALIDATE {
-            validate(decoder, image_bytes);
+            validate(decoder, &image_bytes);
         }
         (*info).file_count = 1i32;
         1i32

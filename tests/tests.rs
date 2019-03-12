@@ -1,7 +1,5 @@
 use std::path::Path;
 
-use libc::{c_void, malloc, memcpy};
-
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
 use quirc_rs::quirc::*;
@@ -43,15 +41,7 @@ unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Dat
     let ret = load_image(&mut decoder, path);
     assert_eq!(ret, 0);
 
-    let image_bytes = {
-        let dst = malloc((decoder.w * decoder.h) as usize);
-        memcpy(
-            dst,
-            decoder.image as *const c_void,
-            (decoder.w * decoder.h) as usize,
-        );
-        dst
-    };
+    let image_bytes = decoder.image.clone();
 
     quirc_end(&mut decoder);
 
@@ -76,7 +66,7 @@ unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Dat
         .collect();
     assert_eq!(result, expected_contents);
 
-    validate(&mut decoder, image_bytes);
+    validate(&mut decoder, &image_bytes);
 }
 
 macro_rules! check {

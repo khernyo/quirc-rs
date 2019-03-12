@@ -19,11 +19,6 @@ use std::ptr::null_mut;
 extern "C" {
     fn calloc(__nmemb: usize, __size: usize) -> *mut ::std::os::raw::c_void;
     fn free(__ptr: *mut ::std::os::raw::c_void);
-    fn memcpy(
-        __dest: *mut ::std::os::raw::c_void,
-        __src: *const ::std::os::raw::c_void,
-        __n: usize,
-    ) -> *mut ::std::os::raw::c_void;
 }
 
 /// This structure is used to return information about detected QR codes
@@ -200,7 +195,7 @@ impl Default for Grid {
 
 #[repr(C)]
 pub struct Quirc {
-    pub image: *mut u8,
+    pub image: Vec<u8>,
     pub pixels: *mut u8,
 
     /// used by threshold()
@@ -219,7 +214,7 @@ pub struct Quirc {
 impl Default for Quirc {
     fn default() -> Self {
         Quirc {
-            image: null_mut(),
+            image: Vec::new(),
             pixels: null_mut(),
             row_average: null_mut(),
             w: 0,
@@ -237,7 +232,6 @@ impl Default for Quirc {
 impl Drop for Quirc {
     fn drop(&mut self) {
         unsafe {
-            free(self.image as (*mut ::std::os::raw::c_void));
             // q->pixels may alias q->image when their type representation is of the
             // same size, so we need to be careful here to avoid a double free
             if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
@@ -266,7 +260,6 @@ pub fn quirc_version() -> &'static str {
 /// not be allocated.
 pub unsafe extern "C" fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
     let mut _currentBlock;
-    let mut image: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
     let mut pixels: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
     let mut row_average: *mut i32 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut i32);
 
@@ -275,58 +268,38 @@ pub unsafe extern "C" fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
     // both the API and ABI. Thus, at the moment, let's just do a sanity
     // check.
     if !(w < 0i32 || h < 0i32) {
-        // alloc a new buffer for q->image. We avoid realloc(3) because we want
-        // on failure to be leave `q` in a consistant, unmodified state.
-        image = calloc(w as (usize), h as (usize)) as (*mut u8);
-        if !image.is_null() {
-            // compute the "old" (i.e. currently allocated) and the "new"
-            // (i.e. requested) image dimensions
-            let olddim: usize = (q.w * q.h) as (usize);
-            let newdim: usize = (w * h) as (usize);
-            let min: usize = if olddim < newdim { olddim } else { newdim };
+        let newdim: usize = (w * h) as usize;
+        q.image.resize(newdim, 0);
 
-            // copy the data into the new buffer, avoiding (a) to read beyond the
-            // old buffer when the new size is greater and (b) to write beyond the
-            // new buffer when the new size is smaller, hence the min computation.
-            memcpy(
-                image as (*mut ::std::os::raw::c_void),
-                q.image as (*const ::std::os::raw::c_void),
-                min,
-            );
-
-            // alloc a new buffer for q->pixels if needed
-            if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
-                pixels = calloc(newdim, ::std::mem::size_of::<u8>()) as (*mut u8);
-                if pixels.is_null() {
-                    _currentBlock = 8;
-                } else {
-                    _currentBlock = 4;
-                }
+        // alloc a new buffer for q->pixels if needed
+        if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
+            pixels = calloc(newdim, ::std::mem::size_of::<u8>()) as (*mut u8);
+            if pixels.is_null() {
+                _currentBlock = 8;
             } else {
                 _currentBlock = 4;
             }
-            if _currentBlock == 8 {
-            } else {
-                // alloc a new buffer for q->row_average
-                row_average = calloc(w as (usize), ::std::mem::size_of::<i32>()) as (*mut i32);
-                if !row_average.is_null() {
-                    // alloc succeeded, update `q` with the new size and buffers
-                    q.w = w;
-                    q.h = h;
-                    free(q.image as (*mut ::std::os::raw::c_void));
-                    q.image = image;
-                    if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
-                        free(q.pixels as (*mut ::std::os::raw::c_void));
-                        q.pixels = pixels;
-                    }
-                    free(q.row_average as (*mut ::std::os::raw::c_void));
-                    q.row_average = row_average;
-                    return 0i32;
+        } else {
+            _currentBlock = 4;
+        }
+        if _currentBlock == 8 {
+        } else {
+            // alloc a new buffer for q->row_average
+            row_average = calloc(w as (usize), ::std::mem::size_of::<i32>()) as (*mut i32);
+            if !row_average.is_null() {
+                // alloc succeeded, update `q` with the new size and buffers
+                q.w = w;
+                q.h = h;
+                if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
+                    free(q.pixels as (*mut ::std::os::raw::c_void));
+                    q.pixels = pixels;
                 }
+                free(q.row_average as (*mut ::std::os::raw::c_void));
+                q.row_average = row_average;
+                return 0i32;
             }
         }
     }
-    free(image as (*mut ::std::os::raw::c_void));
     free(pixels as (*mut ::std::os::raw::c_void));
     free(row_average as (*mut ::std::os::raw::c_void));
     -1i32

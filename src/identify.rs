@@ -1443,7 +1443,7 @@ pub unsafe extern "C" fn test_grouping(q: &mut Quirc, i: i32) {
 
 pub unsafe extern "C" fn pixels_setup(q: &mut Quirc) {
     if ::std::mem::size_of::<u8>() == ::std::mem::size_of::<u8>() {
-        q.pixels = q.image;
+        q.pixels = q.image.as_mut_ptr();
     } else {
         let mut x: i32;
         let mut y: i32;
@@ -1457,8 +1457,7 @@ pub unsafe extern "C" fn pixels_setup(q: &mut Quirc) {
                 if !(x < q.w) {
                     break;
                 }
-                *q.pixels.offset((y * q.w + x) as (isize)) =
-                    *q.image.offset((y * q.w + x) as (isize));
+                *q.pixels.offset((y * q.w + x) as (isize)) = q.image[(y * q.w + x) as usize];
                 x = x + 1;
             }
             y = y + 1;
@@ -1474,7 +1473,7 @@ pub unsafe extern "C" fn pixels_setup(q: &mut Quirc) {
 /// After filling the buffer, quirc_end() should be called to process
 /// the image for QR-code recognition. The locations and content of each
 /// code may be obtained using accessor functions described below.
-pub unsafe extern "C" fn quirc_begin(q: &mut Quirc, w: *mut i32, h: *mut i32) -> *mut u8 {
+pub unsafe extern "C" fn quirc_begin(q: &mut Quirc, w: *mut i32, h: *mut i32) -> &mut [u8] {
     q.num_regions = PIXEL_REGION;
     q.num_capstones = 0i32;
     q.num_grids = 0i32;
@@ -1484,7 +1483,7 @@ pub unsafe extern "C" fn quirc_begin(q: &mut Quirc, w: *mut i32, h: *mut i32) ->
     if !h.is_null() {
         *h = q.h;
     }
-    q.image
+    q.image.as_mut()
 }
 
 pub unsafe extern "C" fn quirc_end(q: &mut Quirc) {

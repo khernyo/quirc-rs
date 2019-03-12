@@ -101,7 +101,7 @@ unsafe fn string_color(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, col
 }
 
 unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: &mut Quirc) {
-    let mut raw: *mut u8 = q.image;
+    let mut raw = q.image.as_ptr();
 
     for y in 0..q.h {
         for x in 0..q.w {
