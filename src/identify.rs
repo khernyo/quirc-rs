@@ -119,27 +119,17 @@ unsafe fn perspective_map(c: &[f64; consts::PERSPECTIVE_PARAMS], u: f64, v: f64)
     }
 }
 
-pub unsafe extern "C" fn perspective_unmap(
-    c: *const f64,
-    in_: *const Point,
-    u: *mut f64,
-    v: *mut f64,
-) {
-    let x: f64 = (*in_).x as (f64);
-    let y: f64 = (*in_).y as (f64);
-    let den: f64 = -*c.offset(0isize) * *c.offset(7isize) * y
-        + *c.offset(1isize) * *c.offset(6isize) * y
-        + (*c.offset(3isize) * *c.offset(7isize) - *c.offset(4isize) * *c.offset(6isize)) * x
-        + *c.offset(0isize) * *c.offset(4isize)
-        - *c.offset(1isize) * *c.offset(3isize);
-    *u = -(*c.offset(1isize) * (y - *c.offset(5isize)) - *c.offset(2isize) * *c.offset(7isize) * y
-        + (*c.offset(5isize) * *c.offset(7isize) - *c.offset(4isize)) * x
-        + *c.offset(2isize) * *c.offset(4isize))
-        / den;
-    *v = (*c.offset(0isize) * (y - *c.offset(5isize)) - *c.offset(2isize) * *c.offset(6isize) * y
-        + (*c.offset(5isize) * *c.offset(6isize) - *c.offset(3isize)) * x
-        + *c.offset(2isize) * *c.offset(3isize))
-        / den;
+fn perspective_unmap(c: &[f64; consts::PERSPECTIVE_PARAMS], in_: &Point) -> (f64, f64) {
+    let x: f64 = in_.x as f64;
+    let y: f64 = in_.y as f64;
+    let den: f64 =
+        -c[0] * c[7] * y + c[1] * c[6] * y + (c[3] * c[7] - c[4] * c[6]) * x + c[0] * c[4]
+            - c[1] * c[3];
+
+    let u = -(c[1] * (y - c[5]) - c[2] * c[7] * y + (c[5] * c[7] - c[4]) * x + c[2] * c[4]) / den;
+    let v = (c[0] * (y - c[5]) - c[2] * c[6] * y + (c[5] * c[6] - c[3]) * x + c[2] * c[3]) / den;
+
+    (u, v)
 }
 
 const FLOOD_FILL_MAX_DEPTH: i32 = 4096;
@@ -626,8 +616,6 @@ pub unsafe extern "C" fn find_alignment_pattern(q: &mut Quirc, index: i32) {
     let size_estimate: i32;
     let mut step_size: i32 = 1i32;
     let mut dir: i32 = 0i32;
-    let mut u: f64 = 0f64;
-    let mut v: f64 = 0f64;
 
     // Grab our previous estimate of the alignment pattern corner
     memcpy(
@@ -638,19 +626,9 @@ pub unsafe extern "C" fn find_alignment_pattern(q: &mut Quirc, index: i32) {
 
     // Guess another two corners of the alignment pattern so that we
     // can estimate its size.
-    perspective_unmap(
-        (*c0).c.as_mut_ptr() as (*const f64),
-        &mut b,
-        &mut u as (*mut f64),
-        &mut v as (*mut f64),
-    );
+    let (u, v) = perspective_unmap(&(*c0).c, &mut b);
     let a = perspective_map(&(*c0).c, u, v + 1.0f64);
-    perspective_unmap(
-        (*c2).c.as_mut_ptr() as (*const f64),
-        &mut b,
-        &mut u as (*mut f64),
-        &mut v as (*mut f64),
-    );
+    let (u, v) = perspective_unmap(&(*c2).c, &mut b);
     let c = perspective_map(&(*c2).c, u + 1.0f64, v);
 
     size_estimate = abs((a.x - b.x) * -(c.y - b.y) + (a.y - b.y) * (c.x - b.x));
@@ -1356,15 +1334,8 @@ pub unsafe extern "C" fn test_grouping(q: &mut Quirc, i: i32) {
                 break;
             }
             let c2: *mut Capstone = &mut q.capstones[j as (usize)];
-            let mut u: f64 = std::mem::uninitialized();
-            let mut v: f64 = std::mem::uninitialized();
             if !(i == j || (*c2).qr_grid >= 0i32) {
-                perspective_unmap(
-                    (*c1).c.as_mut_ptr() as (*const f64),
-                    &mut (*c2).center,
-                    &mut u as (*mut f64),
-                    &mut v as (*mut f64),
-                );
+                let (mut u, mut v) = perspective_unmap(&(*c1).c, &mut (*c2).center);
 
                 u = (u - 3.5).abs();
                 v = (v - 3.5).abs();
