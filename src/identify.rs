@@ -43,24 +43,18 @@ extern "C" {
  * Linear algebra routines
  */
 
-pub unsafe extern "C" fn line_intersect(
-    p0: *const Point,
-    p1: *const Point,
-    q0: *const Point,
-    q1: *const Point,
-    mut r: *mut Point,
-) -> i32 {
+fn line_intersect(p0: &Point, p1: &Point, q0: &Point, q1: &Point, r: &mut Point) -> i32 {
     // (a, b) is perpendicular to line p
-    let a: i32 = -((*p1).y - (*p0).y);
-    let b: i32 = (*p1).x - (*p0).x;
+    let a: i32 = -(p1.y - p0.y);
+    let b: i32 = p1.x - p0.x;
 
     // (c, d) is perpendicular to line q
-    let c: i32 = -((*q1).y - (*q0).y);
-    let d: i32 = (*q1).x - (*q0).x;
+    let c: i32 = -(q1.y - q0.y);
+    let d: i32 = q1.x - q0.x;
 
     // e and f are dot products of the respective vectors with p and q
-    let e: i32 = a * (*p1).x + b * (*p1).y;
-    let f: i32 = c * (*q1).x + d * (*q1).y;
+    let e: i32 = a * p1.x + b * p1.y;
+    let f: i32 = c * q1.x + d * q1.y;
 
     // Now we need to solve:
     //     [a b] [rx]   [e]
@@ -74,8 +68,8 @@ pub unsafe extern "C" fn line_intersect(
     if det == 0 {
         0i32
     } else {
-        (*r).x = (d * e - b * f) / det;
-        (*r).y = (-c * e + a * f) / det;
+        r.x = (d * e - b * f) / det;
+        r.y = (-c * e + a * f) / det;
         1i32
     }
 }
@@ -1235,10 +1229,10 @@ pub unsafe extern "C" fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, m
             // Make an estimate based for the alignment pattern based on extending
             // lines from capstones A and C.
             if !(line_intersect(
-                &mut q.capstones[a as (usize)].corners[0usize],
-                &mut q.capstones[a as (usize)].corners[1usize],
-                &mut q.capstones[c as (usize)].corners[0usize],
-                &mut q.capstones[c as (usize)].corners[3usize],
+                &q.capstones[a as (usize)].corners[0usize],
+                &q.capstones[a as (usize)].corners[1usize],
+                &q.capstones[c as (usize)].corners[0usize],
+                &q.capstones[c as (usize)].corners[3usize],
                 &mut (*qr).align,
             ) == 0)
             {
