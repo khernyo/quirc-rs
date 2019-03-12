@@ -17,6 +17,7 @@
 use crate::quirc::consts::*;
 use crate::quirc::*;
 use crate::version_db::*;
+use std::cmp::max;
 use std::os::raw::c_double;
 
 extern "C" {
@@ -207,8 +208,6 @@ const THRESHOLD_T: i32 = 5;
 
 /// Adaptive thresholding
 pub unsafe extern "C" fn threshold(q: &mut Quirc) {
-    let mut x: i32;
-    let mut y: i32;
     let mut avg_w: i32 = 0i32;
     let mut avg_u: i32 = 0i32;
     let mut threshold_s: i32 = q.w / THRESHOLD_S_DEN;
@@ -218,22 +217,15 @@ pub unsafe extern "C" fn threshold(q: &mut Quirc) {
     //
     // threshold_s can be zero if the image width is small. We need to avoid
     // SIGFPE as it will be used as divisor.
-    if threshold_s < THRESHOLD_S_MIN {
-        threshold_s = THRESHOLD_S_MIN;
-    }
-    y = 0i32;
-    'loop3: loop {
-        if !(y < q.h) {
-            break;
-        }
+    threshold_s = max(threshold_s, THRESHOLD_S_MIN);
+
+    for y in 0..q.h {
         q.row_average.iter_mut().for_each(|x| *x = 0);
-        x = 0i32;
-        'loop6: loop {
-            if !(x < q.w) {
-                break;
-            }
+
+        for x in 0..q.w {
             let w: i32;
             let u: i32;
+
             if y & 1i32 != 0 {
                 w = x;
                 u = q.w - 1i32 - x;
@@ -241,32 +233,24 @@ pub unsafe extern "C" fn threshold(q: &mut Quirc) {
                 w = q.w - 1i32 - x;
                 u = x;
             }
+
             avg_w = avg_w * (threshold_s - 1i32) / threshold_s + *row.offset(w as (isize)) as (i32);
             avg_u = avg_u * (threshold_s - 1i32) / threshold_s + *row.offset(u as (isize)) as (i32);
-            let _rhs = avg_w;
-            let _lhs = &mut q.row_average[w as usize];
-            *_lhs = *_lhs + _rhs;
-            let _rhs = avg_u;
-            let _lhs = &mut q.row_average[u as usize];
-            *_lhs = *_lhs + _rhs;
-            x = x + 1;
+
+            q.row_average[w as usize] += avg_w;
+            q.row_average[u as usize] += avg_u;
         }
-        x = 0i32;
-        'loop8: loop {
-            if !(x < q.w) {
-                break;
-            }
-            if *row.offset(x as (isize)) as (i32)
-                < q.row_average[x as usize] * (100i32 - THRESHOLD_T) / (200i32 * threshold_s)
+
+        for x in 0..q.w {
+            if (*row.offset(x as isize) as i32)
+                < q.row_average[x as usize] * (100 - THRESHOLD_T) / (200 * threshold_s)
             {
-                *row.offset(x as (isize)) = PIXEL_BLACK as u8;
+                *row.offset(x as isize) = PIXEL_BLACK as u8;
             } else {
-                *row.offset(x as (isize)) = PIXEL_WHITE as u8;
+                *row.offset(x as isize) = PIXEL_WHITE as u8;
             }
-            x = x + 1;
         }
-        row = row.offset(q.w as (isize));
-        y = y + 1;
+        row = row.offset(q.w as isize);
     }
 }
 
