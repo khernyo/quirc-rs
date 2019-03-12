@@ -108,13 +108,15 @@ fn perspective_setup(rect: &[Point; 4], w: f64, h: f64) -> [f64; 8] {
     ]
 }
 
-pub unsafe extern "C" fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mut Point) {
-    let den: f64 = *c.offset(6isize) * u + *c.offset(7isize) * v + 1.0f64;
-    let x: f64 = (*c.offset(0isize) * u + *c.offset(1isize) * v + *c.offset(2isize)) / den;
-    let y: f64 = (*c.offset(3isize) * u + *c.offset(4isize) * v + *c.offset(5isize)) / den;
+unsafe fn perspective_map(c: &[f64; consts::PERSPECTIVE_PARAMS], u: f64, v: f64) -> Point {
+    let den: f64 = c[6] * u + c[7] * v + 1.0f64;
+    let x: f64 = (c[0] * u + c[1] * v + c[2]) / den;
+    let y: f64 = (c[3] * u + c[4] * v + c[5]) / den;
 
-    (*ret).x = rint(x) as i32;
-    (*ret).y = rint(y) as i32;
+    Point {
+        x: rint(x) as i32,
+        y: rint(y) as i32,
+    }
 }
 
 pub unsafe extern "C" fn perspective_unmap(
@@ -505,12 +507,7 @@ pub unsafe extern "C" fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
 
         // Set up the perspective transform and find the center
         (*capstone).c = perspective_setup(&(*capstone).corners, 7.0f64, 7.0f64);
-        perspective_map(
-            (*capstone).c.as_mut_ptr() as (*const f64),
-            3.5f64,
-            3.5f64,
-            &mut (*capstone).center,
-        );
+        (*capstone).center = perspective_map(&(*capstone).c, 3.5f64, 3.5f64);
     }
 }
 
@@ -625,9 +622,7 @@ pub unsafe extern "C" fn find_alignment_pattern(q: &mut Quirc, index: i32) {
     let mut qr: *mut Grid = &mut q.grids[index as (usize)];
     let c0: *mut Capstone = &mut q.capstones[(*qr).caps[0usize] as (usize)];
     let c2: *mut Capstone = &mut q.capstones[(*qr).caps[2usize] as (usize)];
-    let mut a: Point = std::mem::uninitialized();
     let mut b: Point = std::mem::uninitialized();
-    let mut c: Point = std::mem::uninitialized();
     let size_estimate: i32;
     let mut step_size: i32 = 1i32;
     let mut dir: i32 = 0i32;
@@ -649,19 +644,14 @@ pub unsafe extern "C" fn find_alignment_pattern(q: &mut Quirc, index: i32) {
         &mut u as (*mut f64),
         &mut v as (*mut f64),
     );
-    perspective_map(
-        (*c0).c.as_mut_ptr() as (*const f64),
-        u,
-        v + 1.0f64,
-        &mut a as (*mut Point),
-    );
+    let a = perspective_map(&(*c0).c, u, v + 1.0f64);
     perspective_unmap(
         (*c2).c.as_mut_ptr() as (*const f64),
         &mut b,
         &mut u as (*mut f64),
         &mut v as (*mut f64),
     );
-    perspective_map((*c2).c.as_mut_ptr() as (*const f64), u + 1.0f64, v, &mut c);
+    let c = perspective_map(&(*c2).c, u + 1.0f64, v);
 
     size_estimate = abs((a.x - b.x) * -(c.y - b.y) + (a.y - b.y) * (c.x - b.x));
 
@@ -811,12 +801,7 @@ pub unsafe extern "C" fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i3
         static mut US: [f64; 3] = [6.5, 6.5, 0.5];
         static mut VS: [f64; 3] = [0.5, 6.5, 6.5];
         let cap: *mut Capstone = &mut q.capstones[(*qr).caps[i as (usize)] as (usize)];
-        perspective_map(
-            (*cap).c.as_mut_ptr() as (*const f64),
-            US[i as (usize)],
-            VS[i as (usize)],
-            &mut (*qr).tpep[i as (usize)],
-        );
+        (*qr).tpep[i as (usize)] = perspective_map(&(*cap).c, US[i as (usize)], VS[i as (usize)]);
         i = i + 1;
     }
     (*qr).hscan = timing_scan(q, &mut (*qr).tpep[1usize], &mut (*qr).tpep[2usize]);
@@ -844,13 +829,7 @@ pub unsafe extern "C" fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i3
 /// out of image bounds.
 pub unsafe extern "C" fn read_cell(q: &mut Quirc, index: i32, x: i32, y: i32) -> i32 {
     let qr: *mut Grid = &mut q.grids[index as (usize)];
-    let mut p: Point = std::mem::uninitialized();
-    perspective_map(
-        (*qr).c.as_mut_ptr() as (*const f64),
-        x as (f64) + 0.5f64,
-        y as (f64) + 0.5f64,
-        &mut p,
-    );
+    let p = perspective_map(&(*qr).c, x as (f64) + 0.5f64, y as (f64) + 0.5f64);
     if p.y < 0i32 || p.y >= q.h || p.x < 0i32 || p.x >= q.w {
         0i32
     } else if *q.pixels.as_mut_ptr().offset((p.y * q.w + p.x) as isize) != 0 {
@@ -876,12 +855,10 @@ pub unsafe extern "C" fn fitness_cell(q: &mut Quirc, index: i32, x: i32, y: i32)
                 break;
             }
             static mut OFFSETS: [f64; 3] = [0.3, 0.5, 0.7];
-            let mut p: Point = std::mem::uninitialized();
-            perspective_map(
-                (*qr).c.as_mut_ptr() as (*const f64),
+            let p = perspective_map(
+                &(*qr).c,
                 x as (f64) + OFFSETS[u as (usize)],
                 y as (f64) + OFFSETS[v as (usize)],
-                &mut p,
             );
             if !(p.y < 0i32 || p.y >= q.h || p.x < 0i32 || p.x >= q.w) {
                 if *q.pixels.as_mut_ptr().offset((p.y * q.w + p.x) as isize) != 0 {
@@ -1479,30 +1456,11 @@ pub unsafe extern "C" fn quirc_extract(q: &mut Quirc, index: i32, mut code: *mut
             0i32,
             ::std::mem::size_of::<QuircCode>(),
         );
-        perspective_map(
-            (*qr).c.as_mut_ptr() as (*const f64),
-            0.0f64,
-            0.0f64,
-            &mut (*code).corners[0usize],
-        );
-        perspective_map(
-            (*qr).c.as_mut_ptr() as (*const f64),
-            (*qr).grid_size as (f64),
-            0.0f64,
-            &mut (*code).corners[1usize],
-        );
-        perspective_map(
-            (*qr).c.as_mut_ptr() as (*const f64),
-            (*qr).grid_size as (f64),
-            (*qr).grid_size as (f64),
-            &mut (*code).corners[2usize],
-        );
-        perspective_map(
-            (*qr).c.as_mut_ptr() as (*const f64),
-            0.0f64,
-            (*qr).grid_size as (f64),
-            &mut (*code).corners[3usize],
-        );
+        (*code).corners[0usize] = perspective_map(&(*qr).c, 0.0f64, 0.0f64);
+        (*code).corners[1usize] = perspective_map(&(*qr).c, (*qr).grid_size as (f64), 0.0f64);
+        (*code).corners[2usize] =
+            perspective_map(&(*qr).c, (*qr).grid_size as (f64), (*qr).grid_size as (f64));
+        (*code).corners[3usize] = perspective_map(&(*qr).c, 0.0f64, (*qr).grid_size as (f64));
         (*code).size = (*qr).grid_size;
         y = 0i32;
         'loop2: loop {
