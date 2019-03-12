@@ -14,13 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-use std::ptr::null_mut;
-
-extern "C" {
-    fn calloc(__nmemb: usize, __size: usize) -> *mut ::std::os::raw::c_void;
-    fn free(__ptr: *mut ::std::os::raw::c_void);
-}
-
 /// This structure is used to return information about detected QR codes
 /// in the input image.
 #[derive(Copy)]
@@ -199,7 +192,7 @@ pub struct Quirc {
     pub pixels: Vec<u8>,
 
     /// used by threshold()
-    pub row_average: *mut i32,
+    pub row_average: Vec<i32>,
 
     pub w: i32,
     pub h: i32,
@@ -216,7 +209,7 @@ impl Default for Quirc {
         Quirc {
             image: Vec::new(),
             pixels: Vec::new(),
-            row_average: null_mut(),
+            row_average: Vec::new(),
             w: 0,
             h: 0,
             num_regions: 0,
@@ -225,14 +218,6 @@ impl Default for Quirc {
             capstones: [Default::default(); consts::MAX_CAPSTONES],
             num_grids: 0,
             grids: [Default::default(); consts::MAX_GRIDS],
-        }
-    }
-}
-
-impl Drop for Quirc {
-    fn drop(&mut self) {
-        unsafe {
-            free(self.row_average as (*mut ::std::os::raw::c_void));
         }
     }
 }
@@ -254,30 +239,21 @@ pub fn quirc_version() -> &'static str {
 /// This function returns 0 on success, or -1 if sufficient memory could
 /// not be allocated.
 pub unsafe extern "C" fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
-    let mut row_average: *mut i32 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut i32);
-
     // XXX: w and h should be size_t (or at least unsigned) as negatives
     // values would not make much sense. The downside is that it would break
     // both the API and ABI. Thus, at the moment, let's just do a sanity
     // check.
-    if !(w < 0i32 || h < 0i32) {
-        let newdim: usize = (w * h) as usize;
-        q.image.resize(newdim, 0);
-        q.pixels.resize(newdim, 0);
-
-        // alloc a new buffer for q->row_average
-        row_average = calloc(w as (usize), ::std::mem::size_of::<i32>()) as (*mut i32);
-        if !row_average.is_null() {
-            // alloc succeeded, update `q` with the new size and buffers
-            q.w = w;
-            q.h = h;
-            free(q.row_average as (*mut ::std::os::raw::c_void));
-            q.row_average = row_average;
-            return 0i32;
-        }
+    if w < 0i32 || h < 0i32 {
+        return -1i32;
     }
-    free(row_average as (*mut ::std::os::raw::c_void));
-    -1i32
+
+    let newdim: usize = (w * h) as usize;
+    q.image.resize(newdim, 0);
+    q.pixels.resize(newdim, 0);
+    q.row_average.resize(w as usize, 0);
+    q.w = w;
+    q.h = h;
+    return 0i32;
 }
 
 /// Return the number of QR-codes identified in the last processed

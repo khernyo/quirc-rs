@@ -248,11 +248,7 @@ pub unsafe extern "C" fn threshold(q: &mut Quirc) {
         if !(y < q.h) {
             break;
         }
-        memset(
-            q.row_average as (*mut ::std::os::raw::c_void),
-            0i32,
-            (q.w as (usize)).wrapping_mul(::std::mem::size_of::<i32>()),
-        );
+        q.row_average.iter_mut().for_each(|x| *x = 0);
         x = 0i32;
         'loop6: loop {
             if !(x < q.w) {
@@ -270,10 +266,10 @@ pub unsafe extern "C" fn threshold(q: &mut Quirc) {
             avg_w = avg_w * (threshold_s - 1i32) / threshold_s + *row.offset(w as (isize)) as (i32);
             avg_u = avg_u * (threshold_s - 1i32) / threshold_s + *row.offset(u as (isize)) as (i32);
             let _rhs = avg_w;
-            let _lhs = &mut *q.row_average.offset(w as (isize));
+            let _lhs = &mut q.row_average[w as usize];
             *_lhs = *_lhs + _rhs;
             let _rhs = avg_u;
-            let _lhs = &mut *q.row_average.offset(u as (isize));
+            let _lhs = &mut q.row_average[u as usize];
             *_lhs = *_lhs + _rhs;
             x = x + 1;
         }
@@ -283,8 +279,7 @@ pub unsafe extern "C" fn threshold(q: &mut Quirc) {
                 break;
             }
             if *row.offset(x as (isize)) as (i32)
-                < *q.row_average.offset(x as (isize)) * (100i32 - THRESHOLD_T)
-                    / (200i32 * threshold_s)
+                < q.row_average[x as usize] * (100i32 - THRESHOLD_T) / (200i32 * threshold_s)
             {
                 *row.offset(x as (isize)) = PIXEL_BLACK as u8;
             } else {

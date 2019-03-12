@@ -155,12 +155,8 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
         )
     );
     assert_eq!(
-        memcmp(
-            decoder.row_average as *const c_void,
-            (*qw_decoder).row_average as *const c_void,
-            decoder.w as usize * std::mem::size_of_val(&*decoder.row_average)
-        ),
-        0
+        decoder.row_average.as_slice(),
+        std::slice::from_raw_parts((*qw_decoder).row_average, decoder.w as usize)
     );
     assert_eq!(decoder.w, (*qw_decoder).w);
     assert_eq!(decoder.h, (*qw_decoder).h);
