@@ -148,19 +148,11 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     qw::quirc_end(qw_decoder);
 
     assert_eq!(
-        decoder.image.as_slice(),
+        decoder.pixels.as_slice(),
         std::slice::from_raw_parts(
-            (*qw_decoder).image,
+            (*qw_decoder).pixels,
             ((*qw_decoder).w * (*qw_decoder).h) as usize
         )
-    );
-    assert_eq!(
-        memcmp(
-            decoder.pixels as *const c_void,
-            (*qw_decoder).pixels as *const c_void,
-            (decoder.w * decoder.h) as usize * std::mem::size_of_val(&*decoder.pixels)
-        ),
-        0
     );
     assert_eq!(
         memcmp(

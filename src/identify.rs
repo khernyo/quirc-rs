@@ -164,7 +164,7 @@ pub unsafe extern "C" fn flood_fill_seed(
     let mut left: i32 = x;
     let mut right: i32 = x;
     let mut i: i32;
-    let mut row: *mut u8 = q.pixels.offset((y * q.w) as (isize));
+    let mut row: *mut u8 = q.pixels.as_mut_ptr().offset((y * q.w) as isize);
     if depth >= FLOOD_FILL_MAX_DEPTH {
     } else {
         'loop1: loop {
@@ -195,7 +195,7 @@ pub unsafe extern "C" fn flood_fill_seed(
 
         // Seed new flood-fills
         if y > 0i32 {
-            row = q.pixels.offset(((y - 1i32) * q.w) as (isize));
+            row = q.pixels.as_mut_ptr().offset(((y - 1i32) * q.w) as isize);
             i = left;
             'loop9: loop {
                 if !(i <= right) {
@@ -208,7 +208,7 @@ pub unsafe extern "C" fn flood_fill_seed(
             }
         }
         if y < q.h - 1i32 {
-            row = q.pixels.offset(((y + 1i32) * q.w) as (isize));
+            row = q.pixels.as_mut_ptr().offset(((y + 1i32) * q.w) as isize);
             i = left;
             'loop12: loop {
                 if !(i <= right) {
@@ -234,7 +234,7 @@ pub unsafe extern "C" fn threshold(q: &mut Quirc) {
     let mut avg_w: i32 = 0i32;
     let mut avg_u: i32 = 0i32;
     let mut threshold_s: i32 = q.w / THRESHOLD_S_DEN;
-    let mut row: *mut u8 = q.pixels;
+    let mut row: *mut u8 = q.pixels.as_mut_ptr();
 
     // Ensure a sane, non-zero value for threshold_s.
     //
@@ -315,7 +315,7 @@ pub unsafe extern "C" fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
     if x < 0i32 || y < 0i32 || x >= q.w || y >= q.h {
         -1i32
     } else {
-        pixel = *q.pixels.offset((y * q.w + x) as (isize)) as (i32);
+        pixel = *q.pixels.as_mut_ptr().offset((y * q.w + x) as isize) as i32;
         (if pixel >= PIXEL_REGION {
             pixel
         } else if pixel == PIXEL_WHITE {
@@ -580,7 +580,7 @@ pub unsafe extern "C" fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: *mut i
 }
 
 pub unsafe extern "C" fn finder_scan(q: &mut Quirc, y: i32) {
-    let row: *mut u8 = q.pixels.offset((y * q.w) as (isize));
+    let row: *mut u8 = q.pixels.as_mut_ptr().offset((y * q.w) as isize);
     let mut x: i32;
     let mut last_color: i32 = 0i32;
     let mut run_length: i32 = 0i32;
@@ -783,7 +783,7 @@ pub unsafe extern "C" fn timing_scan(q: &Quirc, p0: *const Point, p1: *const Poi
             if y < 0i32 || y >= q.h || x < 0i32 || x >= q.w {
                 break;
             }
-            pixel = *q.pixels.offset((y * q.w + x) as (isize)) as (i32);
+            pixel = *q.pixels.as_ptr().offset((y * q.w + x) as isize) as i32;
             if pixel != 0 {
                 if run_length >= 2i32 {
                     count = count + 1;
@@ -868,7 +868,7 @@ pub unsafe extern "C" fn read_cell(q: &mut Quirc, index: i32, x: i32, y: i32) ->
     );
     if p.y < 0i32 || p.y >= q.h || p.x < 0i32 || p.x >= q.w {
         0i32
-    } else if *q.pixels.offset((p.y * q.w + p.x) as (isize)) != 0 {
+    } else if *q.pixels.as_mut_ptr().offset((p.y * q.w + p.x) as isize) != 0 {
         1i32
     } else {
         -1i32
@@ -899,7 +899,7 @@ pub unsafe extern "C" fn fitness_cell(q: &mut Quirc, index: i32, x: i32, y: i32)
                 &mut p,
             );
             if !(p.y < 0i32 || p.y >= q.h || p.x < 0i32 || p.x >= q.w) {
-                if *q.pixels.offset((p.y * q.w + p.x) as (isize)) != 0 {
+                if *q.pixels.as_mut_ptr().offset((p.y * q.w + p.x) as isize) != 0 {
                     score = score + 1;
                 } else {
                     score = score - 1;
@@ -1442,27 +1442,7 @@ pub unsafe extern "C" fn test_grouping(q: &mut Quirc, i: i32) {
 }
 
 pub unsafe extern "C" fn pixels_setup(q: &mut Quirc) {
-    if ::std::mem::size_of::<u8>() == ::std::mem::size_of::<u8>() {
-        q.pixels = q.image.as_mut_ptr();
-    } else {
-        let mut x: i32;
-        let mut y: i32;
-        y = 0i32;
-        'loop2: loop {
-            if !(y < q.h) {
-                break;
-            }
-            x = 0i32;
-            'loop4: loop {
-                if !(x < q.w) {
-                    break;
-                }
-                *q.pixels.offset((y * q.w + x) as (isize)) = q.image[(y * q.w + x) as usize];
-                x = x + 1;
-            }
-            y = y + 1;
-        }
-    }
+    q.pixels.copy_from_slice(&q.image);
 }
 
 /// These functions are used to process images for QR-code recognition.

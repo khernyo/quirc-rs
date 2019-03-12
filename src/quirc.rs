@@ -196,7 +196,7 @@ impl Default for Grid {
 #[repr(C)]
 pub struct Quirc {
     pub image: Vec<u8>,
-    pub pixels: *mut u8,
+    pub pixels: Vec<u8>,
 
     /// used by threshold()
     pub row_average: *mut i32,
@@ -215,7 +215,7 @@ impl Default for Quirc {
     fn default() -> Self {
         Quirc {
             image: Vec::new(),
-            pixels: null_mut(),
+            pixels: Vec::new(),
             row_average: null_mut(),
             w: 0,
             h: 0,
@@ -232,11 +232,6 @@ impl Default for Quirc {
 impl Drop for Quirc {
     fn drop(&mut self) {
         unsafe {
-            // q->pixels may alias q->image when their type representation is of the
-            // same size, so we need to be careful here to avoid a double free
-            if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
-                free(self.pixels as (*mut ::std::os::raw::c_void));
-            }
             free(self.row_average as (*mut ::std::os::raw::c_void));
         }
     }
@@ -259,8 +254,6 @@ pub fn quirc_version() -> &'static str {
 /// This function returns 0 on success, or -1 if sufficient memory could
 /// not be allocated.
 pub unsafe extern "C" fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
-    let mut _currentBlock;
-    let mut pixels: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
     let mut row_average: *mut i32 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut i32);
 
     // XXX: w and h should be size_t (or at least unsigned) as negatives
@@ -270,37 +263,19 @@ pub unsafe extern "C" fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
     if !(w < 0i32 || h < 0i32) {
         let newdim: usize = (w * h) as usize;
         q.image.resize(newdim, 0);
+        q.pixels.resize(newdim, 0);
 
-        // alloc a new buffer for q->pixels if needed
-        if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
-            pixels = calloc(newdim, ::std::mem::size_of::<u8>()) as (*mut u8);
-            if pixels.is_null() {
-                _currentBlock = 8;
-            } else {
-                _currentBlock = 4;
-            }
-        } else {
-            _currentBlock = 4;
-        }
-        if _currentBlock == 8 {
-        } else {
-            // alloc a new buffer for q->row_average
-            row_average = calloc(w as (usize), ::std::mem::size_of::<i32>()) as (*mut i32);
-            if !row_average.is_null() {
-                // alloc succeeded, update `q` with the new size and buffers
-                q.w = w;
-                q.h = h;
-                if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
-                    free(q.pixels as (*mut ::std::os::raw::c_void));
-                    q.pixels = pixels;
-                }
-                free(q.row_average as (*mut ::std::os::raw::c_void));
-                q.row_average = row_average;
-                return 0i32;
-            }
+        // alloc a new buffer for q->row_average
+        row_average = calloc(w as (usize), ::std::mem::size_of::<i32>()) as (*mut i32);
+        if !row_average.is_null() {
+            // alloc succeeded, update `q` with the new size and buffers
+            q.w = w;
+            q.h = h;
+            free(q.row_average as (*mut ::std::os::raw::c_void));
+            q.row_average = row_average;
+            return 0i32;
         }
     }
-    free(pixels as (*mut ::std::os::raw::c_void));
     free(row_average as (*mut ::std::os::raw::c_void));
     -1i32
 }
