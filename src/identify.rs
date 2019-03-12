@@ -328,7 +328,7 @@ pub unsafe extern "C" fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
                 let _old = q.num_regions;
                 q.num_regions = q.num_regions + 1;
                 _old
-            } as (usize)] as (*mut Region);
+            } as (usize)];
             memset(
                 r#box as (*mut ::std::os::raw::c_void),
                 0i32,
@@ -432,7 +432,7 @@ pub unsafe extern "C" fn find_region_corners(
     r#ref: *const Point,
     corners: *mut Point,
 ) {
-    let region: *mut Region = &mut q.regions[rcode as (usize)] as (*mut Region);
+    let region: *mut Region = &mut q.regions[rcode as (usize)];
     let mut psd: PolygonScoreData = PolygonScoreData {
         r#ref: *r#ref,
         scores: [-1i32, 0i32, 0i32, 0i32],
@@ -482,8 +482,8 @@ pub unsafe extern "C" fn find_region_corners(
 }
 
 pub unsafe extern "C" fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
-    let mut stone_reg: *mut Region = &mut q.regions[stone as (usize)] as (*mut Region);
-    let mut ring_reg: *mut Region = &mut q.regions[ring as (usize)] as (*mut Region);
+    let mut stone_reg: *mut Region = &mut q.regions[stone as (usize)];
+    let mut ring_reg: *mut Region = &mut q.regions[ring as (usize)];
     let mut capstone: *mut Capstone;
     let cs_index: i32;
     if q.num_capstones >= MAX_CAPSTONES as i32 {
@@ -493,7 +493,7 @@ pub unsafe extern "C" fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
             let _old = q.num_capstones;
             q.num_capstones = q.num_capstones + 1;
             _old
-        } as (usize)] as (*mut Capstone);
+        } as (usize)];
         memset(
             capstone as (*mut ::std::os::raw::c_void),
             0i32,
@@ -509,7 +509,7 @@ pub unsafe extern "C" fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
         find_region_corners(
             q,
             ring,
-            &mut (*stone_reg).seed as (*mut Point) as (*const Point),
+            &mut (*stone_reg).seed,
             (*capstone).corners.as_mut_ptr(),
         );
 
@@ -524,7 +524,7 @@ pub unsafe extern "C" fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
             (*capstone).c.as_mut_ptr() as (*const f64),
             3.5f64,
             3.5f64,
-            &mut (*capstone).center as (*mut Point),
+            &mut (*capstone).center,
         );
     }
 }
@@ -637,9 +637,9 @@ pub unsafe extern "C" fn finder_scan(q: &mut Quirc, y: i32) {
 }
 
 pub unsafe extern "C" fn find_alignment_pattern(q: &mut Quirc, index: i32) {
-    let mut qr: *mut Grid = &mut q.grids[index as (usize)] as (*mut Grid);
-    let c0: *mut Capstone = &mut q.capstones[(*qr).caps[0usize] as (usize)] as (*mut Capstone);
-    let c2: *mut Capstone = &mut q.capstones[(*qr).caps[2usize] as (usize)] as (*mut Capstone);
+    let mut qr: *mut Grid = &mut q.grids[index as (usize)];
+    let c0: *mut Capstone = &mut q.capstones[(*qr).caps[0usize] as (usize)];
+    let c2: *mut Capstone = &mut q.capstones[(*qr).caps[2usize] as (usize)];
     let mut a: Point = std::mem::uninitialized();
     let mut b: Point = std::mem::uninitialized();
     let mut c: Point = std::mem::uninitialized();
@@ -660,7 +660,7 @@ pub unsafe extern "C" fn find_alignment_pattern(q: &mut Quirc, index: i32) {
     // can estimate its size.
     perspective_unmap(
         (*c0).c.as_mut_ptr() as (*const f64),
-        &mut b as (*mut Point) as (*const Point),
+        &mut b,
         &mut u as (*mut f64),
         &mut v as (*mut f64),
     );
@@ -672,16 +672,11 @@ pub unsafe extern "C" fn find_alignment_pattern(q: &mut Quirc, index: i32) {
     );
     perspective_unmap(
         (*c2).c.as_mut_ptr() as (*const f64),
-        &mut b as (*mut Point) as (*const Point),
+        &mut b,
         &mut u as (*mut f64),
         &mut v as (*mut f64),
     );
-    perspective_map(
-        (*c2).c.as_mut_ptr() as (*const f64),
-        u + 1.0f64,
-        v,
-        &mut c as (*mut Point),
-    );
+    perspective_map((*c2).c.as_mut_ptr() as (*const f64), u + 1.0f64, v, &mut c);
 
     size_estimate = abs((a.x - b.x) * -(c.y - b.y) + (a.y - b.y) * (c.x - b.x));
 
@@ -695,7 +690,7 @@ pub unsafe extern "C" fn find_alignment_pattern(q: &mut Quirc, index: i32) {
         for _ in 0..step_size {
             let code: i32 = region_code(q, b.x, b.y);
             if code >= 0i32 {
-                let reg: *mut Region = &mut q.regions[code as (usize)] as (*mut Region);
+                let reg: *mut Region = &mut q.regions[code as (usize)];
                 if (*reg).count >= size_estimate / 2i32 && ((*reg).count <= size_estimate * 2i32) {
                     (*qr).align_region = code;
                     return;
@@ -818,7 +813,7 @@ pub unsafe extern "C" fn timing_scan(q: &Quirc, p0: *const Point, p1: *const Poi
 /// which is nearest the centre of the code. Using these points, we do
 /// a horizontal and a vertical timing scan.
 pub unsafe extern "C" fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i32 {
-    let mut qr: *mut Grid = &mut q.grids[index as (usize)] as (*mut Grid);
+    let mut qr: *mut Grid = &mut q.grids[index as (usize)];
     let mut i: i32;
     let mut scan: i32;
     let ver: i32;
@@ -830,26 +825,17 @@ pub unsafe extern "C" fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i3
         }
         static mut US: [f64; 3] = [6.5, 6.5, 0.5];
         static mut VS: [f64; 3] = [0.5, 6.5, 6.5];
-        let cap: *mut Capstone =
-            &mut q.capstones[(*qr).caps[i as (usize)] as (usize)] as (*mut Capstone);
+        let cap: *mut Capstone = &mut q.capstones[(*qr).caps[i as (usize)] as (usize)];
         perspective_map(
             (*cap).c.as_mut_ptr() as (*const f64),
             US[i as (usize)],
             VS[i as (usize)],
-            &mut (*qr).tpep[i as (usize)] as (*mut Point),
+            &mut (*qr).tpep[i as (usize)],
         );
         i = i + 1;
     }
-    (*qr).hscan = timing_scan(
-        q,
-        &mut (*qr).tpep[1usize] as (*mut Point) as (*const Point),
-        &mut (*qr).tpep[2usize] as (*mut Point) as (*const Point),
-    );
-    (*qr).vscan = timing_scan(
-        q,
-        &mut (*qr).tpep[1usize] as (*mut Point) as (*const Point),
-        &mut (*qr).tpep[0usize] as (*mut Point) as (*const Point),
-    );
+    (*qr).hscan = timing_scan(q, &mut (*qr).tpep[1usize], &mut (*qr).tpep[2usize]);
+    (*qr).vscan = timing_scan(q, &mut (*qr).tpep[1usize], &mut (*qr).tpep[0usize]);
     scan = (*qr).hscan;
     if (*qr).vscan > scan {
         scan = (*qr).vscan;
@@ -872,13 +858,13 @@ pub unsafe extern "C" fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i3
 /// transform. Returns +/- 1 for black/white, 0 for cells which are
 /// out of image bounds.
 pub unsafe extern "C" fn read_cell(q: &mut Quirc, index: i32, x: i32, y: i32) -> i32 {
-    let qr: *mut Grid = &mut q.grids[index as (usize)] as (*mut Grid) as (*mut Grid);
+    let qr: *mut Grid = &mut q.grids[index as (usize)];
     let mut p: Point = std::mem::uninitialized();
     perspective_map(
         (*qr).c.as_mut_ptr() as (*const f64),
         x as (f64) + 0.5f64,
         y as (f64) + 0.5f64,
-        &mut p as (*mut Point),
+        &mut p,
     );
     if p.y < 0i32 || p.y >= q.h || p.x < 0i32 || p.x >= q.w {
         0i32
@@ -890,7 +876,7 @@ pub unsafe extern "C" fn read_cell(q: &mut Quirc, index: i32, x: i32, y: i32) ->
 }
 
 pub unsafe extern "C" fn fitness_cell(q: &mut Quirc, index: i32, x: i32, y: i32) -> i32 {
-    let qr: *mut Grid = &mut q.grids[index as (usize)] as (*mut Grid) as (*mut Grid);
+    let qr: *mut Grid = &mut q.grids[index as (usize)];
     let mut score: i32 = 0i32;
     let mut u: i32;
     let mut v: i32;
@@ -910,7 +896,7 @@ pub unsafe extern "C" fn fitness_cell(q: &mut Quirc, index: i32, x: i32, y: i32)
                 (*qr).c.as_mut_ptr() as (*const f64),
                 x as (f64) + OFFSETS[u as (usize)],
                 y as (f64) + OFFSETS[v as (usize)],
-                &mut p as (*mut Point),
+                &mut p,
             );
             if !(p.y < 0i32 || p.y >= q.h || p.x < 0i32 || p.x >= q.w) {
                 if *q.pixels.offset((p.y * q.w + p.x) as (isize)) != 0 {
@@ -971,9 +957,9 @@ pub unsafe extern "C" fn fitness_capstone(
 /// transform, using the features we expect to find by scanning the
 /// grid.
 pub unsafe extern "C" fn fitness_all(q: &mut Quirc, index: i32) -> i32 {
-    let qr: *const Grid = &mut q.grids[index as (usize)] as (*mut Grid) as (*const Grid);
+    let qr: *const Grid = &mut q.grids[index as (usize)];
     let version: i32 = ((*qr).grid_size - 17i32) / 4i32;
-    let info: *const VersionInfo = &VERSION_DB[version as (usize)] as (*const VersionInfo);
+    let info: *const VersionInfo = &VERSION_DB[version as (usize)];
     let mut score: i32 = 0i32;
     let mut i: i32;
     let mut j: i32;
@@ -1043,7 +1029,7 @@ pub unsafe extern "C" fn fitness_all(q: &mut Quirc, index: i32) -> i32 {
 }
 
 pub unsafe extern "C" fn jiggle_perspective(q: &mut Quirc, index: i32) {
-    let mut qr: *mut Grid = &mut q.grids[index as (usize)] as (*mut Grid);
+    let mut qr: *mut Grid = &mut q.grids[index as (usize)];
     let mut best: i32 = fitness_all(q, index);
     let mut pass: i32;
     let mut adjustments: [f64; 8] = [0f64; 8];
@@ -1103,7 +1089,7 @@ pub unsafe extern "C" fn jiggle_perspective(q: &mut Quirc, index: i32) {
 /// chosen, we call this function to set up a grid-reading perspective
 /// transform.
 pub unsafe extern "C" fn setup_qr_perspective(q: &mut Quirc, index: i32) {
-    let qr: *mut Grid = &mut q.grids[index as (usize)] as (*mut Grid);
+    let qr: *mut Grid = &mut q.grids[index as (usize)];
     let mut rect: [Point; 4] = std::mem::uninitialized();
 
     // Set up the perspective map for reading the grid
@@ -1151,7 +1137,7 @@ pub unsafe extern "C" fn rotate_capstone(cap: *mut Capstone, h0: *const Point, h
         if !(j < 4i32) {
             break;
         }
-        let p: *mut Point = &mut (*cap).corners[j as (usize)] as (*mut Point);
+        let p: *mut Point = &mut (*cap).corners[j as (usize)];
         let score: i32 = ((*p).x - (*h0).x) * -(*hd).y + ((*p).y - (*h0).y) * (*hd).x;
         if j == 0 || score < best_score {
             best = j;
@@ -1224,7 +1210,7 @@ pub unsafe extern "C" fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, m
             let _old = q.num_grids;
             q.num_grids = q.num_grids + 1;
             _old
-        } as (usize)] as (*mut Grid);
+        } as (usize)];
         memset(
             qr as (*mut ::std::os::raw::c_void),
             0i32,
@@ -1242,13 +1228,8 @@ pub unsafe extern "C" fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, m
             if !(i < 3i32) {
                 break;
             }
-            let mut cap: *mut Capstone =
-                &mut q.capstones[(*qr).caps[i as (usize)] as (usize)] as (*mut Capstone);
-            rotate_capstone(
-                cap,
-                &mut h0 as (*mut Point) as (*const Point),
-                &mut hd as (*mut Point) as (*const Point),
-            );
+            let mut cap: *mut Capstone = &mut q.capstones[(*qr).caps[i as (usize)] as (usize)];
+            rotate_capstone(cap, &mut h0, &mut hd);
             (*cap).qr_grid = qr_index;
             i = i + 1;
         }
@@ -1259,11 +1240,11 @@ pub unsafe extern "C" fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, m
             // Make an estimate based for the alignment pattern based on extending
             // lines from capstones A and C.
             if !(line_intersect(
-                &mut q.capstones[a as (usize)].corners[0usize] as (*mut Point) as (*const Point),
-                &mut q.capstones[a as (usize)].corners[1usize] as (*mut Point) as (*const Point),
-                &mut q.capstones[c as (usize)].corners[0usize] as (*mut Point) as (*const Point),
-                &mut q.capstones[c as (usize)].corners[3usize] as (*mut Point) as (*const Point),
-                &mut (*qr).align as (*mut Point),
+                &mut q.capstones[a as (usize)].corners[0usize],
+                &mut q.capstones[a as (usize)].corners[1usize],
+                &mut q.capstones[c as (usize)].corners[0usize],
+                &mut q.capstones[c as (usize)].corners[3usize],
+                &mut (*qr).align,
             ) == 0)
             {
                 // On V2+ grids, we should use the alignment pattern.
@@ -1275,8 +1256,7 @@ pub unsafe extern "C" fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, m
                     // top-left of the QR grid.
                     if (*qr).align_region >= 0i32 {
                         let mut psd: PolygonScoreData = std::mem::uninitialized();
-                        let reg: *mut Region =
-                            &mut q.regions[(*qr).align_region as (usize)] as (*mut Region);
+                        let reg: *mut Region = &mut q.regions[(*qr).align_region as (usize)];
 
                         // Start from some point inside the alignment pattern
                         memcpy(
@@ -1290,7 +1270,7 @@ pub unsafe extern "C" fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, m
                             &mut hd as (*mut Point) as (*const ::std::os::raw::c_void),
                             ::std::mem::size_of::<Point>(),
                         );
-                        psd.corners = &mut (*qr).align as (*mut Point);
+                        psd.corners = &mut (*qr).align;
                         psd.scores[0usize] = -hd.y * (*qr).align.x + hd.x * (*qr).align.y;
                         flood_fill_seed(
                             q,
@@ -1382,10 +1362,8 @@ pub unsafe extern "C" fn test_neighbours(
             if !(k < (*vlist).count) {
                 break;
             }
-            let hn: *const Neighbour =
-                &mut (*hlist).n[j as (usize)] as (*mut Neighbour) as (*const Neighbour);
-            let vn: *const Neighbour =
-                &mut (*vlist).n[k as (usize)] as (*mut Neighbour) as (*const Neighbour);
+            let hn: *const Neighbour = &mut (*hlist).n[j as (usize)];
+            let vn: *const Neighbour = &mut (*vlist).n[k as (usize)];
             let score: f64 = (1.0 - (*hn).distance / (*vn).distance).abs();
             if !(score > 2.5f64) {
                 if best_h < 0i32 || score < best_score {
@@ -1405,7 +1383,7 @@ pub unsafe extern "C" fn test_neighbours(
 }
 
 pub unsafe extern "C" fn test_grouping(q: &mut Quirc, i: i32) {
-    let c1: *mut Capstone = &mut q.capstones[i as (usize)] as (*mut Capstone);
+    let c1: *mut Capstone = &mut q.capstones[i as (usize)];
     let mut j: i32;
     let mut hlist: NeighbourList = std::mem::uninitialized();
     let mut vlist: NeighbourList = std::mem::uninitialized();
@@ -1421,13 +1399,13 @@ pub unsafe extern "C" fn test_grouping(q: &mut Quirc, i: i32) {
             if !(j < q.num_capstones) {
                 break;
             }
-            let c2: *mut Capstone = &mut q.capstones[j as (usize)] as (*mut Capstone);
+            let c2: *mut Capstone = &mut q.capstones[j as (usize)];
             let mut u: f64 = std::mem::uninitialized();
             let mut v: f64 = std::mem::uninitialized();
             if !(i == j || (*c2).qr_grid >= 0i32) {
                 perspective_unmap(
                     (*c1).c.as_mut_ptr() as (*const f64),
-                    &mut (*c2).center as (*mut Point) as (*const Point),
+                    &mut (*c2).center,
                     &mut u as (*mut f64),
                     &mut v as (*mut f64),
                 );
@@ -1440,8 +1418,7 @@ pub unsafe extern "C" fn test_grouping(q: &mut Quirc, i: i32) {
                         let _old = hlist.count;
                         hlist.count = hlist.count + 1;
                         _old
-                    } as (usize)]
-                        as (*mut Neighbour);
+                    } as (usize)];
                     (*n).index = j;
                     (*n).distance = v;
                 }
@@ -1450,8 +1427,7 @@ pub unsafe extern "C" fn test_grouping(q: &mut Quirc, i: i32) {
                         let _old = vlist.count;
                         vlist.count = vlist.count + 1;
                         _old
-                    } as (usize)]
-                        as (*mut Neighbour);
+                    } as (usize)];
                     (*n).index = j;
                     (*n).distance = u;
                 }
@@ -1460,12 +1436,7 @@ pub unsafe extern "C" fn test_grouping(q: &mut Quirc, i: i32) {
         }
         (if !(hlist.count != 0 && (vlist.count != 0)) {
         } else {
-            test_neighbours(
-                q,
-                i,
-                &mut hlist as (*mut NeighbourList),
-                &mut vlist as (*mut NeighbourList),
-            );
+            test_neighbours(q, i, &mut hlist, &mut vlist);
         })
     }
 }
@@ -1540,7 +1511,7 @@ pub unsafe extern "C" fn quirc_end(q: &mut Quirc) {
 
 /// Extract the QR-code specified by the given index.
 pub unsafe extern "C" fn quirc_extract(q: &mut Quirc, index: i32, mut code: *mut QuircCode) {
-    let qr: *mut Grid = &mut q.grids[index as (usize)] as (*mut Grid) as (*mut Grid);
+    let qr: *mut Grid = &mut q.grids[index as (usize)];
     let mut y: i32;
     let mut i: i32 = 0i32;
     if index < 0i32 || index > q.num_grids {
@@ -1554,25 +1525,25 @@ pub unsafe extern "C" fn quirc_extract(q: &mut Quirc, index: i32, mut code: *mut
             (*qr).c.as_mut_ptr() as (*const f64),
             0.0f64,
             0.0f64,
-            &mut (*code).corners[0usize] as (*mut Point),
+            &mut (*code).corners[0usize],
         );
         perspective_map(
             (*qr).c.as_mut_ptr() as (*const f64),
             (*qr).grid_size as (f64),
             0.0f64,
-            &mut (*code).corners[1usize] as (*mut Point),
+            &mut (*code).corners[1usize],
         );
         perspective_map(
             (*qr).c.as_mut_ptr() as (*const f64),
             (*qr).grid_size as (f64),
             (*qr).grid_size as (f64),
-            &mut (*code).corners[2usize] as (*mut Point),
+            &mut (*code).corners[2usize],
         );
         perspective_map(
             (*qr).c.as_mut_ptr() as (*const f64),
             0.0f64,
             (*qr).grid_size as (f64),
-            &mut (*code).corners[3usize] as (*mut Point),
+            &mut (*code).corners[3usize],
         );
         (*code).size = (*qr).grid_size;
         y = 0i32;

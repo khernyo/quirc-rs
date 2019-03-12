@@ -52,18 +52,15 @@ unsafe extern "C" fn dump_info(q: &mut Quirc) {
         let mut code: QuircCode = std::mem::uninitialized();
         let mut data: QuircData = std::mem::uninitialized();
         let err: DecodeResult;
-        quirc_extract(q, i, &mut code as (*mut QuircCode));
-        err = quirc_decode(
-            &mut code as (*mut QuircCode) as (*const QuircCode),
-            &mut data as (*mut QuircData),
-        );
-        dump_cells(&mut code as (*mut QuircCode) as (*const QuircCode));
+        quirc_extract(q, i, &mut code);
+        err = quirc_decode(&mut code, &mut data);
+        dump_cells(&mut code);
         println!();
         if err != DecodeResult::Success {
             println!("  Decoding FAILED: {}", quirc_strerror(err));
         } else {
             println!("  Decoding successful:");
-            dump_data(&mut data as (*mut QuircData));
+            dump_data(&mut data);
         }
         println!();
         i = i + 1;

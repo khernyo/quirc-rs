@@ -139,12 +139,8 @@ pub unsafe extern "C" fn scan_file(
         for i in 0..(*info).id_count {
             let mut code: QuircCode = std::mem::uninitialized();
             let mut data: QuircData = std::mem::uninitialized();
-            quirc_extract(decoder, i, &mut code as (*mut QuircCode));
-            if quirc_decode(
-                &mut code as (*mut QuircCode) as (*const QuircCode),
-                &mut data as (*mut QuircData),
-            ) == DecodeResult::Success
-            {
+            quirc_extract(decoder, i, &mut code);
+            if quirc_decode(&mut code, &mut data) == DecodeResult::Success {
                 (*info).decode_count = (*info).decode_count + 1;
             }
         }
@@ -164,23 +160,20 @@ pub unsafe extern "C" fn scan_file(
         if WANT_CELL_DUMP || WANT_VERBOSE {
             for i in 0..(*info).id_count {
                 let mut code: QuircCode = std::mem::uninitialized();
-                quirc_extract(decoder, i, &mut code as (*mut QuircCode));
+                quirc_extract(decoder, i, &mut code);
                 if WANT_CELL_DUMP {
-                    dump_cells(&mut code as (*mut QuircCode) as (*const QuircCode));
+                    dump_cells(&mut code);
                     println!();
                 }
                 if WANT_VERBOSE {
                     let mut data: QuircData = std::mem::uninitialized();
-                    let err: DecodeResult = quirc_decode(
-                        &mut code as (*mut QuircCode) as (*const QuircCode),
-                        &mut data as (*mut QuircData),
-                    );
+                    let err: DecodeResult = quirc_decode(&mut code, &mut data);
                     if err != DecodeResult::Success {
                         println!("  ERROR: {}", quirc_strerror(err));
                         println!();
                     } else {
                         println!("  Decode successful:");
-                        dump_data(&mut data as (*mut QuircData));
+                        dump_data(&mut data);
                         println!();
                     }
                 }
@@ -207,8 +200,8 @@ pub unsafe extern "C" fn scan_dir(decoder: &mut Quirc, path: &Path, info: *mut R
             let p = entry.path();
             let fullpath = p.as_path();
 
-            if test_scan(decoder, fullpath, &mut sub as (*mut ResultInfo)) > 0i32 {
-                add_result(info, &mut sub as (*mut ResultInfo));
+            if test_scan(decoder, fullpath, &mut sub) > 0i32 {
+                add_result(info, &mut sub);
                 count = count + 1;
             }
         }
@@ -255,21 +248,13 @@ pub unsafe extern "C" fn run_tests(paths: Vec<&str>) {
     );
     for path in paths {
         let mut info: ResultInfo = std::mem::uninitialized();
-        if test_scan(
-            &mut decoder,
-            Path::new(path),
-            &mut info as (*mut ResultInfo),
-        ) > 0i32
-        {
-            add_result(
-                &mut sum as (*mut ResultInfo),
-                &mut info as (*mut ResultInfo),
-            );
+        if test_scan(&mut decoder, Path::new(path), &mut info) > 0i32 {
+            add_result(&mut sum, &mut info);
             count = count + 1;
         }
     }
     if count > 1i32 {
-        print_result("TOTAL", &mut sum as (*mut ResultInfo));
+        print_result("TOTAL", &mut sum);
     }
 }
 

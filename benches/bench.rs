@@ -32,11 +32,8 @@ unsafe fn run(width: u32, height: u32, image_bytes: *mut u8) {
     for i in 0..id_count {
         let mut code: QuircCode = std::mem::uninitialized();
         let mut data: QuircData = std::mem::uninitialized();
-        quirc_extract(&mut decoder, i, &mut code as (*mut QuircCode));
-        quirc_decode(
-            &mut code as (*mut QuircCode) as (*const QuircCode),
-            &mut data as (*mut QuircData),
-        );
+        quirc_extract(&mut decoder, i, &mut code);
+        quirc_decode(&mut code, &mut data);
     }
 }
 

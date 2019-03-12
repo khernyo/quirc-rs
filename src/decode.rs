@@ -730,7 +730,7 @@ unsafe extern "C" fn codestream_ecc(data: *mut QuircData, ds: *mut DataStream) -
         let ecc: *const RsParams = if i < (*sb_ecc).ns {
             sb_ecc
         } else {
-            &mut lb_ecc as (*mut RsParams) as (*const RsParams)
+            &mut lb_ecc
         };
         let num_ec: i32 = (*ecc).bs - (*ecc).dw;
         let err: DecodeResult;
@@ -1051,12 +1051,12 @@ pub unsafe extern "C" fn quirc_decode(
             (if err != DecodeResult::Success {
                 err
             } else {
-                read_data(code, data, &mut ds as (*mut DataStream));
-                err = codestream_ecc(data, &mut ds as (*mut DataStream));
+                read_data(code, data, &mut ds);
+                err = codestream_ecc(data, &mut ds);
                 (if err != DecodeResult::Success {
                     err
                 } else {
-                    err = decode_payload(data, &mut ds as (*mut DataStream));
+                    err = decode_payload(data, &mut ds);
                     (if err != DecodeResult::Success {
                         err
                     } else {

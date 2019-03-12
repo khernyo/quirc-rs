@@ -59,12 +59,8 @@ unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Dat
         .map(|i| {
             let mut code: QuircCode = std::mem::uninitialized();
             let mut data: QuircData = std::mem::uninitialized();
-            quirc_extract(&mut decoder, i, &mut code as (*mut QuircCode));
-            if quirc_decode(
-                &mut code as (*mut QuircCode) as (*const QuircCode),
-                &mut data as (*mut QuircData),
-            ) == DecodeResult::Success
-            {
+            quirc_extract(&mut decoder, i, &mut code);
+            if quirc_decode(&mut code, &mut data) == DecodeResult::Success {
                 Some(Data::new(
                     data.version,
                     data.data_type,
