@@ -135,18 +135,17 @@ fn perspective_unmap(c: &[f64; consts::PERSPECTIVE_PARAMS], in_: &Point) -> (f64
 
 const FLOOD_FILL_MAX_DEPTH: i32 = 4096;
 
-type SpanFunc =
-    unsafe extern "C" fn(user_data: *mut ::std::os::raw::c_void, y: i32, left: i32, right: i32);
+type SpanFunc<T> = unsafe fn(user_data: *mut T, y: i32, left: i32, right: i32);
 
 /// Span-based floodfill routine
-unsafe fn flood_fill_seed(
+unsafe fn flood_fill_seed<T>(
     q: &mut Quirc,
     x: i32,
     y: i32,
     from: i32,
     to: i32,
-    func: Option<SpanFunc>,
-    user_data: *mut ::std::os::raw::c_void,
+    func: Option<SpanFunc<T>>,
+    user_data: *mut T,
     depth: i32,
 ) {
     let mut left: i32 = x;
@@ -254,14 +253,9 @@ pub unsafe extern "C" fn threshold(q: &mut Quirc) {
     }
 }
 
-pub unsafe extern "C" fn area_count(
-    user_data: *mut ::std::os::raw::c_void,
-    _y: i32,
-    left: i32,
-    right: i32,
-) {
+pub unsafe fn area_count(region: *mut Region, _y: i32, left: i32, right: i32) {
     let _rhs = right - left + 1i32;
-    let _lhs = &mut (*(user_data as (*mut Region))).count;
+    let _lhs = &mut (*region).count;
     *_lhs = *_lhs + _rhs;
 }
 
@@ -294,16 +288,7 @@ pub unsafe extern "C" fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
             (*r#box).seed.x = x;
             (*r#box).seed.y = y;
             (*r#box).capstone = -1i32;
-            flood_fill_seed(
-                q,
-                x,
-                y,
-                pixel,
-                region,
-                Some(area_count),
-                r#box as (*mut ::std::os::raw::c_void),
-                0i32,
-            );
+            flood_fill_seed(q, x, y, pixel, region, Some(area_count), r#box, 0i32);
             region
         })
     }
@@ -323,13 +308,7 @@ impl Clone for PolygonScoreData {
     }
 }
 
-pub unsafe extern "C" fn find_one_corner(
-    user_data: *mut ::std::os::raw::c_void,
-    y: i32,
-    left: i32,
-    right: i32,
-) {
-    let mut psd: *mut PolygonScoreData = user_data as (*mut PolygonScoreData);
+pub unsafe fn find_one_corner(psd: *mut PolygonScoreData, y: i32, left: i32, right: i32) {
     let xs: [i32; 2] = [left, right];
     let dy: i32 = y - (*psd).r#ref.y;
     let mut i: i32;
@@ -349,13 +328,7 @@ pub unsafe extern "C" fn find_one_corner(
     }
 }
 
-pub unsafe extern "C" fn find_other_corners(
-    user_data: *mut ::std::os::raw::c_void,
-    y: i32,
-    left: i32,
-    right: i32,
-) {
-    let mut psd: *mut PolygonScoreData = user_data as (*mut PolygonScoreData);
+pub unsafe fn find_other_corners(psd: *mut PolygonScoreData, y: i32, left: i32, right: i32) {
     let xs: [i32; 2] = [left, right];
     let mut i: i32;
     i = 0i32;
@@ -403,7 +376,7 @@ pub unsafe extern "C" fn find_region_corners(
         rcode,
         PIXEL_BLACK,
         Some(find_one_corner),
-        &mut psd as (*mut PolygonScoreData) as (*mut ::std::os::raw::c_void),
+        &mut psd,
         0i32,
     );
     psd.r#ref.x = (*psd.corners.offset(0isize)).x - psd.r#ref.x;
@@ -433,7 +406,7 @@ pub unsafe extern "C" fn find_region_corners(
         PIXEL_BLACK,
         rcode,
         Some(find_other_corners),
-        &mut psd as (*mut PolygonScoreData) as (*mut ::std::os::raw::c_void),
+        &mut psd,
         0i32,
     );
 }
@@ -634,13 +607,7 @@ pub unsafe extern "C" fn find_alignment_pattern(q: &mut Quirc, index: i32) {
     }
 }
 
-pub unsafe extern "C" fn find_leftmost_to_line(
-    user_data: *mut ::std::os::raw::c_void,
-    y: i32,
-    left: i32,
-    right: i32,
-) {
-    let mut psd: *mut PolygonScoreData = user_data as (*mut PolygonScoreData);
+pub unsafe fn find_leftmost_to_line(psd: *mut PolygonScoreData, y: i32, left: i32, right: i32) {
     let xs: [i32; 2] = [left, right];
     let mut i: i32;
     i = 0i32;
@@ -1198,7 +1165,7 @@ pub unsafe extern "C" fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, m
                             PIXEL_BLACK,
                             (*qr).align_region,
                             Some(find_leftmost_to_line),
-                            &mut psd as (*mut PolygonScoreData) as (*mut ::std::os::raw::c_void),
+                            &mut psd,
                             0i32,
                         );
                     }
