@@ -74,37 +74,38 @@ fn line_intersect(p0: &Point, p1: &Point, q0: &Point, q1: &Point, r: &mut Point)
     }
 }
 
-pub unsafe extern "C" fn perspective_setup(c: *mut f64, rect: *const Point, w: f64, h: f64) {
-    let x0: f64 = (*rect.offset(0isize)).x as (f64);
-    let y0: f64 = (*rect.offset(0isize)).y as (f64);
-    let x1: f64 = (*rect.offset(1isize)).x as (f64);
-    let y1: f64 = (*rect.offset(1isize)).y as (f64);
-    let x2: f64 = (*rect.offset(2isize)).x as (f64);
-    let y2: f64 = (*rect.offset(2isize)).y as (f64);
-    let x3: f64 = (*rect.offset(3isize)).x as (f64);
-    let y3: f64 = (*rect.offset(3isize)).y as (f64);
+fn perspective_setup(rect: &[Point; 4], w: f64, h: f64) -> [f64; 8] {
+    let x0: f64 = rect[0].x as (f64);
+    let y0: f64 = rect[0].y as (f64);
+    let x1: f64 = rect[1].x as (f64);
+    let y1: f64 = rect[1].y as (f64);
+    let x2: f64 = rect[2].x as (f64);
+    let y2: f64 = rect[2].y as (f64);
+    let x3: f64 = rect[3].x as (f64);
+    let y3: f64 = rect[3].y as (f64);
     let wden: f64 = w * (x2 * y3 - x3 * y2 + (x3 - x2) * y1 + x1 * (y2 - y3));
     let hden: f64 = h * (x2 * y3 + x1 * (y2 - y3) - x3 * y2 + (x3 - x2) * y1);
-    *c.offset(0isize) = (x1 * (x2 * y3 - x3 * y2)
-        + x0 * (-x2 * y3 + x3 * y2 + (x2 - x3) * y1)
-        + x1 * (x3 - x2) * y0)
-        / wden;
-    *c.offset(1isize) = -(x0 * (x2 * y3 + x1 * (y2 - y3) - x2 * y1) - x1 * x3 * y2
-        + x2 * x3 * y1
-        + (x1 * x3 - x2 * x3) * y0)
-        / hden;
-    *c.offset(2isize) = x0;
-    *c.offset(3isize) = (y0 * (x1 * (y3 - y2) - x2 * y3 + x3 * y2)
-        + y1 * (x2 * y3 - x3 * y2)
-        + x0 * y1 * (y2 - y3))
-        / wden;
-    *c.offset(4isize) = (x0 * (y1 * y3 - y2 * y3) + x1 * y2 * y3 - x2 * y1 * y3
-        + y0 * (x3 * y2 - x1 * y2 + (x2 - x3) * y1))
-        / hden;
-    *c.offset(5isize) = y0;
-    *c.offset(6isize) = (x1 * (y3 - y2) + x0 * (y2 - y3) + (x2 - x3) * y1 + (x3 - x2) * y0) / wden;
-    *c.offset(7isize) =
-        (-x2 * y3 + x1 * y3 + x3 * y2 + x0 * (y1 - y2) - x3 * y1 + (x2 - x1) * y0) / hden;
+    [
+        (x1 * (x2 * y3 - x3 * y2)
+            + x0 * (-x2 * y3 + x3 * y2 + (x2 - x3) * y1)
+            + x1 * (x3 - x2) * y0)
+            / wden,
+        -(x0 * (x2 * y3 + x1 * (y2 - y3) - x2 * y1) - x1 * x3 * y2
+            + x2 * x3 * y1
+            + (x1 * x3 - x2 * x3) * y0)
+            / hden,
+        x0,
+        (y0 * (x1 * (y3 - y2) - x2 * y3 + x3 * y2)
+            + y1 * (x2 * y3 - x3 * y2)
+            + x0 * y1 * (y2 - y3))
+            / wden,
+        (x0 * (y1 * y3 - y2 * y3) + x1 * y2 * y3 - x2 * y1 * y3
+            + y0 * (x3 * y2 - x1 * y2 + (x2 - x3) * y1))
+            / hden,
+        y0,
+        (x1 * (y3 - y2) + x0 * (y2 - y3) + (x2 - x3) * y1 + (x3 - x2) * y0) / wden,
+        (-x2 * y3 + x1 * y3 + x3 * y2 + x0 * (y1 - y2) - x3 * y1 + (x2 - x1) * y0) / hden,
+    ]
 }
 
 pub unsafe extern "C" fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mut Point) {
@@ -503,12 +504,7 @@ pub unsafe extern "C" fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
         );
 
         // Set up the perspective transform and find the center
-        perspective_setup(
-            (*capstone).c.as_mut_ptr(),
-            (*capstone).corners.as_mut_ptr() as (*const Point),
-            7.0f64,
-            7.0f64,
-        );
+        (*capstone).c = perspective_setup(&(*capstone).corners, 7.0f64, 7.0f64);
         perspective_map(
             (*capstone).c.as_mut_ptr() as (*const f64),
             3.5f64,
@@ -1105,9 +1101,8 @@ pub unsafe extern "C" fn setup_qr_perspective(q: &mut Quirc, index: i32) {
             as (*const ::std::os::raw::c_void),
         ::std::mem::size_of::<Point>(),
     );
-    perspective_setup(
-        (*qr).c.as_mut_ptr(),
-        rect.as_mut_ptr() as (*const Point),
+    (*qr).c = perspective_setup(
+        &rect,
         ((*qr).grid_size - 7i32) as (f64),
         ((*qr).grid_size - 7i32) as (f64),
     );
@@ -1154,12 +1149,7 @@ pub unsafe extern "C" fn rotate_capstone(cap: *mut Capstone, h0: *const Point, h
         copy.as_mut_ptr() as (*const ::std::os::raw::c_void),
         ::std::mem::size_of::<[Point; 4]>(),
     );
-    perspective_setup(
-        (*cap).c.as_mut_ptr(),
-        (*cap).corners.as_mut_ptr() as (*const Point),
-        7.0f64,
-        7.0f64,
-    );
+    (*cap).c = perspective_setup(&(*cap).corners, 7.0f64, 7.0f64);
 }
 
 pub unsafe extern "C" fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
