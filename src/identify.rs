@@ -309,7 +309,7 @@ pub unsafe extern "C" fn area_count(
     *_lhs = *_lhs + _rhs;
 }
 
-pub unsafe extern "C" fn region_code(mut q: *mut Quirc, x: i32, y: i32) -> i32 {
+pub unsafe extern "C" fn region_code(q: *mut Quirc, x: i32, y: i32) -> i32 {
     let pixel: i32;
     let mut r#box: *mut Region;
     let region: i32;
@@ -482,7 +482,7 @@ pub unsafe extern "C" fn find_region_corners(
     );
 }
 
-pub unsafe extern "C" fn record_capstone(mut q: *mut Quirc, ring: i32, stone: i32) {
+pub unsafe extern "C" fn record_capstone(q: *mut Quirc, ring: i32, stone: i32) {
     let mut stone_reg: *mut Region = &mut (*q).regions[stone as (usize)] as (*mut Region);
     let mut ring_reg: *mut Region = &mut (*q).regions[ring as (usize)] as (*mut Region);
     let mut capstone: *mut Capstone;
@@ -1471,7 +1471,7 @@ pub unsafe extern "C" fn test_grouping(q: *mut Quirc, i: i32) {
     }
 }
 
-pub unsafe extern "C" fn pixels_setup(mut q: *mut Quirc) {
+pub unsafe extern "C" fn pixels_setup(q: *mut Quirc) {
     if ::std::mem::size_of::<u8>() == ::std::mem::size_of::<u8>() {
         (*q).pixels = (*q).image;
     } else {
@@ -1504,7 +1504,7 @@ pub unsafe extern "C" fn pixels_setup(mut q: *mut Quirc) {
 /// After filling the buffer, quirc_end() should be called to process
 /// the image for QR-code recognition. The locations and content of each
 /// code may be obtained using accessor functions described below.
-pub unsafe extern "C" fn quirc_begin(mut q: *mut Quirc, w: *mut i32, h: *mut i32) -> *mut u8 {
+pub unsafe extern "C" fn quirc_begin(q: *mut Quirc, w: *mut i32, h: *mut i32) -> *mut u8 {
     (*q).num_regions = PIXEL_REGION;
     (*q).num_capstones = 0i32;
     (*q).num_grids = 0i32;

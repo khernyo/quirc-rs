@@ -39,27 +39,27 @@ impl Data {
 }
 
 unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Data>]) {
-    let decoder: *mut Quirc = quirc_new();
-    let ret = load_image(decoder, path);
+    let mut decoder = Quirc::new();
+    let ret = load_image(&mut decoder, path);
     assert_eq!(ret, 0);
 
     let image_bytes = {
-        let dst = malloc(((*decoder).w * (*decoder).h) as usize);
+        let dst = malloc((decoder.w * decoder.h) as usize);
         memcpy(
             dst,
-            (*decoder).image as *const c_void,
-            ((*decoder).w * (*decoder).h) as usize,
+            decoder.image as *const c_void,
+            (decoder.w * decoder.h) as usize,
         );
         dst
     };
 
-    quirc_end(decoder);
+    quirc_end(&mut decoder);
 
-    let result: Vec<_> = (0..quirc_count(decoder as (*const Quirc)))
+    let result: Vec<_> = (0..quirc_count(&decoder))
         .map(|i| {
             let mut code: QuircCode = std::mem::uninitialized();
             let mut data: QuircData = std::mem::uninitialized();
-            quirc_extract(decoder as (*mut Quirc), i, &mut code as (*mut QuircCode));
+            quirc_extract(&mut decoder, i, &mut code as (*mut QuircCode));
             if quirc_decode(
                 &mut code as (*mut QuircCode) as (*const QuircCode),
                 &mut data as (*mut QuircData),
@@ -80,7 +80,7 @@ unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Dat
         .collect();
     assert_eq!(result, expected_contents);
 
-    validate(decoder, image_bytes);
+    validate(&mut decoder, image_bytes);
 }
 
 macro_rules! check {

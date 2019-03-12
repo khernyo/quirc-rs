@@ -14,18 +14,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+use std::ptr::null_mut;
+
 extern "C" {
     fn calloc(__nmemb: usize, __size: usize) -> *mut ::std::os::raw::c_void;
     fn free(__ptr: *mut ::std::os::raw::c_void);
-    fn malloc(__size: usize) -> *mut ::std::os::raw::c_void;
     fn memcpy(
         __dest: *mut ::std::os::raw::c_void,
         __src: *const ::std::os::raw::c_void,
-        __n: usize,
-    ) -> *mut ::std::os::raw::c_void;
-    fn memset(
-        __s: *mut ::std::os::raw::c_void,
-        __c: i32,
         __n: usize,
     ) -> *mut ::std::os::raw::c_void;
 }
@@ -101,6 +97,12 @@ impl Clone for Point {
     }
 }
 
+impl Default for Point {
+    fn default() -> Self {
+        Point { x: 0, y: 0 }
+    }
+}
+
 #[derive(Copy)]
 #[repr(C)]
 pub struct Region {
@@ -112,6 +114,16 @@ pub struct Region {
 impl Clone for Region {
     fn clone(&self) -> Self {
         *self
+    }
+}
+
+impl Default for Region {
+    fn default() -> Self {
+        Region {
+            seed: Default::default(),
+            count: 0,
+            capstone: 0,
+        }
     }
 }
 
@@ -129,6 +141,19 @@ pub struct Capstone {
 impl Clone for Capstone {
     fn clone(&self) -> Self {
         *self
+    }
+}
+
+impl Default for Capstone {
+    fn default() -> Self {
+        Capstone {
+            ring: 0,
+            stone: 0,
+            corners: [Default::default(); 4],
+            center: Default::default(),
+            c: [0f64; consts::PERSPECTIVE_PARAMS],
+            qr_grid: 0,
+        }
     }
 }
 
@@ -158,7 +183,21 @@ impl Clone for Grid {
     }
 }
 
-#[derive(Copy)]
+impl Default for Grid {
+    fn default() -> Self {
+        Grid {
+            caps: [0; 3],
+            align_region: 0,
+            align: Default::default(),
+            tpep: [Default::default(); 3],
+            hscan: 0,
+            vscan: 0,
+            grid_size: 0,
+            c: [0f64; consts::PERSPECTIVE_PARAMS],
+        }
+    }
+}
+
 #[repr(C)]
 pub struct Quirc {
     pub image: *mut u8,
@@ -177,9 +216,41 @@ pub struct Quirc {
     pub grids: [Grid; consts::MAX_GRIDS],
 }
 
-impl Clone for Quirc {
-    fn clone(&self) -> Self {
-        *self
+impl Default for Quirc {
+    fn default() -> Self {
+        Quirc {
+            image: null_mut(),
+            pixels: null_mut(),
+            row_average: null_mut(),
+            w: 0,
+            h: 0,
+            num_regions: 0,
+            regions: [Default::default(); consts::MAX_REGIONS as usize],
+            num_capstones: 0,
+            capstones: [Default::default(); consts::MAX_CAPSTONES],
+            num_grids: 0,
+            grids: [Default::default(); consts::MAX_GRIDS],
+        }
+    }
+}
+
+impl Drop for Quirc {
+    fn drop(&mut self) {
+        unsafe {
+            free(self.image as (*mut ::std::os::raw::c_void));
+            // q->pixels may alias q->image when their type representation is of the
+            // same size, so we need to be careful here to avoid a double free
+            if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
+                free(self.pixels as (*mut ::std::os::raw::c_void));
+            }
+            free(self.row_average as (*mut ::std::os::raw::c_void));
+        }
+    }
+}
+
+impl Quirc {
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 
@@ -188,40 +259,12 @@ pub fn quirc_version() -> &'static str {
     "1.0"
 }
 
-/// Construct a new QR-code recognizer. This function will return NULL
-/// if sufficient memory could not be allocated.
-pub unsafe extern "C" fn quirc_new() -> *mut Quirc {
-    let q: *mut Quirc = malloc(::std::mem::size_of::<Quirc>()) as (*mut Quirc);
-    if q.is_null() {
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut Quirc)
-    } else {
-        memset(
-            q as (*mut ::std::os::raw::c_void),
-            0i32,
-            ::std::mem::size_of::<Quirc>(),
-        );
-        q
-    }
-}
-
-/// Destroy a QR-code recognizer.
-pub unsafe extern "C" fn quirc_destroy(q: *mut Quirc) {
-    free((*q).image as (*mut ::std::os::raw::c_void));
-    // q->pixels may alias q->image when their type representation is of the
-    // same size, so we need to be careful here to avoid a double free
-    if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
-        free((*q).pixels as (*mut ::std::os::raw::c_void));
-    }
-    free((*q).row_average as (*mut ::std::os::raw::c_void));
-    free(q as (*mut ::std::os::raw::c_void));
-}
-
 /// Resize the QR-code recognizer. The size of an image must be
 /// specified before codes can be analyzed.
 ///
 /// This function returns 0 on success, or -1 if sufficient memory could
 /// not be allocated.
-pub unsafe extern "C" fn quirc_resize(mut q: *mut Quirc, w: i32, h: i32) -> i32 {
+pub unsafe extern "C" fn quirc_resize(q: *mut Quirc, w: i32, h: i32) -> i32 {
     let mut _currentBlock;
     let mut image: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
     let mut pixels: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);

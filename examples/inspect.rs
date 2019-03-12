@@ -22,8 +22,6 @@ use std::path::Path;
 
 use clap::{App, Arg};
 
-use libc::{c_char, perror};
-
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -277,11 +275,10 @@ unsafe extern "C" fn sdl_examine(q: *mut Quirc) -> i32 {
 }
 
 fn main() {
-    let ret = unsafe { _c_main() };
-    ::std::process::exit(ret);
+    unsafe { _c_main() }
 }
 
-pub unsafe extern "C" fn _c_main() -> i32 {
+pub unsafe extern "C" fn _c_main() {
     let paths_arg_name = "paths";
     let paths_arg = Arg::with_name(paths_arg_name).required(true);
 
@@ -294,27 +291,16 @@ pub unsafe extern "C" fn _c_main() -> i32 {
     let matches = args.get_matches();
     let path = matches.value_of(paths_arg_name).unwrap();
 
-    let q: *mut Quirc;
-    q = quirc_new() as (*mut Quirc);
-    if q.is_null() {
-        perror((*b"can\'t create quirc object\0").as_ptr() as *const c_char);
-        -1i32
+    let mut q = Quirc::new();
+    let status: i32;
+    status = load_image(&mut q, &Path::new(path));
+    if status < 0i32 {
+        panic!();
     } else {
-        let status: i32;
-        status = load_image(q, &Path::new(path));
-        (if status < 0i32 {
-            quirc_destroy(q as (*mut Quirc));
-            -1i32
-        } else {
-            quirc_end(q as (*mut Quirc));
-            dump_info(q);
-            (if sdl_examine(q) < 0i32 {
-                quirc_destroy(q as (*mut Quirc));
-                -1i32
-            } else {
-                quirc_destroy(q as (*mut Quirc));
-                0i32
-            })
-        })
+        quirc_end(&mut q);
+        dump_info(&mut q);
+        if sdl_examine(&mut q) < 0i32 {
+            panic!();
+        }
     }
 }

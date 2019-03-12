@@ -112,7 +112,7 @@ pub unsafe extern "C" fn dump_cells(code: *const QuircCode) {
 ///
 /// Note that you must call quirc_end() if the function returns
 /// successfully (0).
-pub unsafe fn load_image(q: *mut Quirc, path: &Path) -> i32 {
+pub unsafe fn load_image(q: &mut Quirc, path: &Path) -> i32 {
     let img = image::open(path).unwrap().grayscale().to_luma();
     let (width, height) = img.dimensions();
 

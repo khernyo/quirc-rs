@@ -19,7 +19,7 @@ extern crate quirc_rs;
 use std::path::Path;
 
 use clap::{App, Arg};
-use libc::{c_char, c_void, malloc, memcpy, memset, perror, timespec};
+use libc::{c_void, malloc, memcpy, memset, timespec};
 
 use quirc_rs::decode::*;
 use quirc_rs::identify::*;
@@ -97,7 +97,7 @@ pub unsafe extern "C" fn add_result(mut sum: *mut ResultInfo, inf: *mut ResultIn
 }
 
 pub unsafe extern "C" fn scan_file(
-    decoder: *mut Quirc,
+    decoder: &mut Quirc,
     path: &Path,
     mut info: *mut ResultInfo,
 ) -> i32 {
@@ -194,7 +194,7 @@ pub unsafe extern "C" fn scan_file(
     }
 }
 
-pub unsafe extern "C" fn scan_dir(decoder: *mut Quirc, path: &Path, info: *mut ResultInfo) -> i32 {
+pub unsafe extern "C" fn scan_dir(decoder: &mut Quirc, path: &Path, info: *mut ResultInfo) -> i32 {
     let entries = path.read_dir().unwrap();
 
     println!("{}:", path.display());
@@ -221,7 +221,7 @@ pub unsafe extern "C" fn scan_dir(decoder: *mut Quirc, path: &Path, info: *mut R
     (count > 0i32) as (i32)
 }
 
-pub unsafe extern "C" fn test_scan(decoder: *mut Quirc, path: &Path, info: *mut ResultInfo) -> i32 {
+pub unsafe extern "C" fn test_scan(decoder: &mut Quirc, path: &Path, info: *mut ResultInfo) -> i32 {
     memset(
         info as (*mut ::std::os::raw::c_void),
         0i32,
@@ -237,50 +237,47 @@ pub unsafe extern "C" fn test_scan(decoder: *mut Quirc, path: &Path, info: *mut 
     }
 }
 
-pub unsafe extern "C" fn run_tests(paths: Vec<&str>) -> i32 {
+pub unsafe extern "C" fn run_tests(paths: Vec<&str>) {
     let mut sum: ResultInfo = std::mem::uninitialized();
     let mut count: i32 = 0i32;
-    let decoder: *mut Quirc = quirc_new();
+    let mut decoder = Quirc::new();
 
-    if decoder.is_null() {
-        perror((*b"quirc_new\0").as_ptr() as *const c_char);
-        -1i32
-    } else {
-        println!("  {:30}  {:>17} {:>11}", "", "Time (ms)", "Count");
-        println!(
-            "  {:<30}  {:>5} {:>5} {:>5} {:>5} {:>5}",
-            "Filename", "Load", "ID", "Total", "ID", "Dec"
-        );
-        println!("-------------------------------------------------------------------------------");
-        memset(
-            &mut sum as (*mut ResultInfo) as (*mut ::std::os::raw::c_void),
-            0i32,
-            ::std::mem::size_of::<ResultInfo>(),
-        );
-        for path in paths {
-            let mut info: ResultInfo = std::mem::uninitialized();
-            if test_scan(decoder, Path::new(path), &mut info as (*mut ResultInfo)) > 0i32 {
-                add_result(
-                    &mut sum as (*mut ResultInfo),
-                    &mut info as (*mut ResultInfo),
-                );
-                count = count + 1;
-            }
+    println!("  {:30}  {:>17} {:>11}", "", "Time (ms)", "Count");
+    println!(
+        "  {:<30}  {:>5} {:>5} {:>5} {:>5} {:>5}",
+        "Filename", "Load", "ID", "Total", "ID", "Dec"
+    );
+    println!("-------------------------------------------------------------------------------");
+    memset(
+        &mut sum as (*mut ResultInfo) as (*mut ::std::os::raw::c_void),
+        0i32,
+        ::std::mem::size_of::<ResultInfo>(),
+    );
+    for path in paths {
+        let mut info: ResultInfo = std::mem::uninitialized();
+        if test_scan(
+            &mut decoder,
+            Path::new(path),
+            &mut info as (*mut ResultInfo),
+        ) > 0i32
+        {
+            add_result(
+                &mut sum as (*mut ResultInfo),
+                &mut info as (*mut ResultInfo),
+            );
+            count = count + 1;
         }
-        if count > 1i32 {
-            print_result("TOTAL", &mut sum as (*mut ResultInfo));
-        }
-        quirc_destroy(decoder);
-        0i32
+    }
+    if count > 1i32 {
+        print_result("TOTAL", &mut sum as (*mut ResultInfo));
     }
 }
 
 fn main() {
-    let ret = unsafe { _c_main() };
-    ::std::process::exit(ret);
+    unsafe { _c_main() }
 }
 
-pub unsafe extern "C" fn _c_main() -> i32 {
+pub unsafe extern "C" fn _c_main() {
     let cell_dump_arg_name = "cell-dump";
     let cell_dump_arg = Arg::with_name(cell_dump_arg_name)
         .short("d")
