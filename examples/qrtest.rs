@@ -135,11 +135,11 @@ pub unsafe extern "C" fn scan_file(
         quirc_end(decoder);
         libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
         (*info).identify_time = ms(tp).wrapping_sub(start);
-        (*info).id_count = quirc_count(decoder as (*const Quirc));
+        (*info).id_count = quirc_count(decoder);
         for i in 0..(*info).id_count {
             let mut code: QuircCode = std::mem::uninitialized();
             let mut data: QuircData = std::mem::uninitialized();
-            quirc_extract(decoder as (*mut Quirc), i, &mut code as (*mut QuircCode));
+            quirc_extract(decoder, i, &mut code as (*mut QuircCode));
             if quirc_decode(
                 &mut code as (*mut QuircCode) as (*const QuircCode),
                 &mut data as (*mut QuircData),
@@ -164,7 +164,7 @@ pub unsafe extern "C" fn scan_file(
         if WANT_CELL_DUMP || WANT_VERBOSE {
             for i in 0..(*info).id_count {
                 let mut code: QuircCode = std::mem::uninitialized();
-                quirc_extract(decoder as (*mut Quirc), i, &mut code as (*mut QuircCode));
+                quirc_extract(decoder, i, &mut code as (*mut QuircCode));
                 if WANT_CELL_DUMP {
                     dump_cells(&mut code as (*mut QuircCode) as (*const QuircCode));
                     println!();

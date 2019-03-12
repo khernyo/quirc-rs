@@ -40,8 +40,8 @@ extern "C" {
     fn rint(x: c_double) -> c_double;
 }
 
-unsafe extern "C" fn dump_info(q: *mut Quirc) {
-    let count: i32 = quirc_count(q as (*const Quirc));
+unsafe extern "C" fn dump_info(q: &mut Quirc) {
+    let count: i32 = quirc_count(q);
     let mut i: i32;
     println!("{} QR-codes found:\n", count);
     i = 0i32;
@@ -52,7 +52,7 @@ unsafe extern "C" fn dump_info(q: *mut Quirc) {
         let mut code: QuircCode = std::mem::uninitialized();
         let mut data: QuircData = std::mem::uninitialized();
         let err: DecodeResult;
-        quirc_extract(q as (*mut Quirc), i, &mut code as (*mut QuircCode));
+        quirc_extract(q, i, &mut code as (*mut QuircCode));
         err = quirc_decode(
             &mut code as (*mut QuircCode) as (*const QuircCode),
             &mut data as (*mut QuircData),
@@ -103,22 +103,22 @@ unsafe fn string_color(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, col
     canvas.copy(&tex, None, None).unwrap();
 }
 
-unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: *mut Quirc) {
-    let mut raw: *mut u8 = (*q).image;
+unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: &mut Quirc) {
+    let mut raw: *mut u8 = q.image;
 
-    for y in 0..(*q).h {
-        for x in 0..(*q).w {
+    for y in 0..q.h {
+        for x in 0..q.w {
             let v: u8 = *{
                 let _old = raw;
                 raw = raw.offset(1isize);
                 _old
             };
-            let reg: *mut Region = &mut (*q).regions[v as (usize)] as (*mut Region);
+            let reg: &mut Region = &mut q.regions[v as (usize)];
             let color = match v as (i32) {
                 PIXEL_BLACK => Color::RGB(0, 0, 0),
                 PIXEL_WHITE => Color::RGB(0xff, 0xff, 0xff),
                 _ => {
-                    if (*reg).capstone >= 0i32 {
+                    if reg.capstone >= 0i32 {
                         Color::RGB(0, 0x80, 0)
                     } else {
                         Color::RGB(0x80, 0x80, 0x80)
@@ -152,27 +152,24 @@ unsafe extern "C" fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     pixel_color(canvas, x as (i16), (y - 1i32) as (i16), red);
 }
 
-unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: *mut Quirc, index: i32) {
-    let cap: *mut Capstone = &mut (*q).capstones[index as (usize)] as (*mut Capstone);
+unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: &mut Quirc, index: i32) {
+    let cap: &mut Capstone = &mut q.capstones[index as (usize)];
     for j in 0..4 {
-        let p0: *mut Point = &mut (*cap).corners[j as (usize)] as (*mut Point);
-        let p1: *mut Point = &mut (*cap).corners[((j + 1i32) % 4i32) as (usize)] as (*mut Point);
-        line_color(
-            canvas,
-            (*p0).x as (i16),
-            (*p0).y as (i16),
-            (*p1).x as (i16),
-            (*p1).y as (i16),
-            Color::RGBA(0x80, 0, 0x80, 0xff),
-        );
+        let p0: &mut Point = &mut cap.corners[j as (usize)];
+        let p0x = p0.x as (i16);
+        let p0y = p0.y as (i16);
+        let p1: &mut Point = &mut cap.corners[((j + 1i32) % 4i32) as (usize)];
+        let p1x = p1.x as (i16);
+        let p1y = p1.y as (i16);
+        line_color(canvas, p0x, p0y, p1x, p1y, Color::RGBA(0x80, 0, 0x80, 0xff));
     }
-    draw_blob(canvas, (*cap).corners[0usize].x, (*cap).corners[0usize].y);
-    if (*cap).qr_grid < 0i32 {
+    draw_blob(canvas, cap.corners[0usize].x, cap.corners[0usize].y);
+    if cap.qr_grid < 0i32 {
         let s = format!("?{}", index);
         string_color(
             canvas,
-            (*cap).center.x as (i16),
-            (*cap).center.y as (i16),
+            cap.center.x as (i16),
+            cap.center.y as (i16),
             &s,
             Color::RGB(0, 0, 0),
         );
@@ -188,61 +185,55 @@ unsafe extern "C" fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mu
     (*ret).y = rint(y) as i32;
 }
 
-unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: *mut Quirc, index: i32) {
-    let qr: *mut Grid = &mut (*q).grids[index as (usize)] as (*mut Grid);
+unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: &mut Quirc, index: i32) {
+    let qr: &mut Grid = &mut q.grids[index as (usize)];
     for i in 0..3 {
-        let cap: *mut Capstone =
-            &mut (*q).capstones[(*qr).caps[i as (usize)] as (usize)] as (*mut Capstone);
+        let cap: &mut Capstone = &mut q.capstones[qr.caps[i as (usize)] as (usize)];
         let s = format!("{}.{}", index, "ABC".chars().nth(i).unwrap());
         string_color(
             canvas,
-            (*cap).center.x as (i16),
-            (*cap).center.y as (i16),
+            cap.center.x as (i16),
+            cap.center.y as (i16),
             &s,
             Color::RGB(0, 0, 0),
         );
     }
     line_color(
         canvas,
-        (*qr).tpep[0usize].x as (i16),
-        (*qr).tpep[0usize].y as (i16),
-        (*qr).tpep[1usize].x as (i16),
-        (*qr).tpep[1usize].y as (i16),
+        qr.tpep[0usize].x as (i16),
+        qr.tpep[0usize].y as (i16),
+        qr.tpep[1usize].x as (i16),
+        qr.tpep[1usize].y as (i16),
         Color::RGBA(0xff, 0, 0xff, 0xff),
     );
     line_color(
         canvas,
-        (*qr).tpep[1usize].x as (i16),
-        (*qr).tpep[1usize].y as (i16),
-        (*qr).tpep[2usize].x as (i16),
-        (*qr).tpep[2usize].y as (i16),
+        qr.tpep[1usize].x as (i16),
+        qr.tpep[1usize].y as (i16),
+        qr.tpep[2usize].x as (i16),
+        qr.tpep[2usize].y as (i16),
         Color::RGBA(0xff, 0, 0xff, 0xff),
     );
-    if (*qr).align_region >= 0i32 {
-        draw_blob(canvas, (*qr).align.x, (*qr).align.y);
+    if qr.align_region >= 0i32 {
+        draw_blob(canvas, qr.align.x, qr.align.y);
     }
-    for y in 0..(*qr).grid_size {
-        for x in 0..(*qr).grid_size {
+    for y in 0..qr.grid_size {
+        for x in 0..qr.grid_size {
             let u: f64 = x as (f64) + 0.5f64;
             let v: f64 = y as (f64) + 0.5f64;
             let mut p: Point = std::mem::uninitialized();
-            perspective_map(
-                (*qr).c.as_mut_ptr() as (*const f64),
-                u,
-                v,
-                &mut p as (*mut Point),
-            );
+            perspective_map(qr.c.as_mut_ptr() as (*const f64), u, v, &mut p);
             draw_mark(canvas, p.x, p.y);
         }
     }
 }
 
-unsafe extern "C" fn sdl_examine(q: *mut Quirc) -> i32 {
+unsafe extern "C" fn sdl_examine(q: &mut Quirc) -> i32 {
     let sdl_context = sdl2::init().unwrap();
 
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("", (*q).w as u32, (*q).h as u32)
+        .window("", q.w as u32, q.h as u32)
         .position_centered()
         .build()
         .unwrap();
@@ -261,10 +252,10 @@ unsafe extern "C" fn sdl_examine(q: *mut Quirc) -> i32 {
             }
 
             draw_frame(&mut canvas, q);
-            for i in 0..(*q).num_capstones {
+            for i in 0..q.num_capstones {
                 draw_capstone(&mut canvas, q, i);
             }
-            for i in 0..(*q).num_grids {
+            for i in 0..q.num_grids {
                 draw_grid(&mut canvas, q, i);
             }
 

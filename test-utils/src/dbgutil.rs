@@ -136,9 +136,9 @@ pub unsafe fn load_image(q: &mut Quirc, path: &Path) -> i32 {
     -1i32
 }
 
-pub unsafe fn validate(decoder: *mut Quirc, image: *const c_void) {
+pub unsafe fn validate(decoder: &mut Quirc, image: *const c_void) {
     let qw_decoder: *mut qw::quirc = qw::quirc_new();
-    assert!(qw::quirc_resize(qw_decoder, (*decoder).w, (*decoder).h) >= 0);
+    assert!(qw::quirc_resize(qw_decoder, decoder.w, decoder.h) >= 0);
     let image_bytes = qw::quirc_begin(
         qw_decoder,
         0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
@@ -147,60 +147,60 @@ pub unsafe fn validate(decoder: *mut Quirc, image: *const c_void) {
     memcpy(
         image_bytes as *mut c_void,
         image,
-        ((*decoder).w * (*decoder).h) as usize,
+        (decoder.w * decoder.h) as usize,
     );
     qw::quirc_end(qw_decoder);
 
     assert_eq!(
         memcmp(
-            (*decoder).image as *const c_void,
+            decoder.image as *const c_void,
             (*qw_decoder).image as *const c_void,
-            ((*decoder).w * (*decoder).h) as usize * std::mem::size_of_val(&*(*decoder).image)
+            (decoder.w * decoder.h) as usize * std::mem::size_of_val(&*decoder.image)
         ),
         0
     );
     assert_eq!(
         memcmp(
-            (*decoder).pixels as *const c_void,
+            decoder.pixels as *const c_void,
             (*qw_decoder).pixels as *const c_void,
-            ((*decoder).w * (*decoder).h) as usize * std::mem::size_of_val(&*(*decoder).pixels)
+            (decoder.w * decoder.h) as usize * std::mem::size_of_val(&*decoder.pixels)
         ),
         0
     );
     assert_eq!(
         memcmp(
-            (*decoder).row_average as *const c_void,
+            decoder.row_average as *const c_void,
             (*qw_decoder).row_average as *const c_void,
-            (*decoder).w as usize * std::mem::size_of_val(&*(*decoder).row_average)
+            decoder.w as usize * std::mem::size_of_val(&*decoder.row_average)
         ),
         0
     );
-    assert_eq!((*decoder).w, (*qw_decoder).w);
-    assert_eq!((*decoder).h, (*qw_decoder).h);
-    assert_eq!((*decoder).num_regions, (*qw_decoder).num_regions);
+    assert_eq!(decoder.w, (*qw_decoder).w);
+    assert_eq!(decoder.h, (*qw_decoder).h);
+    assert_eq!(decoder.num_regions, (*qw_decoder).num_regions);
     assert_eq!(
         memcmp(
-            (*decoder).regions.as_ptr() as *const c_void,
+            decoder.regions.as_ptr() as *const c_void,
             (*qw_decoder).regions.as_ptr() as *const c_void,
-            std::mem::size_of_val(&(*decoder).regions[0]) * (*decoder).num_regions as usize
+            std::mem::size_of_val(&decoder.regions[0]) * decoder.num_regions as usize
         ),
         0
     );
-    assert_eq!((*decoder).num_capstones, (*qw_decoder).num_capstones);
+    assert_eq!(decoder.num_capstones, (*qw_decoder).num_capstones);
     assert_eq!(
         memcmp(
-            (*decoder).capstones.as_ptr() as *const c_void,
+            decoder.capstones.as_ptr() as *const c_void,
             (*qw_decoder).capstones.as_ptr() as *const c_void,
-            std::mem::size_of_val(&(*decoder).capstones[0]) * (*decoder).num_capstones as usize
+            std::mem::size_of_val(&decoder.capstones[0]) * decoder.num_capstones as usize
         ),
         0
     );
-    assert_eq!((*decoder).num_grids, (*qw_decoder).num_grids);
+    assert_eq!(decoder.num_grids, (*qw_decoder).num_grids);
     assert_eq!(
         memcmp(
-            (*decoder).grids.as_ptr() as *const c_void,
+            decoder.grids.as_ptr() as *const c_void,
             (*qw_decoder).grids.as_ptr() as *const c_void,
-            std::mem::size_of_val(&(*decoder).grids[0]) * (*decoder).num_grids as usize
+            std::mem::size_of_val(&decoder.grids[0]) * decoder.num_grids as usize
         ),
         0
     );

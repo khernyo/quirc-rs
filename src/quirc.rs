@@ -264,7 +264,7 @@ pub fn quirc_version() -> &'static str {
 ///
 /// This function returns 0 on success, or -1 if sufficient memory could
 /// not be allocated.
-pub unsafe extern "C" fn quirc_resize(q: *mut Quirc, w: i32, h: i32) -> i32 {
+pub unsafe extern "C" fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
     let mut _currentBlock;
     let mut image: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
     let mut pixels: *mut u8 = 0i32 as (*mut ::std::os::raw::c_void) as (*mut u8);
@@ -281,7 +281,7 @@ pub unsafe extern "C" fn quirc_resize(q: *mut Quirc, w: i32, h: i32) -> i32 {
         if !image.is_null() {
             // compute the "old" (i.e. currently allocated) and the "new"
             // (i.e. requested) image dimensions
-            let olddim: usize = ((*q).w * (*q).h) as (usize);
+            let olddim: usize = (q.w * q.h) as (usize);
             let newdim: usize = (w * h) as (usize);
             let min: usize = if olddim < newdim { olddim } else { newdim };
 
@@ -290,7 +290,7 @@ pub unsafe extern "C" fn quirc_resize(q: *mut Quirc, w: i32, h: i32) -> i32 {
             // new buffer when the new size is smaller, hence the min computation.
             memcpy(
                 image as (*mut ::std::os::raw::c_void),
-                (*q).image as (*const ::std::os::raw::c_void),
+                q.image as (*const ::std::os::raw::c_void),
                 min,
             );
 
@@ -311,16 +311,16 @@ pub unsafe extern "C" fn quirc_resize(q: *mut Quirc, w: i32, h: i32) -> i32 {
                 row_average = calloc(w as (usize), ::std::mem::size_of::<i32>()) as (*mut i32);
                 if !row_average.is_null() {
                     // alloc succeeded, update `q` with the new size and buffers
-                    (*q).w = w;
-                    (*q).h = h;
-                    free((*q).image as (*mut ::std::os::raw::c_void));
-                    (*q).image = image;
+                    q.w = w;
+                    q.h = h;
+                    free(q.image as (*mut ::std::os::raw::c_void));
+                    q.image = image;
                     if ::std::mem::size_of::<u8>() != ::std::mem::size_of::<u8>() {
-                        free((*q).pixels as (*mut ::std::os::raw::c_void));
-                        (*q).pixels = pixels;
+                        free(q.pixels as (*mut ::std::os::raw::c_void));
+                        q.pixels = pixels;
                     }
-                    free((*q).row_average as (*mut ::std::os::raw::c_void));
-                    (*q).row_average = row_average;
+                    free(q.row_average as (*mut ::std::os::raw::c_void));
+                    q.row_average = row_average;
                     return 0i32;
                 }
             }
@@ -334,8 +334,8 @@ pub unsafe extern "C" fn quirc_resize(q: *mut Quirc, w: i32, h: i32) -> i32 {
 
 /// Return the number of QR-codes identified in the last processed
 /// image.
-pub unsafe extern "C" fn quirc_count(q: *const Quirc) -> i32 {
-    (*q).num_grids
+pub unsafe extern "C" fn quirc_count(q: &Quirc) -> i32 {
+    q.num_grids
 }
 
 /// This enum describes the various decoder errors which may occur.
