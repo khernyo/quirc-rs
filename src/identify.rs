@@ -63,11 +63,11 @@ fn line_intersect(p0: &Point, p1: &Point, q0: &Point, q1: &Point, r: &mut Point)
     let det: i32 = a * d - b * c;
 
     if det == 0 {
-        0i32
+        0
     } else {
         r.x = (d * e - b * f) / det;
         r.y = (-c * e + a * f) / det;
-        1i32
+        1
     }
 }
 
@@ -151,11 +151,11 @@ unsafe fn flood_fill_seed<T>(
         return;
     }
 
-    while left > 0i32 && (*row.offset((left - 1i32) as (isize)) as (i32) == from) {
+    while left > 0 && (*row.offset((left - 1) as (isize)) as (i32) == from) {
         left = left - 1;
     }
 
-    while right < q.w - 1i32 && (*row.offset((right + 1i32) as (isize)) as (i32) == from) {
+    while right < q.w - 1 && (*row.offset((right + 1) as (isize)) as (i32) == from) {
         right = right + 1;
     }
 
@@ -172,25 +172,25 @@ unsafe fn flood_fill_seed<T>(
     }
 
     // Seed new flood-fills
-    if y > 0i32 {
-        row = q.pixels.as_mut_ptr().offset(((y - 1i32) * q.w) as isize);
+    if y > 0 {
+        row = q.pixels.as_mut_ptr().offset(((y - 1) * q.w) as isize);
 
         let mut i = left;
         while i <= right {
             if *row.offset(i as (isize)) as (i32) == from {
-                flood_fill_seed(q, i, y - 1i32, from, to, func, user_data, depth + 1i32);
+                flood_fill_seed(q, i, y - 1, from, to, func, user_data, depth + 1);
             }
             i += 1;
         }
     }
 
-    if y < q.h - 1i32 {
-        row = q.pixels.as_mut_ptr().offset(((y + 1i32) * q.w) as isize);
+    if y < q.h - 1 {
+        row = q.pixels.as_mut_ptr().offset(((y + 1) * q.w) as isize);
 
         let mut i = left;
         while i <= right {
             if *row.offset(i as (isize)) as (i32) == from {
-                flood_fill_seed(q, i, y + 1i32, from, to, func, user_data, depth + 1i32);
+                flood_fill_seed(q, i, y + 1, from, to, func, user_data, depth + 1);
             }
             i += 1;
         }
@@ -255,7 +255,7 @@ unsafe fn area_count(region: *mut Region, _y: i32, left: i32, right: i32) {
 
 unsafe fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
     if x < 0 || y < 0 || x >= q.w || y >= q.h {
-        return -1i32;
+        return -1;
     }
 
     let pixel = *q.pixels.as_mut_ptr().offset((y * q.w + x) as isize) as i32;
@@ -394,11 +394,11 @@ unsafe fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
 
     memset(
         capstone as (*mut ::std::os::raw::c_void),
-        0i32,
+        0,
         ::std::mem::size_of::<Capstone>(),
     );
 
-    (*capstone).qr_grid = -1i32;
+    (*capstone).qr_grid = -1;
     (*capstone).ring = ring;
     (*capstone).stone = stone;
     (*stone_reg).capstone = cs_index;
@@ -762,7 +762,7 @@ unsafe fn fitness_all(q: &mut Quirc, index: i32) -> i32 {
     // Check capstones
     score += fitness_capstone(q, index, 0, 0);
     score += fitness_capstone(q, index, (*qr).grid_size - 7, 0);
-    score += fitness_capstone(q, index, 0i32, (*qr).grid_size - 7);
+    score += fitness_capstone(q, index, 0, (*qr).grid_size - 7);
 
     if version < 0 || version > QUIRC_MAX_VERSION as i32 {
         score
@@ -904,7 +904,7 @@ unsafe fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
 
     memset(
         qr as (*mut ::std::os::raw::c_void),
-        0i32,
+        0,
         ::std::mem::size_of::<Grid>(),
     );
     (*qr).caps[0] = a;
@@ -1148,7 +1148,7 @@ pub unsafe fn quirc_extract(q: &mut Quirc, index: i32, mut code: *mut QuircCode)
 
     memset(
         code as (*mut ::std::os::raw::c_void),
-        0i32,
+        0,
         ::std::mem::size_of::<QuircCode>(),
     );
 
