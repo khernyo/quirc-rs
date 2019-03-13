@@ -202,11 +202,11 @@ const THRESHOLD_S_DEN: i32 = 8;
 const THRESHOLD_T: i32 = 5;
 
 /// Adaptive thresholding
-unsafe fn threshold(q: &mut Quirc) {
-    let mut avg_w: i32 = 0i32;
-    let mut avg_u: i32 = 0i32;
+fn threshold(q: &mut Quirc) {
+    let mut avg_w: i32 = 0;
+    let mut avg_u: i32 = 0;
     let mut threshold_s: i32 = q.w / THRESHOLD_S_DEN;
-    let mut row: *mut u8 = q.pixels.as_mut_ptr();
+    let mut row: usize = 0;
 
     // Ensure a sane, non-zero value for threshold_s.
     //
@@ -218,34 +218,34 @@ unsafe fn threshold(q: &mut Quirc) {
         q.row_average.iter_mut().for_each(|x| *x = 0);
 
         for x in 0..q.w {
-            let w: i32;
-            let u: i32;
+            let w: usize;
+            let u: usize;
 
-            if y & 1i32 != 0 {
-                w = x;
-                u = q.w - 1i32 - x;
+            if y & 1 != 0 {
+                w = x as usize;
+                u = (q.w - 1 - x) as usize;
             } else {
-                w = q.w - 1i32 - x;
-                u = x;
+                w = (q.w - 1 - x) as usize;
+                u = x as usize;
             }
 
-            avg_w = avg_w * (threshold_s - 1i32) / threshold_s + *row.offset(w as (isize)) as (i32);
-            avg_u = avg_u * (threshold_s - 1i32) / threshold_s + *row.offset(u as (isize)) as (i32);
+            avg_w = avg_w * (threshold_s - 1) / threshold_s + q.pixels[row + w] as (i32);
+            avg_u = avg_u * (threshold_s - 1) / threshold_s + q.pixels[row + u] as (i32);
 
             q.row_average[w as usize] += avg_w;
             q.row_average[u as usize] += avg_u;
         }
 
         for x in 0..q.w {
-            if (*row.offset(x as isize) as i32)
+            if (q.pixels[row + x as usize] as i32)
                 < q.row_average[x as usize] * (100 - THRESHOLD_T) / (200 * threshold_s)
             {
-                *row.offset(x as isize) = PIXEL_BLACK as u8;
+                q.pixels[row + x as usize] = PIXEL_BLACK as u8;
             } else {
-                *row.offset(x as isize) = PIXEL_WHITE as u8;
+                q.pixels[row + x as usize] = PIXEL_WHITE as u8;
             }
         }
-        row = row.offset(q.w as isize);
+        row += q.w as usize;
     }
 }
 
