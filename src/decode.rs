@@ -38,22 +38,20 @@ const MAX_POLY: usize = 64;
  * Galois fields
  */
 
-static mut GF16_EXP: [u8; 16] = [
-    0x1u8, 0x2u8, 0x4u8, 0x8u8, 0x3u8, 0x6u8, 0xcu8, 0xbu8, 0x5u8, 0xau8, 0x7u8, 0xeu8, 0xfu8,
-    0xdu8, 0x9u8, 0x1u8,
+static GF16_EXP: [u8; 16] = [
+    0x01, 0x02, 0x04, 0x08, 0x03, 0x06, 0x0c, 0x0b, 0x05, 0x0a, 0x07, 0x0e, 0x0f, 0x0d, 0x09, 0x01,
 ];
 
-static mut GF16_LOG: [u8; 16] = [
-    0x0u8, 0xfu8, 0x1u8, 0x4u8, 0x2u8, 0x8u8, 0x5u8, 0xau8, 0x3u8, 0xeu8, 0x9u8, 0x7u8, 0x6u8,
-    0xdu8, 0xbu8, 0xcu8,
+static GF16_LOG: [u8; 16] = [
+    0x00, 0x0f, 0x01, 0x04, 0x02, 0x08, 0x05, 0x0a, 0x03, 0x0e, 0x09, 0x07, 0x06, 0x0d, 0x0b, 0x0c,
 ];
 
 #[derive(Copy)]
 #[repr(C)]
-pub struct GaloisField {
-    pub p: i32,
-    pub log: &'static [u8],
-    pub exp: &'static [u8],
+struct GaloisField {
+    p: i32,
+    log: &'static [u8],
+    exp: &'static [u8],
 }
 
 impl Clone for GaloisField {
@@ -62,194 +60,139 @@ impl Clone for GaloisField {
     }
 }
 
-static GF16: GaloisField = unsafe {
-    GaloisField {
-        p: 15i32,
-        log: &GF16_LOG,
-        exp: &GF16_EXP,
-    }
+static GF16: GaloisField = GaloisField {
+    p: 15,
+    log: &GF16_LOG,
+    exp: &GF16_EXP,
 };
 
-static mut GF256_EXP: [u8; 256] = [
-    0x1u8, 0x2u8, 0x4u8, 0x8u8, 0x10u8, 0x20u8, 0x40u8, 0x80u8, 0x1du8, 0x3au8, 0x74u8, 0xe8u8,
-    0xcdu8, 0x87u8, 0x13u8, 0x26u8, 0x4cu8, 0x98u8, 0x2du8, 0x5au8, 0xb4u8, 0x75u8, 0xeau8, 0xc9u8,
-    0x8fu8, 0x3u8, 0x6u8, 0xcu8, 0x18u8, 0x30u8, 0x60u8, 0xc0u8, 0x9du8, 0x27u8, 0x4eu8, 0x9cu8,
-    0x25u8, 0x4au8, 0x94u8, 0x35u8, 0x6au8, 0xd4u8, 0xb5u8, 0x77u8, 0xeeu8, 0xc1u8, 0x9fu8, 0x23u8,
-    0x46u8, 0x8cu8, 0x5u8, 0xau8, 0x14u8, 0x28u8, 0x50u8, 0xa0u8, 0x5du8, 0xbau8, 0x69u8, 0xd2u8,
-    0xb9u8, 0x6fu8, 0xdeu8, 0xa1u8, 0x5fu8, 0xbeu8, 0x61u8, 0xc2u8, 0x99u8, 0x2fu8, 0x5eu8, 0xbcu8,
-    0x65u8, 0xcau8, 0x89u8, 0xfu8, 0x1eu8, 0x3cu8, 0x78u8, 0xf0u8, 0xfdu8, 0xe7u8, 0xd3u8, 0xbbu8,
-    0x6bu8, 0xd6u8, 0xb1u8, 0x7fu8, 0xfeu8, 0xe1u8, 0xdfu8, 0xa3u8, 0x5bu8, 0xb6u8, 0x71u8, 0xe2u8,
-    0xd9u8, 0xafu8, 0x43u8, 0x86u8, 0x11u8, 0x22u8, 0x44u8, 0x88u8, 0xdu8, 0x1au8, 0x34u8, 0x68u8,
-    0xd0u8, 0xbdu8, 0x67u8, 0xceu8, 0x81u8, 0x1fu8, 0x3eu8, 0x7cu8, 0xf8u8, 0xedu8, 0xc7u8, 0x93u8,
-    0x3bu8, 0x76u8, 0xecu8, 0xc5u8, 0x97u8, 0x33u8, 0x66u8, 0xccu8, 0x85u8, 0x17u8, 0x2eu8, 0x5cu8,
-    0xb8u8, 0x6du8, 0xdau8, 0xa9u8, 0x4fu8, 0x9eu8, 0x21u8, 0x42u8, 0x84u8, 0x15u8, 0x2au8, 0x54u8,
-    0xa8u8, 0x4du8, 0x9au8, 0x29u8, 0x52u8, 0xa4u8, 0x55u8, 0xaau8, 0x49u8, 0x92u8, 0x39u8, 0x72u8,
-    0xe4u8, 0xd5u8, 0xb7u8, 0x73u8, 0xe6u8, 0xd1u8, 0xbfu8, 0x63u8, 0xc6u8, 0x91u8, 0x3fu8, 0x7eu8,
-    0xfcu8, 0xe5u8, 0xd7u8, 0xb3u8, 0x7bu8, 0xf6u8, 0xf1u8, 0xffu8, 0xe3u8, 0xdbu8, 0xabu8, 0x4bu8,
-    0x96u8, 0x31u8, 0x62u8, 0xc4u8, 0x95u8, 0x37u8, 0x6eu8, 0xdcu8, 0xa5u8, 0x57u8, 0xaeu8, 0x41u8,
-    0x82u8, 0x19u8, 0x32u8, 0x64u8, 0xc8u8, 0x8du8, 0x7u8, 0xeu8, 0x1cu8, 0x38u8, 0x70u8, 0xe0u8,
-    0xddu8, 0xa7u8, 0x53u8, 0xa6u8, 0x51u8, 0xa2u8, 0x59u8, 0xb2u8, 0x79u8, 0xf2u8, 0xf9u8, 0xefu8,
-    0xc3u8, 0x9bu8, 0x2bu8, 0x56u8, 0xacu8, 0x45u8, 0x8au8, 0x9u8, 0x12u8, 0x24u8, 0x48u8, 0x90u8,
-    0x3du8, 0x7au8, 0xf4u8, 0xf5u8, 0xf7u8, 0xf3u8, 0xfbu8, 0xebu8, 0xcbu8, 0x8bu8, 0xbu8, 0x16u8,
-    0x2cu8, 0x58u8, 0xb0u8, 0x7du8, 0xfau8, 0xe9u8, 0xcfu8, 0x83u8, 0x1bu8, 0x36u8, 0x6cu8, 0xd8u8,
-    0xadu8, 0x47u8, 0x8eu8, 0x1u8,
+static GF256_EXP: [u8; 256] = [
+    0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1d, 0x3a, 0x74, 0xe8, 0xcd, 0x87, 0x13, 0x26,
+    0x4c, 0x98, 0x2d, 0x5a, 0xb4, 0x75, 0xea, 0xc9, 0x8f, 0x03, 0x06, 0x0c, 0x18, 0x30, 0x60, 0xc0,
+    0x9d, 0x27, 0x4e, 0x9c, 0x25, 0x4a, 0x94, 0x35, 0x6a, 0xd4, 0xb5, 0x77, 0xee, 0xc1, 0x9f, 0x23,
+    0x46, 0x8c, 0x05, 0x0a, 0x14, 0x28, 0x50, 0xa0, 0x5d, 0xba, 0x69, 0xd2, 0xb9, 0x6f, 0xde, 0xa1,
+    0x5f, 0xbe, 0x61, 0xc2, 0x99, 0x2f, 0x5e, 0xbc, 0x65, 0xca, 0x89, 0x0f, 0x1e, 0x3c, 0x78, 0xf0,
+    0xfd, 0xe7, 0xd3, 0xbb, 0x6b, 0xd6, 0xb1, 0x7f, 0xfe, 0xe1, 0xdf, 0xa3, 0x5b, 0xb6, 0x71, 0xe2,
+    0xd9, 0xaf, 0x43, 0x86, 0x11, 0x22, 0x44, 0x88, 0x0d, 0x1a, 0x34, 0x68, 0xd0, 0xbd, 0x67, 0xce,
+    0x81, 0x1f, 0x3e, 0x7c, 0xf8, 0xed, 0xc7, 0x93, 0x3b, 0x76, 0xec, 0xc5, 0x97, 0x33, 0x66, 0xcc,
+    0x85, 0x17, 0x2e, 0x5c, 0xb8, 0x6d, 0xda, 0xa9, 0x4f, 0x9e, 0x21, 0x42, 0x84, 0x15, 0x2a, 0x54,
+    0xa8, 0x4d, 0x9a, 0x29, 0x52, 0xa4, 0x55, 0xaa, 0x49, 0x92, 0x39, 0x72, 0xe4, 0xd5, 0xb7, 0x73,
+    0xe6, 0xd1, 0xbf, 0x63, 0xc6, 0x91, 0x3f, 0x7e, 0xfc, 0xe5, 0xd7, 0xb3, 0x7b, 0xf6, 0xf1, 0xff,
+    0xe3, 0xdb, 0xab, 0x4b, 0x96, 0x31, 0x62, 0xc4, 0x95, 0x37, 0x6e, 0xdc, 0xa5, 0x57, 0xae, 0x41,
+    0x82, 0x19, 0x32, 0x64, 0xc8, 0x8d, 0x07, 0x0e, 0x1c, 0x38, 0x70, 0xe0, 0xdd, 0xa7, 0x53, 0xa6,
+    0x51, 0xa2, 0x59, 0xb2, 0x79, 0xf2, 0xf9, 0xef, 0xc3, 0x9b, 0x2b, 0x56, 0xac, 0x45, 0x8a, 0x09,
+    0x12, 0x24, 0x48, 0x90, 0x3d, 0x7a, 0xf4, 0xf5, 0xf7, 0xf3, 0xfb, 0xeb, 0xcb, 0x8b, 0x0b, 0x16,
+    0x2c, 0x58, 0xb0, 0x7d, 0xfa, 0xe9, 0xcf, 0x83, 0x1b, 0x36, 0x6c, 0xd8, 0xad, 0x47, 0x8e, 0x01,
 ];
 
-static mut GF256_LOG: [u8; 256] = [
-    0x0u8, 0xffu8, 0x1u8, 0x19u8, 0x2u8, 0x32u8, 0x1au8, 0xc6u8, 0x3u8, 0xdfu8, 0x33u8, 0xeeu8,
-    0x1bu8, 0x68u8, 0xc7u8, 0x4bu8, 0x4u8, 0x64u8, 0xe0u8, 0xeu8, 0x34u8, 0x8du8, 0xefu8, 0x81u8,
-    0x1cu8, 0xc1u8, 0x69u8, 0xf8u8, 0xc8u8, 0x8u8, 0x4cu8, 0x71u8, 0x5u8, 0x8au8, 0x65u8, 0x2fu8,
-    0xe1u8, 0x24u8, 0xfu8, 0x21u8, 0x35u8, 0x93u8, 0x8eu8, 0xdau8, 0xf0u8, 0x12u8, 0x82u8, 0x45u8,
-    0x1du8, 0xb5u8, 0xc2u8, 0x7du8, 0x6au8, 0x27u8, 0xf9u8, 0xb9u8, 0xc9u8, 0x9au8, 0x9u8, 0x78u8,
-    0x4du8, 0xe4u8, 0x72u8, 0xa6u8, 0x6u8, 0xbfu8, 0x8bu8, 0x62u8, 0x66u8, 0xddu8, 0x30u8, 0xfdu8,
-    0xe2u8, 0x98u8, 0x25u8, 0xb3u8, 0x10u8, 0x91u8, 0x22u8, 0x88u8, 0x36u8, 0xd0u8, 0x94u8, 0xceu8,
-    0x8fu8, 0x96u8, 0xdbu8, 0xbdu8, 0xf1u8, 0xd2u8, 0x13u8, 0x5cu8, 0x83u8, 0x38u8, 0x46u8, 0x40u8,
-    0x1eu8, 0x42u8, 0xb6u8, 0xa3u8, 0xc3u8, 0x48u8, 0x7eu8, 0x6eu8, 0x6bu8, 0x3au8, 0x28u8, 0x54u8,
-    0xfau8, 0x85u8, 0xbau8, 0x3du8, 0xcau8, 0x5eu8, 0x9bu8, 0x9fu8, 0xau8, 0x15u8, 0x79u8, 0x2bu8,
-    0x4eu8, 0xd4u8, 0xe5u8, 0xacu8, 0x73u8, 0xf3u8, 0xa7u8, 0x57u8, 0x7u8, 0x70u8, 0xc0u8, 0xf7u8,
-    0x8cu8, 0x80u8, 0x63u8, 0xdu8, 0x67u8, 0x4au8, 0xdeu8, 0xedu8, 0x31u8, 0xc5u8, 0xfeu8, 0x18u8,
-    0xe3u8, 0xa5u8, 0x99u8, 0x77u8, 0x26u8, 0xb8u8, 0xb4u8, 0x7cu8, 0x11u8, 0x44u8, 0x92u8, 0xd9u8,
-    0x23u8, 0x20u8, 0x89u8, 0x2eu8, 0x37u8, 0x3fu8, 0xd1u8, 0x5bu8, 0x95u8, 0xbcu8, 0xcfu8, 0xcdu8,
-    0x90u8, 0x87u8, 0x97u8, 0xb2u8, 0xdcu8, 0xfcu8, 0xbeu8, 0x61u8, 0xf2u8, 0x56u8, 0xd3u8, 0xabu8,
-    0x14u8, 0x2au8, 0x5du8, 0x9eu8, 0x84u8, 0x3cu8, 0x39u8, 0x53u8, 0x47u8, 0x6du8, 0x41u8, 0xa2u8,
-    0x1fu8, 0x2du8, 0x43u8, 0xd8u8, 0xb7u8, 0x7bu8, 0xa4u8, 0x76u8, 0xc4u8, 0x17u8, 0x49u8, 0xecu8,
-    0x7fu8, 0xcu8, 0x6fu8, 0xf6u8, 0x6cu8, 0xa1u8, 0x3bu8, 0x52u8, 0x29u8, 0x9du8, 0x55u8, 0xaau8,
-    0xfbu8, 0x60u8, 0x86u8, 0xb1u8, 0xbbu8, 0xccu8, 0x3eu8, 0x5au8, 0xcbu8, 0x59u8, 0x5fu8, 0xb0u8,
-    0x9cu8, 0xa9u8, 0xa0u8, 0x51u8, 0xbu8, 0xf5u8, 0x16u8, 0xebu8, 0x7au8, 0x75u8, 0x2cu8, 0xd7u8,
-    0x4fu8, 0xaeu8, 0xd5u8, 0xe9u8, 0xe6u8, 0xe7u8, 0xadu8, 0xe8u8, 0x74u8, 0xd6u8, 0xf4u8, 0xeau8,
-    0xa8u8, 0x50u8, 0x58u8, 0xafu8,
+static GF256_LOG: [u8; 256] = [
+    0x00, 0xff, 0x01, 0x19, 0x02, 0x32, 0x1a, 0xc6, 0x03, 0xdf, 0x33, 0xee, 0x1b, 0x68, 0xc7, 0x4b,
+    0x04, 0x64, 0xe0, 0x0e, 0x34, 0x8d, 0xef, 0x81, 0x1c, 0xc1, 0x69, 0xf8, 0xc8, 0x08, 0x4c, 0x71,
+    0x05, 0x8a, 0x65, 0x2f, 0xe1, 0x24, 0x0f, 0x21, 0x35, 0x93, 0x8e, 0xda, 0xf0, 0x12, 0x82, 0x45,
+    0x1d, 0xb5, 0xc2, 0x7d, 0x6a, 0x27, 0xf9, 0xb9, 0xc9, 0x9a, 0x09, 0x78, 0x4d, 0xe4, 0x72, 0xa6,
+    0x06, 0xbf, 0x8b, 0x62, 0x66, 0xdd, 0x30, 0xfd, 0xe2, 0x98, 0x25, 0xb3, 0x10, 0x91, 0x22, 0x88,
+    0x36, 0xd0, 0x94, 0xce, 0x8f, 0x96, 0xdb, 0xbd, 0xf1, 0xd2, 0x13, 0x5c, 0x83, 0x38, 0x46, 0x40,
+    0x1e, 0x42, 0xb6, 0xa3, 0xc3, 0x48, 0x7e, 0x6e, 0x6b, 0x3a, 0x28, 0x54, 0xfa, 0x85, 0xba, 0x3d,
+    0xca, 0x5e, 0x9b, 0x9f, 0x0a, 0x15, 0x79, 0x2b, 0x4e, 0xd4, 0xe5, 0xac, 0x73, 0xf3, 0xa7, 0x57,
+    0x07, 0x70, 0xc0, 0xf7, 0x8c, 0x80, 0x63, 0x0d, 0x67, 0x4a, 0xde, 0xed, 0x31, 0xc5, 0xfe, 0x18,
+    0xe3, 0xa5, 0x99, 0x77, 0x26, 0xb8, 0xb4, 0x7c, 0x11, 0x44, 0x92, 0xd9, 0x23, 0x20, 0x89, 0x2e,
+    0x37, 0x3f, 0xd1, 0x5b, 0x95, 0xbc, 0xcf, 0xcd, 0x90, 0x87, 0x97, 0xb2, 0xdc, 0xfc, 0xbe, 0x61,
+    0xf2, 0x56, 0xd3, 0xab, 0x14, 0x2a, 0x5d, 0x9e, 0x84, 0x3c, 0x39, 0x53, 0x47, 0x6d, 0x41, 0xa2,
+    0x1f, 0x2d, 0x43, 0xd8, 0xb7, 0x7b, 0xa4, 0x76, 0xc4, 0x17, 0x49, 0xec, 0x7f, 0x0c, 0x6f, 0xf6,
+    0x6c, 0xa1, 0x3b, 0x52, 0x29, 0x9d, 0x55, 0xaa, 0xfb, 0x60, 0x86, 0xb1, 0xbb, 0xcc, 0x3e, 0x5a,
+    0xcb, 0x59, 0x5f, 0xb0, 0x9c, 0xa9, 0xa0, 0x51, 0x0b, 0xf5, 0x16, 0xeb, 0x7a, 0x75, 0x2c, 0xd7,
+    0x4f, 0xae, 0xd5, 0xe9, 0xe6, 0xe7, 0xad, 0xe8, 0x74, 0xd6, 0xf4, 0xea, 0xa8, 0x50, 0x58, 0xaf,
 ];
 
-static GF256: GaloisField = unsafe {
-    GaloisField {
-        p: 255i32,
-        log: &GF256_LOG,
-        exp: &GF256_EXP,
-    }
+static GF256: GaloisField = GaloisField {
+    p: 255,
+    log: &GF256_LOG,
+    exp: &GF256_EXP,
 };
 
 /************************************************************************
  * Polynomial operations
  */
 
-unsafe extern "C" fn poly_add(
-    dst: *mut u8,
-    src: *const u8,
-    c: u8,
-    shift: i32,
-    gf: *const GaloisField,
-) {
-    let mut i: i32;
-    let log_c: i32 = (*gf).log[c as (usize)] as (i32);
+unsafe fn poly_add(dst: *mut u8, src: *const u8, c: u8, shift: i32, gf: *const GaloisField) {
     if c == 0 {
-    } else {
-        i = 0i32;
-        'loop2: loop {
-            if !(i < MAX_POLY as i32) {
-                break;
+        return;
+    }
+
+    let log_c: i32 = (*gf).log[c as usize] as i32;
+    for i in 0..MAX_POLY as i32 {
+        let p: i32 = i + shift;
+        let v: u8 = *src.offset(i as isize);
+
+        if !(p < 0 || p >= MAX_POLY as i32) {
+            if !(v == 0) {
+                *dst.offset(p as isize) ^=
+                    (*gf).exp[(((*gf).log[v as usize] as i32 + log_c) % (*gf).p) as usize];
             }
-            let p: i32 = i + shift;
-            let v: u8 = *src.offset(i as (isize));
-            if !(p < 0i32 || p >= MAX_POLY as i32) {
-                if !(v == 0) {
-                    let _rhs = (*gf).exp
-                        [(((*gf).log[v as (usize)] as (i32) + log_c) % (*gf).p) as (usize)];
-                    let _lhs = &mut *dst.offset(p as (isize));
-                    *_lhs = (*_lhs as (i32) ^ _rhs as (i32)) as (u8);
-                }
-            }
-            i = i + 1;
         }
     }
 }
 
-unsafe extern "C" fn poly_eval(s: *const u8, x: u8, gf: *const GaloisField) -> u8 {
-    let mut i: i32;
-    let mut sum: u8 = 0u8;
-    let log_x: u8 = (*gf).log[x as (usize)];
+unsafe fn poly_eval(s: *const u8, x: u8, gf: *const GaloisField) -> u8 {
     if x == 0 {
-        *s.offset(0isize)
+        *s.offset(0)
     } else {
-        i = 0i32;
-        'loop2: loop {
-            if !(i < MAX_POLY as i32) {
-                break;
-            }
-            let c: u8 = *s.offset(i as (isize));
+        let mut sum: u8 = 0;
+        let log_x: u8 = (*gf).log[x as usize];
+
+        for i in 0..MAX_POLY as i32 {
+            let c: u8 = *s.offset(i as isize);
+
             if !(c == 0) {
-                sum = (sum as (i32)
-                    ^ (*gf).exp[(((*gf).log[c as (usize)] as (i32) + log_x as (i32) * i) % (*gf).p)
-                        as (usize)] as (i32)) as (u8);
+                sum ^= (*gf).exp
+                    [(((*gf).log[c as usize] as i32 + log_x as i32 * i) % (*gf).p) as usize];
             }
-            i = i + 1;
         }
         sum
     }
 }
 
 /// Berlekamp-Massey algorithm for finding error locator polynomials.
-unsafe extern "C" fn berlekamp_massey(
-    s: *const u8,
-    N: i32,
-    gf: *const GaloisField,
-    sigma: *mut u8,
-) {
-    let mut C: [u8; MAX_POLY] = [0u8; MAX_POLY];
-    let mut B: [u8; MAX_POLY] = [0u8; MAX_POLY];
-    let mut L: i32 = 0i32;
-    let mut m: i32 = 1i32;
-    let mut b: u8 = 1u8;
-    let mut n: i32;
-    B[0usize] = 1u8;
-    C[0usize] = 1u8;
-    n = 0i32;
-    'loop1: loop {
-        if !(n < N) {
-            break;
-        }
-        let mut d: u8 = *s.offset(n as (isize));
-        let mult: u8;
-        let mut i: i32;
-        i = 1i32;
-        'loop4: loop {
-            if !(i <= L) {
-                break;
+unsafe fn berlekamp_massey(s: *const u8, N: i32, gf: *const GaloisField, sigma: *mut u8) {
+    let mut C: [u8; MAX_POLY] = [0; MAX_POLY];
+    let mut B: [u8; MAX_POLY] = [0; MAX_POLY];
+    let mut L: i32 = 0;
+    let mut m: i32 = 1;
+    let mut b: u8 = 1;
+
+    B[0] = 1;
+    C[0] = 1;
+
+    for n in 0..N {
+        let mut d: u8 = *s.offset(n as isize);
+
+        for i in 1..=L {
+            if C[i as usize] != 0 && (*s.offset((n - i) as isize) != 0) {
+                d ^= (*gf).exp[(((*gf).log[C[i as usize] as usize] as i32
+                    + (*gf).log[*s.offset((n - i) as isize) as usize] as i32)
+                    % (*gf).p) as usize];
             }
-            if !!(C[i as (usize)] != 0 && (*s.offset((n - i) as (isize)) != 0)) {
-                d = (d as (i32)
-                    ^ (*gf).exp[(((*gf).log[C[i as (usize)] as (usize)] as (i32)
-                        + (*gf).log[*s.offset((n - i) as (isize)) as (usize)] as (i32))
-                        % (*gf).p) as (usize)] as (i32)) as (u8);
-            }
-            i = i + 1;
         }
-        mult = (*gf).exp[(((*gf).p - (*gf).log[b as (usize)] as (i32)
-            + (*gf).log[d as (usize)] as (i32))
-            % (*gf).p) as (usize)];
+
+        let mult = (*gf).exp[(((*gf).p - (*gf).log[b as usize] as i32
+            + (*gf).log[d as usize] as i32)
+            % (*gf).p) as usize];
+
         if d == 0 {
-            m = m + 1;
-        } else if L * 2i32 <= n {
-            let mut T: [u8; MAX_POLY] = [0u8; MAX_POLY];
-            memcpy(
-                T.as_mut_ptr() as (*mut ::std::os::raw::c_void),
-                C.as_mut_ptr() as (*const ::std::os::raw::c_void),
-                ::std::mem::size_of::<[u8; 64]>(),
-            );
+            m += 1;
+        } else if L * 2 <= n {
+            let T = C;
             poly_add(C.as_mut_ptr(), B.as_mut_ptr() as (*const u8), mult, m, gf);
-            memcpy(
-                B.as_mut_ptr() as (*mut ::std::os::raw::c_void),
-                T.as_mut_ptr() as (*const ::std::os::raw::c_void),
-                ::std::mem::size_of::<[u8; 64]>(),
-            );
-            L = n + 1i32 - L;
+            B = T;
+            L = n + 1 - L;
             b = d;
-            m = 1i32;
+            m = 1;
         } else {
             poly_add(C.as_mut_ptr(), B.as_mut_ptr() as (*const u8), mult, m, gf);
-            m = m + 1;
+            m += 1;
         }
-        n = n + 1;
     }
+
     memcpy(
         sigma as (*mut ::std::os::raw::c_void),
         C.as_mut_ptr() as (*const ::std::os::raw::c_void),
@@ -263,146 +206,117 @@ unsafe extern "C" fn berlekamp_massey(
  * Generator polynomial for GF(2^8) is x^8 + x^4 + x^3 + x^2 + 1
  */
 
-unsafe extern "C" fn block_syndromes(data: *const u8, bs: i32, npar: i32, s: *mut u8) -> i32 {
-    let mut nonzero: i32 = 0i32;
-    let mut i: i32;
-    memset(s as (*mut ::std::os::raw::c_void), 0i32, MAX_POLY);
-    i = 0i32;
-    'loop1: loop {
-        if !(i < npar) {
-            break;
-        }
-        let mut j: i32;
-        j = 0i32;
-        'loop4: loop {
-            if !(j < bs) {
-                break;
-            }
-            let c: u8 = *data.offset((bs - j - 1i32) as (isize));
+unsafe fn block_syndromes(data: *const u8, bs: i32, npar: i32, s: *mut u8) -> i32 {
+    let mut nonzero: i32 = 0;
+
+    memset(s as (*mut ::std::os::raw::c_void), 0, MAX_POLY);
+
+    for i in 0..npar {
+        for j in 0..bs {
+            let c: u8 = *data.offset((bs - j - 1) as isize);
+
             if !(c == 0) {
-                let _rhs =
-                    GF256_EXP[((GF256_LOG[c as (usize)] as (i32) + i * j) % 255i32) as (usize)];
-                let _lhs = &mut *s.offset(i as (isize));
-                *_lhs = (*_lhs as (i32) ^ _rhs as (i32)) as (u8);
+                *s.offset(i as isize) ^=
+                    GF256_EXP[((GF256_LOG[c as usize] as i32 + i * j) % 255) as usize];
             }
-            j = j + 1;
         }
-        if *s.offset(i as (isize)) != 0 {
-            nonzero = 1i32;
+
+        if *s.offset(i as isize) != 0 {
+            nonzero = 1;
         }
-        i = i + 1;
     }
+
     nonzero
 }
 
-unsafe extern "C" fn eloc_poly(omega: *mut u8, s: *const u8, sigma: *const u8, npar: i32) {
-    let mut i: i32;
-    memset(omega as (*mut ::std::os::raw::c_void), 0i32, MAX_POLY);
-    i = 0i32;
-    'loop1: loop {
-        if !(i < npar) {
-            break;
-        }
-        let a: u8 = *sigma.offset(i as (isize));
-        let log_a: u8 = GF256_LOG[a as (usize)];
-        let mut j: i32;
+unsafe fn eloc_poly(omega: *mut u8, s: *const u8, sigma: *const u8, npar: i32) {
+    memset(omega as (*mut ::std::os::raw::c_void), 0, MAX_POLY);
+
+    for i in 0..npar {
+        let a: u8 = *sigma.offset(i as isize);
+        let log_a: u8 = GF256_LOG[a as usize];
+
         if !(a == 0) {
-            j = 0i32;
-            'loop5: loop {
-                if !(j + 1i32 < MAX_POLY as i32) {
-                    break;
-                }
-                let b: u8 = *s.offset((j + 1i32) as (isize));
+            for j in 0..MAX_POLY as i32 - 1 {
+                let b: u8 = *s.offset((j + 1) as isize);
+
                 if i + j >= npar {
                     break;
                 }
+
                 if !(b == 0) {
-                    let _rhs = GF256_EXP
-                        [((log_a as (i32) + GF256_LOG[b as (usize)] as (i32)) % 255i32) as (usize)];
-                    let _lhs = &mut *omega.offset((i + j) as (isize));
-                    *_lhs = (*_lhs as (i32) ^ _rhs as (i32)) as (u8);
+                    *omega.offset((i + j) as isize) ^=
+                        GF256_EXP[((log_a as i32 + GF256_LOG[b as usize] as i32) % 255) as usize];
                 }
-                j = j + 1;
             }
         }
-        i = i + 1;
     }
 }
 
-unsafe extern "C" fn correct_block(data: *mut u8, ecc: *const RsParams) -> DecodeResult {
+unsafe fn correct_block(data: *mut u8, ecc: *const RsParams) -> DecodeResult {
     let npar: i32 = (*ecc).bs - (*ecc).dw;
-    let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
-    let mut sigma: [u8; MAX_POLY] = [0u8; MAX_POLY];
-    let mut sigma_deriv: [u8; MAX_POLY] = [0u8; MAX_POLY];
-    let mut omega: [u8; MAX_POLY] = [0u8; MAX_POLY];
-    let mut i: i32;
+    let mut s: [u8; MAX_POLY] = [0; MAX_POLY];
 
     /* Compute syndrome vector */
-    if block_syndromes(data as (*const u8), (*ecc).bs, npar, s.as_mut_ptr()) == 0 {
-        DecodeResult::Success
-    } else {
-        berlekamp_massey(
-            s.as_mut_ptr() as (*const u8),
-            npar,
-            &GF256 as (*const GaloisField),
-            sigma.as_mut_ptr(),
-        );
+    if block_syndromes(data as *const u8, (*ecc).bs, npar, s.as_mut_ptr()) == 0 {
+        return DecodeResult::Success;
+    }
 
-        /* Compute derivative of sigma */
-        i = 0i32;
-        'loop2: loop {
-            if !(i + 1i32 < MAX_POLY as i32) {
-                break;
-            }
-            sigma_deriv[i as (usize)] = sigma[(i + 1i32) as (usize)];
-            i = i + 2i32;
-        }
+    let mut sigma: [u8; MAX_POLY] = [0; MAX_POLY];
+    berlekamp_massey(
+        s.as_mut_ptr() as (*const u8),
+        npar,
+        &GF256 as (*const GaloisField),
+        sigma.as_mut_ptr(),
+    );
 
-        /* Compute error evaluator polynomial */
-        eloc_poly(
-            omega.as_mut_ptr(),
-            s.as_mut_ptr() as (*const u8),
+    /* Compute derivative of sigma */
+    let mut sigma_deriv: [u8; MAX_POLY] = [0; MAX_POLY];
+    for i in (0..MAX_POLY as i32 - 1).step_by(2) {
+        sigma_deriv[i as usize] = sigma[(i + 1) as usize];
+    }
+
+    /* Compute error evaluator polynomial */
+    let mut omega: [u8; MAX_POLY] = [0; MAX_POLY];
+    eloc_poly(
+        omega.as_mut_ptr(),
+        s.as_mut_ptr() as (*const u8),
+        sigma.as_mut_ptr() as (*const u8),
+        npar - 1,
+    );
+
+    /* Find error locations and magnitudes */
+    for i in 0..(*ecc).bs {
+        let xinv: u8 = GF256_EXP[(255 - i) as usize];
+
+        if poly_eval(
             sigma.as_mut_ptr() as (*const u8),
-            npar - 1i32,
-        );
-
-        /* Find error locations and magnitudes */
-        i = 0i32;
-        'loop4: loop {
-            if !(i < (*ecc).bs) {
-                break;
-            }
-            let xinv: u8 = GF256_EXP[(255i32 - i) as (usize)];
-            if poly_eval(
-                sigma.as_mut_ptr() as (*const u8),
+            xinv,
+            &GF256 as (*const GaloisField),
+        ) == 0
+        {
+            let sd_x: u8 = poly_eval(
+                sigma_deriv.as_mut_ptr() as (*const u8),
                 xinv,
                 &GF256 as (*const GaloisField),
-            ) == 0
-            {
-                let sd_x: u8 = poly_eval(
-                    sigma_deriv.as_mut_ptr() as (*const u8),
-                    xinv,
-                    &GF256 as (*const GaloisField),
-                );
-                let omega_x: u8 = poly_eval(
-                    omega.as_mut_ptr() as (*const u8),
-                    xinv,
-                    &GF256 as (*const GaloisField),
-                );
-                let error: u8 = GF256_EXP[((255i32 - GF256_LOG[sd_x as (usize)] as (i32)
-                    + GF256_LOG[omega_x as (usize)] as (i32))
-                    % 255i32) as (usize)];
-                let _rhs = error;
-                let _lhs = &mut *data.offset(((*ecc).bs - i - 1i32) as (isize));
-                *_lhs = (*_lhs as (i32) ^ _rhs as (i32)) as (u8);
-            }
-            i = i + 1;
+            );
+            let omega_x: u8 = poly_eval(
+                omega.as_mut_ptr() as (*const u8),
+                xinv,
+                &GF256 as (*const GaloisField),
+            );
+            let error: u8 = GF256_EXP[((255 - GF256_LOG[sd_x as usize] as i32
+                + GF256_LOG[omega_x as usize] as i32)
+                % 255) as usize];
+
+            *data.offset(((*ecc).bs - i - 1) as isize) ^= error;
         }
-        (if block_syndromes(data as (*const u8), (*ecc).bs, npar, s.as_mut_ptr()) != 0 {
-            DecodeResult::ErrorDataEcc
-        } else {
-            DecodeResult::Success
-        })
+    }
+
+    if block_syndromes(data as (*const u8), (*ecc).bs, npar, s.as_mut_ptr()) != 0 {
+        DecodeResult::ErrorDataEcc
+    } else {
+        DecodeResult::Success
     }
 }
 
@@ -416,77 +330,63 @@ const FORMAT_MAX_ERROR: i32 = 3;
 const FORMAT_SYNDROMES: i32 = (FORMAT_MAX_ERROR * 2);
 const FORMAT_BITS: i32 = 15;
 
-unsafe extern "C" fn format_syndromes(u: u16, s: *mut u8) -> i32 {
-    let mut i: i32;
-    let mut nonzero: i32 = 0i32;
-    memset(s as (*mut ::std::os::raw::c_void), 0i32, MAX_POLY);
-    i = 0i32;
-    'loop1: loop {
-        if !(i < FORMAT_SYNDROMES) {
-            break;
-        }
-        let mut j: i32;
-        *s.offset(i as (isize)) = 0u8;
-        j = 0i32;
-        'loop4: loop {
-            if !(j < FORMAT_BITS) {
-                break;
+unsafe fn format_syndromes(u: u16, s: *mut u8) -> i32 {
+    let mut nonzero: i32 = 0;
+
+    memset(s as (*mut ::std::os::raw::c_void), 0, MAX_POLY);
+
+    for i in 0..FORMAT_SYNDROMES {
+        *s.offset(i as isize) = 0;
+
+        for j in 0..FORMAT_BITS {
+            if u as i32 & 1 << j != 0 {
+                *s.offset(i as isize) ^= GF16_EXP[((i + 1) * j % 15) as usize];
             }
-            if u as (i32) & 1i32 << j != 0 {
-                let _rhs = GF16_EXP[((i + 1i32) * j % 15i32) as (usize)];
-                let _lhs = &mut *s.offset(i as (isize));
-                *_lhs = (*_lhs as (i32) ^ _rhs as (i32)) as (u8);
-            }
-            j = j + 1;
         }
-        if *s.offset(i as (isize)) != 0 {
-            nonzero = 1i32;
+
+        if *s.offset(i as isize) != 0 {
+            nonzero = 1;
         }
-        i = i + 1;
     }
+
     nonzero
 }
 
-unsafe extern "C" fn correct_format(f_ret: *mut u16) -> DecodeResult {
+unsafe fn correct_format(f_ret: *mut u16) -> DecodeResult {
     let mut u: u16 = *f_ret;
-    let mut i: i32;
-    let mut s: [u8; MAX_POLY] = [0u8; MAX_POLY];
-    let mut sigma: [u8; MAX_POLY] = [0u8; MAX_POLY];
+    let mut s: [u8; MAX_POLY] = [0; MAX_POLY];
 
     // Evaluate U (received codeword) at each of alpha_1 .. alpha_6
     // to get S_1 .. S_6 (but we index them from 0).
     if format_syndromes(u, s.as_mut_ptr()) == 0 {
-        DecodeResult::Success
-    } else {
-        berlekamp_massey(
-            s.as_mut_ptr() as (*const u8),
-            FORMAT_SYNDROMES,
-            &GF16 as (*const GaloisField),
-            sigma.as_mut_ptr(),
-        );
+        return DecodeResult::Success;
+    }
 
-        // Now, find the roots of the polynomial
-        i = 0i32;
-        'loop2: loop {
-            if !(i < 15i32) {
-                break;
-            }
-            if poly_eval(
-                sigma.as_mut_ptr() as (*const u8),
-                GF16_EXP[(15i32 - i) as (usize)],
-                &GF16 as (*const GaloisField),
-            ) == 0
-            {
-                u = (u as (i32) ^ 1i32 << i) as (u16);
-            }
-            i = i + 1;
+    let mut sigma: [u8; MAX_POLY] = [0; MAX_POLY];
+    berlekamp_massey(
+        s.as_mut_ptr() as (*const u8),
+        FORMAT_SYNDROMES,
+        &GF16 as (*const GaloisField),
+        sigma.as_mut_ptr(),
+    );
+
+    // Now, find the roots of the polynomial
+    for i in 0..15 {
+        if poly_eval(
+            sigma.as_mut_ptr() as (*const u8),
+            GF16_EXP[(15 - i) as usize],
+            &GF16 as (*const GaloisField),
+        ) == 0
+        {
+            u = (u as i32 ^ 1 << i) as u16;
         }
-        (if format_syndromes(u, s.as_mut_ptr()) != 0 {
-            DecodeResult::ErrorFormatEcc
-        } else {
-            *f_ret = u;
-            DecodeResult::Success
-        })
+    }
+
+    if format_syndromes(u, s.as_mut_ptr()) != 0 {
+        DecodeResult::ErrorFormatEcc
+    } else {
+        *f_ret = u;
+        DecodeResult::Success
     }
 }
 
@@ -496,11 +396,11 @@ unsafe extern "C" fn correct_format(f_ret: *mut u16) -> DecodeResult {
 
 #[derive(Copy)]
 #[repr(C)]
-pub struct DataStream {
-    pub raw: [u8; MAX_PAYLOAD],
-    pub data_bits: i32,
-    pub ptr: i32,
-    pub data: [u8; MAX_PAYLOAD],
+struct DataStream {
+    raw: [u8; MAX_PAYLOAD],
+    data_bits: i32,
+    ptr: i32,
+    data: [u8; MAX_PAYLOAD],
 }
 
 impl Clone for DataStream {
@@ -509,490 +409,440 @@ impl Clone for DataStream {
     }
 }
 
-unsafe extern "C" fn grid_bit(code: *const QuircCode, x: i32, y: i32) -> i32 {
+unsafe fn grid_bit(code: *const QuircCode, x: i32, y: i32) -> i32 {
     let p: i32 = y * (*code).size + x;
-    (*code).cell_bitmap[(p >> 3i32) as (usize)] as (i32) >> (p & 7i32) & 1i32
+
+    (*code).cell_bitmap[(p >> 3) as usize] as i32 >> (p & 7) & 1
 }
 
-unsafe extern "C" fn read_format(
+unsafe fn read_format(
     code: *const QuircCode,
     mut data: *mut QuircData,
     which: i32,
 ) -> DecodeResult {
-    let mut i: i32;
-    let mut format: u16 = 0u16;
-    let fdata: u16;
-    let err: DecodeResult;
+    let mut format: u16 = 0;
+
     if which != 0 {
-        i = 0i32;
-        'loop6: loop {
-            if !(i < 7i32) {
-                break;
-            }
-            format =
-                (format as (i32) << 1i32 | grid_bit(code, 8i32, (*code).size - 1i32 - i)) as (u16);
-            i = i + 1;
+        for i in 0..7 {
+            format = ((format as i32) << 1 | grid_bit(code, 8, (*code).size - 1 - i)) as u16;
         }
-        i = 0i32;
-        'loop8: loop {
-            if !(i < 8i32) {
-                break;
-            }
-            format =
-                (format as (i32) << 1i32 | grid_bit(code, (*code).size - 8i32 + i, 8i32)) as (u16);
-            i = i + 1;
+        for i in 0..8 {
+            format = ((format as i32) << 1 | grid_bit(code, (*code).size - 8 + i, 8)) as u16;
         }
     } else {
-        static mut XS: [i32; 15] = [
-            8i32, 8i32, 8i32, 8i32, 8i32, 8i32, 8i32, 8i32, 7i32, 5i32, 4i32, 3i32, 2i32, 1i32,
-            0i32,
-        ];
-        static mut YS: [i32; 15] = [
-            0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 7i32, 8i32, 8i32, 8i32, 8i32, 8i32, 8i32, 8i32,
-            8i32,
-        ];
-        i = 14i32;
-        'loop2: loop {
-            if !(i >= 0i32) {
-                break;
-            }
-            format = (format as (i32) << 1i32 | grid_bit(code, XS[i as (usize)], YS[i as (usize)]))
-                as (u16);
-            i = i - 1;
+        static XS: [i32; 15] = [8, 8, 8, 8, 8, 8, 8, 8, 7, 5, 4, 3, 2, 1, 0];
+        static YS: [i32; 15] = [0, 1, 2, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 8, 8];
+
+        for i in (0..=14).rev() {
+            format = ((format as i32) << 1 | grid_bit(code, XS[i as usize], YS[i as usize])) as u16;
         }
     }
-    format = (format as (i32) ^ 0x5412i32) as (u16);
-    err = correct_format(&mut format as (*mut u16));
+
+    format = (format as i32 ^ 0x5412) as u16;
+
+    let err = correct_format(&mut format as (*mut u16));
     if err != DecodeResult::Success {
         err
     } else {
-        fdata = (format as (i32) >> 10i32) as (u16);
-        (*data).ecc_level = fdata as (i32) >> 3i32;
-        (*data).mask = fdata as (i32) & 7i32;
+        let fdata = ((format as i32) >> 10) as u16;
+        (*data).ecc_level = (fdata as i32) >> 3;
+        (*data).mask = (fdata as i32) & 7;
+
         DecodeResult::Success
     }
 }
 
-unsafe extern "C" fn mask_bit(mask: i32, i: i32, j: i32) -> i32 {
-    if mask == 7i32 {
-        ((i * j % 3i32 + (i + j) % 2i32) % 2i32 == 0) as (i32)
-    } else if mask == 6i32 {
-        ((i * j % 2i32 + i * j % 3i32) % 2i32 == 0) as (i32)
-    } else if mask == 5i32 {
-        (i * j % 2i32 + i * j % 3i32 == 0) as (i32)
-    } else if mask == 4i32 {
-        ((i / 2i32 + j / 3i32) % 2i32 == 0) as (i32)
-    } else if mask == 3i32 {
-        ((i + j) % 3i32 == 0) as (i32)
-    } else if mask == 2i32 {
-        (j % 3i32 == 0) as (i32)
-    } else if mask == 1i32 {
-        (i % 2i32 == 0) as (i32)
-    } else if mask == 0i32 {
-        ((i + j) % 2i32 == 0) as (i32)
-    } else {
-        0i32
+unsafe fn mask_bit(mask: i32, i: i32, j: i32) -> i32 {
+    match mask {
+        0 => ((i + j) % 2 == 0) as i32,
+        1 => (i % 2 == 0) as i32,
+        2 => (j % 3 == 0) as i32,
+        3 => ((i + j) % 3 == 0) as i32,
+        4 => ((i / 2 + j / 3) % 2 == 0) as i32,
+        5 => (i * j % 2 + i * j % 3 == 0) as i32,
+        6 => ((i * j % 2 + i * j % 3) % 2 == 0) as i32,
+        7 => ((i * j % 3 + (i + j) % 2) % 2 == 0) as i32,
+        _ => 0,
     }
 }
 
-unsafe extern "C" fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
-    let ver: *const VersionInfo = &VERSION_DB[version as (usize)] as (*const VersionInfo);
-    let size: i32 = version * 4i32 + 17i32;
-    let mut ai: i32 = -1i32;
-    let mut aj: i32 = -1i32;
-    let mut a: i32;
-
+unsafe fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
     // Finder + format: top left
-    if i < 9i32 && (j < 9i32) {
-        return 1i32;
+    if i < 9 && (j < 9) {
+        return 1;
     }
 
     // Finder + format: bottom left
-    if i + 8i32 >= size && (j < 9i32) {
-        return 1i32;
+    let size: i32 = version * 4 + 17;
+    if i + 8 >= size && (j < 9) {
+        return 1;
     }
 
     // Finder + format: top right
-    if i < 9i32 && (j + 8i32 >= size) {
-        return 1i32;
+    if i < 9 && (j + 8 >= size) {
+        return 1;
     }
 
     // Exclude timing patterns
-    if i == 6i32 || j == 6i32 {
-        return 1i32;
+    if i == 6 || j == 6 {
+        return 1;
     }
 
     // Exclude version info, if it exists. Version info sits adjacent to
     // the top-right and bottom-left finders in three rows, bounded by
     // the timing pattern.
-    if version >= 7i32 {
-        if i < 6i32 && (j + 11i32 >= size) {
-            return 1i32;
+    if version >= 7 {
+        if i < 6 && (j + 11 >= size) {
+            return 1;
         }
-        if i + 11i32 >= size && (j < 6i32) {
-            return 1i32;
+        if i + 11 >= size && (j < 6) {
+            return 1;
         }
     }
 
     // Exclude alignment patterns
-    a = 0i32;
-    'loop8: loop {
-        if !(a < QUIRC_MAX_ALIGNMENT as i32 && ((*ver).apat[a as (usize)] != 0)) {
-            break;
-        }
-        let p: i32 = (*ver).apat[a as (usize)];
-        if abs(p - i) < 3i32 {
+    let ver: *const VersionInfo = &VERSION_DB[version as usize] as (*const VersionInfo);
+    let mut ai: i32 = -1;
+    let mut aj: i32 = -1;
+
+    let mut a = 0;
+    while a < QUIRC_MAX_ALIGNMENT as i32 && (*ver).apat[a as usize] != 0 {
+        let p: i32 = (*ver).apat[a as usize];
+
+        if abs(p - i) < 3 {
             ai = a;
         }
-        if abs(p - j) < 3i32 {
+        if abs(p - j) < 3 {
             aj = a;
         }
-        a = a + 1;
+        a += 1;
     }
 
-    if ai >= 0i32 && (aj >= 0i32) {
-        a = a - 1;
-        if ai > 0i32 && (ai < a) {
-            return 1i32;
+    if ai >= 0 && (aj >= 0) {
+        a -= 1;
+        if ai > 0 && (ai < a) {
+            return 1;
         }
-        if aj > 0i32 && (aj < a) {
-            return 1i32;
+        if aj > 0 && (aj < a) {
+            return 1;
         }
         if aj == a && (ai == a) {
-            return 1i32;
+            return 1;
         }
     }
-    0i32
+
+    0
 }
 
-unsafe extern "C" fn read_bit(
+unsafe fn read_bit(
     code: *const QuircCode,
     data: *mut QuircData,
     mut ds: *mut DataStream,
     i: i32,
     j: i32,
 ) {
-    let bitpos: i32 = (*ds).data_bits & 7i32;
-    let bytepos: i32 = (*ds).data_bits >> 3i32;
+    let bitpos: i32 = (*ds).data_bits & 7;
+    let bytepos: i32 = (*ds).data_bits >> 3;
     let mut v: i32 = grid_bit(code, j, i);
+
     if mask_bit((*data).mask, i, j) != 0 {
-        v = v ^ 1i32;
+        v ^= 1;
     }
+
     if v != 0 {
-        let _rhs = 0x80i32 >> bitpos;
-        let _lhs = &mut (*ds).raw[bytepos as (usize)];
-        *_lhs = (*_lhs as (i32) | _rhs) as (u8);
+        (*ds).raw[bytepos as usize] |= 0x80 >> bitpos
     }
-    (*ds).data_bits = (*ds).data_bits + 1;
+
+    (*ds).data_bits += 1;
 }
 
-unsafe extern "C" fn read_data(code: *const QuircCode, data: *mut QuircData, ds: *mut DataStream) {
-    let mut y: i32 = (*code).size - 1i32;
-    let mut x: i32 = (*code).size - 1i32;
-    let mut dir: i32 = -1i32;
-    'loop1: loop {
-        if !(x > 0i32) {
-            break;
+unsafe fn read_data(code: *const QuircCode, data: *mut QuircData, ds: *mut DataStream) {
+    let mut y: i32 = (*code).size - 1;
+    let mut x: i32 = (*code).size - 1;
+    let mut dir: i32 = -1;
+
+    while x > 0 {
+        if x == 6 {
+            x -= 1;
         }
-        if x == 6i32 {
-            x = x - 1;
-        }
+
         if reserved_cell((*data).version, y, x) == 0 {
             read_bit(code, data, ds, y, x);
         }
-        if reserved_cell((*data).version, y, x - 1i32) == 0 {
-            read_bit(code, data, ds, y, x - 1i32);
+
+        if reserved_cell((*data).version, y, x - 1) == 0 {
+            read_bit(code, data, ds, y, x - 1);
         }
+
         y = y + dir;
-        if !(y < 0i32 || y >= (*code).size) {
-            continue;
+        if y < 0 || y >= (*code).size {
+            dir = -dir;
+            x = x - 2;
+            y = y + dir;
         }
-        dir = -dir;
-        x = x - 2i32;
-        y = y + dir;
     }
 }
 
-unsafe extern "C" fn codestream_ecc(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
-    let ver: *const VersionInfo = &VERSION_DB[(*data).version as (usize)] as (*const VersionInfo);
-    let sb_ecc: *const RsParams = &(*ver).ecc[(*data).ecc_level as (usize)] as (*const RsParams);
-    let mut lb_ecc: RsParams;
-    let lb_count: i32 = ((*ver).data_bytes - (*sb_ecc).bs * (*sb_ecc).ns) / ((*sb_ecc).bs + 1i32);
+unsafe fn codestream_ecc(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+    let ver: *const VersionInfo = &VERSION_DB[(*data).version as usize] as (*const VersionInfo);
+    let sb_ecc: *const RsParams = &(*ver).ecc[(*data).ecc_level as usize] as (*const RsParams);
+    let lb_count: i32 = ((*ver).data_bytes - (*sb_ecc).bs * (*sb_ecc).ns) / ((*sb_ecc).bs + 1);
     let bc: i32 = lb_count + (*sb_ecc).ns;
     let ecc_offset: i32 = (*sb_ecc).dw * bc + lb_count;
-    let mut dst_offset: i32 = 0i32;
-    lb_ecc = *sb_ecc;
-    lb_ecc.dw = lb_ecc.dw + 1;
-    lb_ecc.bs = lb_ecc.bs + 1;
+    let mut dst_offset: i32 = 0;
+
+    let mut lb_ecc = *sb_ecc;
+    lb_ecc.dw += 1;
+    lb_ecc.bs += 1;
 
     for i in 0..bc {
-        let dst: *mut u8 = (*ds).data.as_mut_ptr().offset(dst_offset as (isize));
+        let dst: *mut u8 = (*ds).data.as_mut_ptr().offset(dst_offset as isize);
         let ecc: *const RsParams = if i < (*sb_ecc).ns {
             sb_ecc
         } else {
             &mut lb_ecc
         };
         let num_ec: i32 = (*ecc).bs - (*ecc).dw;
-        let err: DecodeResult;
 
         for j in 0..(*ecc).dw {
-            *dst.offset(j as (isize)) = (*ds).raw[(j * bc + i) as (usize)];
+            *dst.offset(j as isize) = (*ds).raw[(j * bc + i) as usize];
         }
         for j in 0..num_ec {
-            *dst.offset(((*ecc).dw + j) as (isize)) =
-                (*ds).raw[(ecc_offset + j * bc + i) as (usize)];
+            *dst.offset(((*ecc).dw + j) as isize) = (*ds).raw[(ecc_offset + j * bc + i) as usize];
         }
 
-        err = correct_block(dst, ecc);
+        let err = correct_block(dst, ecc);
         if err != DecodeResult::Success {
             return err;
         }
 
-        dst_offset = dst_offset + (*ecc).dw;
+        dst_offset += (*ecc).dw;
     }
 
-    (*ds).data_bits = dst_offset * 8i32;
+    (*ds).data_bits = dst_offset * 8;
     DecodeResult::Success
 }
 
-unsafe extern "C" fn bits_remaining(ds: *const DataStream) -> i32 {
+unsafe fn bits_remaining(ds: *const DataStream) -> i32 {
     (*ds).data_bits - (*ds).ptr
 }
 
-unsafe extern "C" fn take_bits(mut ds: *mut DataStream, mut len: i32) -> i32 {
-    let mut ret: i32 = 0i32;
-    'loop1: loop {
-        if !(len != 0 && ((*ds).ptr < (*ds).data_bits)) {
-            break;
+unsafe fn take_bits(mut ds: *mut DataStream, mut len: i32) -> i32 {
+    let mut ret: i32 = 0;
+
+    while len != 0 && ((*ds).ptr < (*ds).data_bits) {
+        let b: u8 = (*ds).data[((*ds).ptr >> 3) as usize];
+        let bitpos: i32 = (*ds).ptr & 7;
+
+        ret <<= 1;
+        if (b as i32) << bitpos & 0x80 != 0 {
+            ret |= 1;
         }
-        let b: u8 = (*ds).data[((*ds).ptr >> 3i32) as (usize)];
-        let bitpos: i32 = (*ds).ptr & 7i32;
-        ret = ret << 1i32;
-        if b as (i32) << bitpos & 0x80i32 != 0 {
-            ret = ret | 1i32;
-        }
-        (*ds).ptr = (*ds).ptr + 1;
-        len = len - 1;
+
+        (*ds).ptr += 1;
+        len -= 1;
     }
+
     ret
 }
 
-unsafe extern "C" fn numeric_tuple(
+unsafe fn numeric_tuple(
     mut data: *mut QuircData,
     ds: *mut DataStream,
     bits: i32,
     digits: i32,
 ) -> i32 {
-    let mut tuple: i32;
-    let mut i: i32;
     if bits_remaining(ds as (*const DataStream)) < bits {
-        -1i32
+        -1
     } else {
-        tuple = take_bits(ds, bits);
-        i = digits - 1i32;
-        'loop2: loop {
-            if !(i >= 0i32) {
-                break;
-            }
-            (*data).payload[((*data).payload_len + i) as (usize)] =
-                (tuple % 10i32 + b'0' as (i32)) as (u8);
-            tuple = tuple / 10i32;
-            i = i - 1;
+        let mut tuple = take_bits(ds, bits);
+
+        for i in (0..=digits - 1).rev() {
+            (*data).payload[((*data).payload_len + i) as usize] = (tuple % 10 + b'0' as i32) as u8;
+            tuple /= 10;
         }
-        (*data).payload_len = (*data).payload_len + digits;
-        0i32
+
+        (*data).payload_len += digits;
+
+        0
     }
 }
 
-unsafe extern "C" fn decode_numeric(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
-    let mut bits: i32 = 14i32;
-    let mut count: i32;
-    if (*data).version < 10i32 {
-        bits = 10i32;
-    } else if (*data).version < 27i32 {
-        bits = 12i32;
-    }
-    count = take_bits(ds, bits);
-    if (*data).payload_len + count + 1i32 > MAX_PAYLOAD as i32 {
+unsafe fn decode_numeric(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+    let bits = if (*data).version < 10 {
+        10
+    } else if (*data).version < 27 {
+        12
+    } else {
+        14
+    };
+
+    let mut count = take_bits(ds, bits);
+    if (*data).payload_len + count + 1 > MAX_PAYLOAD as i32 {
         return DecodeResult::ErrorDataOverflow;
     }
+
     while count >= 3 {
-        if numeric_tuple(data, ds, 10i32, 3i32) < 0i32 {
+        if numeric_tuple(data, ds, 10, 3) < 0 {
             return DecodeResult::ErrorDataUnderflow;
         }
-        count = count - 3i32;
+        count -= 3;
     }
-    if count >= 2i32 {
-        if numeric_tuple(data, ds, 7i32, 2i32) < 0i32 {
+
+    if count >= 2 {
+        if numeric_tuple(data, ds, 7, 2) < 0 {
             return DecodeResult::ErrorDataUnderflow;
         }
-        count = count - 2i32;
+        count -= 2;
     }
+
     if count != 0 {
-        if numeric_tuple(data, ds, 4i32, 1i32) < 0i32 {
+        if numeric_tuple(data, ds, 4, 1) < 0 {
             return DecodeResult::ErrorDataUnderflow;
         }
     }
-    return DecodeResult::Success;
+
+    DecodeResult::Success
 }
 
-unsafe extern "C" fn alpha_tuple(
+unsafe fn alpha_tuple(
     mut data: *mut QuircData,
     ds: *mut DataStream,
     bits: i32,
     digits: i32,
 ) -> i32 {
-    let mut tuple: i32;
-    let mut i: i32;
     if bits_remaining(ds as (*const DataStream)) < bits {
-        -1i32
+        -1
     } else {
-        tuple = take_bits(ds, bits);
-        i = 0i32;
-        'loop2: loop {
-            if !(i < digits) {
-                break;
-            }
+        let mut tuple = take_bits(ds, bits);
+
+        for i in 0..digits {
             static mut ALPHA_MAP: *const u8 =
                 (*b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:\0").as_ptr();
-            (*data).payload[((*data).payload_len + digits - i - 1i32) as (usize)] =
-                *ALPHA_MAP.offset((tuple % 45i32) as (isize));
-            tuple = tuple / 45i32;
-            i = i + 1;
+            (*data).payload[((*data).payload_len + digits - i - 1) as usize] =
+                *ALPHA_MAP.offset((tuple % 45) as isize);
+            tuple /= 45;
         }
-        (*data).payload_len = (*data).payload_len + digits;
-        0i32
+
+        (*data).payload_len += digits;
+        0
     }
 }
 
-unsafe extern "C" fn decode_alpha(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
-    let mut bits: i32 = 13i32;
-    let mut count: i32;
-    if (*data).version < 10i32 {
-        bits = 9i32;
-    } else if (*data).version < 27i32 {
-        bits = 11i32;
-    }
-    count = take_bits(ds, bits);
-    if (*data).payload_len + count + 1i32 > MAX_PAYLOAD as i32 {
+unsafe fn decode_alpha(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+    let bits = if (*data).version < 10 {
+        9
+    } else if (*data).version < 27 {
+        11
+    } else {
+        13
+    };
+
+    let mut count = take_bits(ds, bits);
+    if (*data).payload_len + count + 1 > MAX_PAYLOAD as i32 {
         return DecodeResult::ErrorDataOverflow;
     }
+
     while count >= 2 {
-        if alpha_tuple(data, ds, 11i32, 2i32) < 0i32 {
+        if alpha_tuple(data, ds, 11, 2) < 0 {
             return DecodeResult::ErrorDataUnderflow;
         }
-        count = count - 2i32;
+        count -= 2;
     }
+
     if count != 0 {
-        if alpha_tuple(data, ds, 6i32, 1i32) < 0i32 {
+        if alpha_tuple(data, ds, 6, 1) < 0 {
             return DecodeResult::ErrorDataUnderflow;
         }
     }
+
     return DecodeResult::Success;
 }
 
-unsafe extern "C" fn decode_byte(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
-    let mut bits: i32 = 16i32;
-    let count: i32;
-    let mut i: i32;
-    if (*data).version < 10i32 {
-        bits = 8i32;
-    }
-    count = take_bits(ds, bits);
-    if (*data).payload_len + count + 1i32 > MAX_PAYLOAD as i32 {
+unsafe fn decode_byte(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+    let bits = if (*data).version < 10 { 8 } else { 16 };
+
+    let count = take_bits(ds, bits);
+    if (*data).payload_len + count + 1 > MAX_PAYLOAD as i32 {
         DecodeResult::ErrorDataOverflow
-    } else if bits_remaining(ds as (*const DataStream)) < count * 8i32 {
+    } else if bits_remaining(ds as (*const DataStream)) < count * 8 {
         DecodeResult::ErrorDataUnderflow
     } else {
-        i = 0i32;
-        'loop5: loop {
-            if !(i < count) {
-                break;
-            }
-            (*data).payload[{
-                let _old = (*data).payload_len;
-                (*data).payload_len = (*data).payload_len + 1;
-                _old
-            } as (usize)] = take_bits(ds, 8i32) as (u8);
-            i = i + 1;
+        for _ in 0..count {
+            (*data).payload[(*data).payload_len as usize] = take_bits(ds, 8) as u8;
+            (*data).payload_len += 1;
         }
+
         DecodeResult::Success
     }
 }
 
-unsafe extern "C" fn decode_kanji(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
-    let mut bits: i32 = 12i32;
-    let count: i32;
-    let mut i: i32;
-    if (*data).version < 10i32 {
-        bits = 8i32;
-    } else if (*data).version < 27i32 {
-        bits = 10i32;
-    }
-    count = take_bits(ds, bits);
-    if (*data).payload_len + count * 2i32 + 1i32 > MAX_PAYLOAD as i32 {
+unsafe fn decode_kanji(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+    let bits = if (*data).version < 10 {
+        8
+    } else if (*data).version < 27 {
+        10
+    } else {
+        12
+    };
+
+    let count = take_bits(ds, bits);
+    if (*data).payload_len + count * 2 + 1 > MAX_PAYLOAD as i32 {
         DecodeResult::ErrorDataOverflow
-    } else if bits_remaining(ds as (*const DataStream)) < count * 13i32 {
+    } else if bits_remaining(ds as (*const DataStream)) < count * 13 {
         DecodeResult::ErrorDataUnderflow
     } else {
-        i = 0i32;
-        'loop7: loop {
-            if !(i < count) {
-                break;
-            }
-            let d: i32 = take_bits(ds, 13i32);
-            let ms_byte: i32 = d / 0xc0i32;
-            let ls_byte: i32 = d % 0xc0i32;
-            let intermediate: i32 = ms_byte << 8i32 | ls_byte;
-            let sjw: u16;
-            if intermediate + 0x8140i32 <= 0x9ffci32 {
+        for _ in 0..count {
+            let d: i32 = take_bits(ds, 13);
+            let ms_byte: i32 = d / 0xc0;
+            let ls_byte: i32 = d % 0xc0;
+            let intermediate: i32 = ms_byte << 8 | ls_byte;
+
+            let sjw: u16 = if intermediate + 0x8140 <= 0x9ffc {
                 // bytes are in the range 0x8140 to 0x9FFC
-                sjw = (intermediate + 0x8140i32) as (u16);
+                (intermediate + 0x8140) as u16
             } else {
                 // bytes are in the range 0xE040 to 0xEBBF
-                sjw = (intermediate + 0xc140i32) as (u16);
-            }
-            (*data).payload[{
-                let _old = (*data).payload_len;
-                (*data).payload_len = (*data).payload_len + 1;
-                _old
-            } as (usize)] = (sjw as (i32) >> 8i32) as (u8);
-            (*data).payload[{
-                let _old = (*data).payload_len;
-                (*data).payload_len = (*data).payload_len + 1;
-                _old
-            } as (usize)] = (sjw as (i32) & 0xffi32) as (u8);
-            i = i + 1;
+                (intermediate + 0xc140) as u16
+            };
+
+            (*data).payload[(*data).payload_len as usize] = (sjw as i32 >> 8) as u8;
+            (*data).payload_len += 1;
+            (*data).payload[(*data).payload_len as usize] = (sjw as i32 & 0xff) as u8;
+            (*data).payload_len += 1;
         }
+
         DecodeResult::Success
     }
 }
 
-unsafe extern "C" fn decode_eci(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
-    if bits_remaining(ds as (*const DataStream)) < 8i32 {
+unsafe fn decode_eci(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+    if bits_remaining(ds as (*const DataStream)) < 8 {
         DecodeResult::ErrorDataUnderflow
     } else {
-        (*data).eci = take_bits(ds, 8i32) as (u32);
-        if (*data).eci & 0xc0u32 == 0x80u32 {
-            if bits_remaining(ds as (*const DataStream)) < 8i32 {
+        (*data).eci = take_bits(ds, 8) as u32;
+
+        if (*data).eci & 0xc0 == 0x80 {
+            if bits_remaining(ds as (*const DataStream)) < 8 {
                 return DecodeResult::ErrorDataUnderflow;
-            } else {
-                (*data).eci = (*data).eci << 8i32 | take_bits(ds, 8i32) as (u32);
             }
-        } else if (*data).eci & 0xe0u32 == 0xc0u32 {
-            if bits_remaining(ds as (*const DataStream)) < 16i32 {
+
+            (*data).eci = (*data).eci << 8 | take_bits(ds, 8) as u32;
+        } else if (*data).eci & 0xe0 == 0xc0 {
+            if bits_remaining(ds as (*const DataStream)) < 16 {
                 return DecodeResult::ErrorDataUnderflow;
-            } else {
-                (*data).eci = (*data).eci << 16i32 | take_bits(ds, 16i32) as (u32);
             }
+
+            (*data).eci = (*data).eci << 16 | take_bits(ds, 16) as u32;
         }
+
         DecodeResult::Success
     }
 }
 
-unsafe extern "C" fn decode_payload(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
-    while bits_remaining(ds as (*const DataStream)) >= 4i32 {
-        let type_: i32 = take_bits(ds, 4i32);
+unsafe fn decode_payload(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+    while bits_remaining(ds as (*const DataStream)) >= 4 {
+        let type_: i32 = take_bits(ds, 4);
         let err = match type_ {
             DATA_TYPE_NUMERIC => decode_numeric(data, ds),
             DATA_TYPE_ALPHA => decode_alpha(data, ds),
@@ -1006,64 +856,63 @@ unsafe extern "C" fn decode_payload(mut data: *mut QuircData, ds: *mut DataStrea
             return err;
         }
 
-        if type_ & type_ - 1i32 == 0 && (type_ > (*data).data_type) {
+        if type_ & type_ - 1 == 0 && (type_ > (*data).data_type) {
             (*data).data_type = type_;
         }
     }
 
     // Add nul terminator to all payloads
-    if (*data).payload_len as (usize) >= ::std::mem::size_of::<[u8; 8896]>() {
-        (*data).payload_len = (*data).payload_len - 1;
+    if (*data).payload_len as usize >= ::std::mem::size_of::<[u8; 8896]>() {
+        (*data).payload_len -= 1;
     }
-    (*data).payload[(*data).payload_len as (usize)] = 0u8;
+    (*data).payload[(*data).payload_len as usize] = 0;
+
     DecodeResult::Success
 }
 
 /// Decode a QR-code, returning the payload data.
-pub unsafe extern "C" fn quirc_decode(
-    code: *const QuircCode,
-    mut data: *mut QuircData,
-) -> DecodeResult {
-    let mut err: DecodeResult;
+pub unsafe fn quirc_decode(code: *const QuircCode, mut data: *mut QuircData) -> DecodeResult {
+    if ((*code).size - 17) % 4 != 0 {
+        return DecodeResult::ErrorInvalidGridSize;
+    }
+
+    memset(
+        data as (*mut ::std::os::raw::c_void),
+        0,
+        ::std::mem::size_of::<QuircData>(),
+    );
+
+    (*data).version = ((*code).size - 17) / 4;
+
+    if (*data).version < 1 || (*data).version > QUIRC_MAX_VERSION as i32 {
+        return DecodeResult::ErrorInvalidVersion;
+    }
+
+    // Read format information -- try both locations
+    let mut err = read_format(code, data, 0);
+    if err != DecodeResult::Success {
+        err = read_format(code, data, 1);
+    }
+    if err != DecodeResult::Success {
+        return err;
+    }
+
     let mut ds: DataStream = DataStream {
-        raw: [0u8; MAX_PAYLOAD],
+        raw: [0; MAX_PAYLOAD],
         data_bits: 0,
         ptr: 0,
-        data: [0u8; MAX_PAYLOAD],
+        data: [0; MAX_PAYLOAD],
     };
-    if ((*code).size - 17i32) % 4i32 != 0 {
-        DecodeResult::ErrorInvalidGridSize
+    read_data(code, data, &mut ds);
+    let err = codestream_ecc(data, &mut ds);
+    if err != DecodeResult::Success {
+        return err;
+    }
+
+    let err = decode_payload(data, &mut ds);
+    if err != DecodeResult::Success {
+        err
     } else {
-        memset(
-            data as (*mut ::std::os::raw::c_void),
-            0i32,
-            ::std::mem::size_of::<QuircData>(),
-        );
-        (*data).version = ((*code).size - 17i32) / 4i32;
-        (if (*data).version < 1i32 || (*data).version > QUIRC_MAX_VERSION as i32 {
-            DecodeResult::ErrorInvalidVersion
-        } else {
-            // Read format information -- try both locations
-            err = read_format(code, data, 0i32);
-            if err != DecodeResult::Success {
-                err = read_format(code, data, 1i32);
-            }
-            (if err != DecodeResult::Success {
-                err
-            } else {
-                read_data(code, data, &mut ds);
-                err = codestream_ecc(data, &mut ds);
-                (if err != DecodeResult::Success {
-                    err
-                } else {
-                    err = decode_payload(data, &mut ds);
-                    (if err != DecodeResult::Success {
-                        err
-                    } else {
-                        DecodeResult::Success
-                    })
-                })
-            })
-        })
+        DecodeResult::Success
     }
 }
