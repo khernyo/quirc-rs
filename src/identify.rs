@@ -866,11 +866,8 @@ unsafe fn rotate_capstone(cap: *mut Capstone, h0: *const Point, hd: *const Point
     (*cap).c = perspective_setup(&(*cap).corners, 7.0, 7.0);
 }
 
-unsafe fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
-    let qr_index: i32;
-    let mut qr: *mut Grid;
-
-    if q.num_grids >= MAX_GRIDS as i32 {
+unsafe fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
+    if q.grids.len() >= MAX_GRIDS {
         return;
     }
 
@@ -895,19 +892,13 @@ unsafe fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
     }
 
     // Record the grid and its components
-    qr_index = q.num_grids;
-    qr = &mut q.grids[q.num_grids as usize];
-    q.num_grids += 1;
-
-    memset(
-        qr as (*mut ::std::os::raw::c_void),
-        0,
-        ::std::mem::size_of::<Grid>(),
-    );
-    (*qr).caps[0] = a;
-    (*qr).caps[1] = b;
-    (*qr).caps[2] = c;
-    (*qr).align_region = -1;
+    let qr_index = q.grids.len() as i32;
+    q.grids.push(Grid {
+        caps: [a, b, c],
+        align_region: -1,
+        ..Default::default()
+    });
+    let qr: *mut Grid = q.grids.last_mut().unwrap();
 
     // Rotate each capstone so that corner 0 is top-left with respect
     // to the grid.
@@ -982,7 +973,7 @@ unsafe fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
     for i in 0..3 {
         q.capstones[(*qr).caps[i as usize] as usize].qr_grid = -1;
     }
-    q.num_grids -= 1;
+    q.grids.pop();
 }
 
 #[derive(Copy)]
@@ -1109,7 +1100,6 @@ fn pixels_setup(q: &mut Quirc) {
 /// code may be obtained using accessor functions described below.
 pub unsafe fn quirc_begin(q: &mut Quirc, w: *mut i32, h: *mut i32) -> &mut [u8] {
     q.regions.resize(2, Default::default());
-    q.num_grids = 0;
 
     if !w.is_null() {
         *w = q.w;
@@ -1138,7 +1128,7 @@ pub unsafe fn quirc_end(q: &mut Quirc) {
 pub unsafe fn quirc_extract(q: &mut Quirc, index: i32, mut code: *mut QuircCode) {
     let qr: *mut Grid = &mut q.grids[index as usize];
 
-    if index < 0 || index > q.num_grids {
+    if index < 0 || index > q.grids.len() as i32 {
         return;
     }
 

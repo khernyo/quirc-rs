@@ -198,8 +198,7 @@ pub struct Quirc {
     pub h: i32,
     pub regions: Vec<Region>,
     pub capstones: Vec<Capstone>,
-    pub num_grids: i32,
-    pub grids: [Grid; consts::MAX_GRIDS],
+    pub grids: Vec<Grid>,
 }
 
 impl Default for Quirc {
@@ -212,8 +211,7 @@ impl Default for Quirc {
             h: 0,
             regions: Vec::new(),
             capstones: Vec::new(),
-            num_grids: 0,
-            grids: [Default::default(); consts::MAX_GRIDS],
+            grids: Vec::new(),
         }
     }
 }
@@ -255,7 +253,7 @@ pub unsafe extern "C" fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
 /// Return the number of QR-codes identified in the last processed
 /// image.
 pub unsafe extern "C" fn quirc_count(q: &Quirc) -> i32 {
-    q.num_grids
+    q.grids.len() as i32
 }
 
 /// This enum describes the various decoder errors which may occur.

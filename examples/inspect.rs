@@ -182,10 +182,10 @@ unsafe extern "C" fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mu
     (*ret).y = rint(y) as i32;
 }
 
-unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: &mut Quirc, index: i32) {
-    let qr: &mut Grid = &mut q.grids[index as (usize)];
+unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: &mut Quirc, index: usize) {
+    let qr: &mut Grid = &mut q.grids[index];
     for i in 0..3 {
-        let cap: &mut Capstone = &mut q.capstones[qr.caps[i as (usize)] as (usize)];
+        let cap: &mut Capstone = &mut q.capstones[qr.caps[i] as (usize)];
         let s = format!("{}.{}", index, "ABC".chars().nth(i).unwrap());
         string_color(
             canvas,
@@ -252,7 +252,7 @@ unsafe extern "C" fn sdl_examine(q: &mut Quirc) -> i32 {
             for i in 0..q.capstones.len() {
                 draw_capstone(&mut canvas, q, i);
             }
-            for i in 0..q.num_grids {
+            for i in 0..q.grids.len() {
                 draw_grid(&mut canvas, q, i);
             }
 

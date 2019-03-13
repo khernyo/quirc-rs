@@ -26,7 +26,7 @@ use quirc_rs::quirc::consts::*;
 use quirc_rs::quirc::*;
 
 use quirc_wrapper as qw;
-use std::mem::size_of_val;
+use std::mem::size_of;
 
 unsafe extern "C" fn data_type_str(dt: i32) -> &'static str {
     if dt == DATA_TYPE_KANJI {
@@ -170,26 +170,19 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
         ),
         0
     );
-    assert_eq!(
-        decoder.capstones.len(),
-        (*qw_decoder).num_capstones as usize
-    );
-    decoder
-        .capstones
-        .iter()
-        .zip(std::slice::from_raw_parts(
+    cmp_slice_qw(
+        &decoder.capstones,
+        std::slice::from_raw_parts(
             (*qw_decoder).capstones.as_ptr(),
             (*qw_decoder).num_capstones as usize,
-        ))
-        .all(|(c, qw_c)| capstones_equal(c, qw_c));
-    assert_eq!(decoder.num_grids, (*qw_decoder).num_grids);
-    assert_eq!(
-        memcmp(
-            decoder.grids.as_ptr() as *const c_void,
-            (*qw_decoder).grids.as_ptr() as *const c_void,
-            std::mem::size_of_val(&decoder.grids[0]) * decoder.num_grids as usize
         ),
-        0
+    );
+    cmp_slice_qw(
+        &decoder.grids,
+        std::slice::from_raw_parts(
+            (*qw_decoder).grids.as_ptr(),
+            (*qw_decoder).num_grids as usize,
+        ),
     );
 
     let id_count = quirc_count(decoder);
@@ -244,32 +237,15 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     }
 }
 
-unsafe fn capstones_equal(capstone: &Capstone, qw_capstone: &qw::quirc_capstone) -> bool {
-    capstone.ring == qw_capstone.ring
-        && capstone.stone == qw_capstone.stone
-        && capstone
-            .corners
-            .iter()
-            .zip(qw_capstone.corners.iter())
-            .all(|(p, qw_p)| points_equal(p, qw_p))
-        && points_equal(&capstone.center, &qw_capstone.center)
-        && capstone.c == qw_capstone.c
-        && capstone.qr_grid == qw_capstone.qr_grid
-        && size_of_val(capstone) == size_of_val(qw_capstone)
+unsafe fn cmp_qw<A, B>(a: &A, b: &B) -> bool {
+    size_of::<A>() == size_of::<B>()
         && memcmp(
-            capstone as *const Capstone as *const c_void,
-            qw_capstone as *const qw::quirc_capstone as *const c_void,
-            size_of_val(capstone),
+            a as *const A as *const c_void,
+            b as *const B as *const c_void,
+            size_of::<A>(),
         ) == 0
 }
 
-unsafe fn points_equal(point: &Point, qw_point: &qw::quirc_point) -> bool {
-    point.x == qw_point.x
-        && point.y == qw_point.y
-        && size_of_val(point) == size_of_val(qw_point)
-        && memcmp(
-            point as *const Point as *const c_void,
-            qw_point as *const qw::quirc_point as *const c_void,
-            size_of_val(point),
-        ) == 0
+unsafe fn cmp_slice_qw<A, B>(a: &[A], b: &[B]) -> bool {
+    a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| cmp_qw(a, b))
 }
