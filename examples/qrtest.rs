@@ -131,10 +131,9 @@ pub unsafe extern "C" fn scan_file(
         (*info).identify_time = ms(tp).wrapping_sub(start);
         (*info).id_count = quirc_count(decoder);
         for i in 0..(*info).id_count {
-            let mut code: QuircCode = std::mem::uninitialized();
             let mut data: QuircData = std::mem::uninitialized();
-            quirc_extract(decoder, i, &mut code);
-            if quirc_decode(&mut code, &mut data) == DecodeResult::Success {
+            let code = quirc_extract(decoder, i).unwrap();
+            if quirc_decode(&code, &mut data) == DecodeResult::Success {
                 (*info).decode_count = (*info).decode_count + 1;
             }
         }
@@ -153,15 +152,14 @@ pub unsafe extern "C" fn scan_file(
         );
         if WANT_CELL_DUMP || WANT_VERBOSE {
             for i in 0..(*info).id_count {
-                let mut code: QuircCode = std::mem::uninitialized();
-                quirc_extract(decoder, i, &mut code);
+                let code = quirc_extract(decoder, i).unwrap();
                 if WANT_CELL_DUMP {
-                    dump_cells(&mut code);
+                    dump_cells(&code);
                     println!();
                 }
                 if WANT_VERBOSE {
                     let mut data: QuircData = std::mem::uninitialized();
-                    let err: DecodeResult = quirc_decode(&mut code, &mut data);
+                    let err: DecodeResult = quirc_decode(&code, &mut data);
                     if err != DecodeResult::Success {
                         println!("  ERROR: {}", quirc_strerror(err));
                         println!();

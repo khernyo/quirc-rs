@@ -40,6 +40,16 @@ impl Clone for QuircCode {
     }
 }
 
+impl Default for QuircCode {
+    fn default() -> Self {
+        QuircCode {
+            corners: [Default::default(); 4],
+            size: 0,
+            cell_bitmap: [0; consts::MAX_BITMAP],
+        }
+    }
+}
+
 /// This structure holds the decoded QR-code data
 #[derive(Copy)]
 #[repr(C)]

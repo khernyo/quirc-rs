@@ -49,12 +49,11 @@ unsafe extern "C" fn dump_info(q: &mut Quirc) {
         if !(i < count) {
             break;
         }
-        let mut code: QuircCode = std::mem::uninitialized();
         let mut data: QuircData = std::mem::uninitialized();
         let err: DecodeResult;
-        quirc_extract(q, i, &mut code);
-        err = quirc_decode(&mut code, &mut data);
-        dump_cells(&mut code);
+        let code = quirc_extract(q, i).unwrap();
+        err = quirc_decode(&code, &mut data);
+        dump_cells(&code);
         println!();
         if err != DecodeResult::Success {
             println!("  Decoding FAILED: {}", quirc_strerror(err));

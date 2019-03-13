@@ -28,11 +28,6 @@ extern "C" {
         __src: *const ::std::os::raw::c_void,
         __n: usize,
     ) -> *mut ::std::os::raw::c_void;
-    fn memset(
-        __s: *mut ::std::os::raw::c_void,
-        __c: i32,
-        __n: usize,
-    ) -> *mut ::std::os::raw::c_void;
     fn rint(x: c_double) -> c_double;
 }
 
@@ -1125,33 +1120,33 @@ pub unsafe fn quirc_end(q: &mut Quirc) {
 }
 
 /// Extract the QR-code specified by the given index.
-pub unsafe fn quirc_extract(q: &mut Quirc, index: i32, mut code: *mut QuircCode) {
+pub unsafe fn quirc_extract(q: &mut Quirc, index: i32) -> Option<QuircCode> {
     let qr: *mut Grid = &mut q.grids[index as usize];
 
     if index < 0 || index > q.grids.len() as i32 {
-        return;
+        return None;
     }
 
-    memset(
-        code as (*mut ::std::os::raw::c_void),
-        0,
-        ::std::mem::size_of::<QuircCode>(),
-    );
-
-    (*code).corners[0] = perspective_map(&(*qr).c, 0.0, 0.0);
-    (*code).corners[1] = perspective_map(&(*qr).c, (*qr).grid_size as f64, 0.0);
-    (*code).corners[2] = perspective_map(&(*qr).c, (*qr).grid_size as f64, (*qr).grid_size as f64);
-    (*code).corners[3] = perspective_map(&(*qr).c, 0.0, (*qr).grid_size as f64);
-
-    (*code).size = (*qr).grid_size;
+    let mut code = QuircCode {
+        corners: [
+            perspective_map(&(*qr).c, 0.0, 0.0),
+            perspective_map(&(*qr).c, (*qr).grid_size as f64, 0.0),
+            perspective_map(&(*qr).c, (*qr).grid_size as f64, (*qr).grid_size as f64),
+            perspective_map(&(*qr).c, 0.0, (*qr).grid_size as f64),
+        ],
+        size: (*qr).grid_size,
+        ..Default::default()
+    };
 
     let mut i: i32 = 0;
     for y in 0..(*qr).grid_size {
         for x in 0..(*qr).grid_size {
             if read_cell(q, index, x, y) > 0 {
-                (*code).cell_bitmap[(i >> 3) as usize] |= 1 << (i & 7);
+                code.cell_bitmap[(i >> 3) as usize] |= 1 << (i & 7);
             }
             i = i + 1;
         }
     }
+
+    Some(code)
 }

@@ -189,10 +189,9 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     assert_eq!(id_count, qw::quirc_count(qw_decoder));
 
     for i in 0..id_count {
-        let mut code: QuircCode = std::mem::uninitialized();
         let decode_result;
         let mut data: QuircData = std::mem::uninitialized();
-        quirc_extract(decoder, i, &mut code);
+        let code = quirc_extract(decoder, i).unwrap();
         decode_result = quirc_decode(&code, &mut data);
 
         let mut qw_code: qw::quirc_code = std::mem::uninitialized();

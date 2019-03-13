@@ -26,10 +26,9 @@ unsafe fn run(width: u32, height: u32, image_bytes: &[u8]) {
 
     let id_count = quirc_count(&decoder);
     for i in 0..id_count {
-        let mut code: QuircCode = std::mem::uninitialized();
         let mut data: QuircData = std::mem::uninitialized();
-        quirc_extract(&mut decoder, i, &mut code);
-        quirc_decode(&mut code, &mut data);
+        let code = quirc_extract(&mut decoder, i).unwrap();
+        quirc_decode(&code, &mut data);
     }
 }
 
