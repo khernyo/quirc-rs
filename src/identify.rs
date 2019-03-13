@@ -146,16 +146,16 @@ unsafe fn flood_fill_seed<T>(
 ) {
     let mut left: i32 = x;
     let mut right: i32 = x;
-    let mut row: *mut u8 = q.pixels.as_mut_ptr().offset((y * q.w) as isize);
+    let mut row: usize = (y * q.w) as usize;
     if depth >= FLOOD_FILL_MAX_DEPTH {
         return;
     }
 
-    while left > 0 && (*row.offset((left - 1) as isize) as i32 == from) {
+    while left > 0 && (q.pixels[row + (left - 1) as usize] as i32 == from) {
         left = left - 1;
     }
 
-    while right < q.w - 1 && (*row.offset((right + 1) as isize) as i32 == from) {
+    while right < q.w - 1 && (q.pixels[row + (right + 1) as usize] as i32 == from) {
         right = right + 1;
     }
 
@@ -163,7 +163,7 @@ unsafe fn flood_fill_seed<T>(
     // TODO Use a simple for statement (currently, it causes a stack overflow during tests)
     let mut i = left;
     while i <= right {
-        *row.offset(i as isize) = to as u8;
+        q.pixels[row + i as usize] = to as u8;
         i += 1;
     }
 
@@ -173,11 +173,11 @@ unsafe fn flood_fill_seed<T>(
 
     // Seed new flood-fills
     if y > 0 {
-        row = q.pixels.as_mut_ptr().offset(((y - 1) * q.w) as isize);
+        row = ((y - 1) * q.w) as usize;
 
         let mut i = left;
         while i <= right {
-            if *row.offset(i as isize) as i32 == from {
+            if q.pixels[row + i as usize] as i32 == from {
                 flood_fill_seed(q, i, y - 1, from, to, func, user_data, depth + 1);
             }
             i += 1;
@@ -185,11 +185,11 @@ unsafe fn flood_fill_seed<T>(
     }
 
     if y < q.h - 1 {
-        row = q.pixels.as_mut_ptr().offset(((y + 1) * q.w) as isize);
+        row = ((y + 1) * q.w) as usize;
 
         let mut i = left;
         while i <= right {
-            if *row.offset(i as isize) as i32 == from {
+            if q.pixels[row + i as usize] as i32 == from {
                 flood_fill_seed(q, i, y + 1, from, to, func, user_data, depth + 1);
             }
             i += 1;
@@ -258,7 +258,7 @@ unsafe fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
         return -1;
     }
 
-    let pixel = *q.pixels.as_mut_ptr().offset((y * q.w + x) as isize) as i32;
+    let pixel = q.pixels[(y * q.w + x) as usize] as i32;
 
     if pixel >= PIXEL_REGION {
         return pixel;
@@ -458,14 +458,18 @@ unsafe fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: *mut i32) {
 }
 
 unsafe fn finder_scan(q: &mut Quirc, y: i32) {
-    let row: *mut u8 = q.pixels.as_mut_ptr().offset((y * q.w) as isize);
+    let row: usize = (y * q.w) as usize;
     let mut last_color: i32 = 0;
     let mut run_length: i32 = 0;
     let mut run_count: i32 = 0;
     let mut pb: [i32; 5] = [0; 5];
 
     for x in 0..q.w {
-        let color: i32 = if *row.offset(x as isize) != 0 { 1 } else { 0 };
+        let color: i32 = if q.pixels[row + x as usize] != 0 {
+            1
+        } else {
+            0
+        };
 
         if x != 0 && (color != last_color) {
             memmove(
@@ -620,7 +624,7 @@ unsafe fn timing_scan(q: &Quirc, p0: *const Point, p1: *const Point) -> i32 {
             break;
         }
 
-        pixel = *q.pixels.as_ptr().offset((y * q.w + x) as isize) as i32;
+        pixel = q.pixels[(y * q.w + x) as usize] as i32;
 
         if pixel != 0 {
             if run_length >= 2 {
@@ -686,7 +690,7 @@ unsafe fn read_cell(q: &mut Quirc, index: i32, x: i32, y: i32) -> i32 {
     let p = perspective_map(&(*qr).c, x as f64 + 0.5f64, y as f64 + 0.5f64);
     if p.y < 0 || p.y >= q.h || p.x < 0 || p.x >= q.w {
         0
-    } else if *q.pixels.as_mut_ptr().offset((p.y * q.w + p.x) as isize) != 0 {
+    } else if q.pixels[(p.y * q.w + p.x) as usize] != 0 {
         1
     } else {
         -1
@@ -708,7 +712,7 @@ unsafe fn fitness_cell(q: &mut Quirc, index: i32, x: i32, y: i32) -> i32 {
             );
 
             if !(p.y < 0 || p.y >= q.h || p.x < 0 || p.x >= q.w) {
-                if *q.pixels.as_mut_ptr().offset((p.y * q.w + p.x) as isize) != 0 {
+                if q.pixels[(p.y * q.w + p.x) as usize] != 0 {
                     score += 1;
                 } else {
                     score -= 1;
