@@ -72,14 +72,14 @@ fn line_intersect(p0: &Point, p1: &Point, q0: &Point, q1: &Point, r: &mut Point)
 }
 
 fn perspective_setup(rect: &[Point; 4], w: f64, h: f64) -> [f64; 8] {
-    let x0: f64 = rect[0].x as (f64);
-    let y0: f64 = rect[0].y as (f64);
-    let x1: f64 = rect[1].x as (f64);
-    let y1: f64 = rect[1].y as (f64);
-    let x2: f64 = rect[2].x as (f64);
-    let y2: f64 = rect[2].y as (f64);
-    let x3: f64 = rect[3].x as (f64);
-    let y3: f64 = rect[3].y as (f64);
+    let x0: f64 = rect[0].x as f64;
+    let y0: f64 = rect[0].y as f64;
+    let x1: f64 = rect[1].x as f64;
+    let y1: f64 = rect[1].y as f64;
+    let x2: f64 = rect[2].x as f64;
+    let y2: f64 = rect[2].y as f64;
+    let x3: f64 = rect[3].x as f64;
+    let y3: f64 = rect[3].y as f64;
     let wden: f64 = w * (x2 * y3 - x3 * y2 + (x3 - x2) * y1 + x1 * (y2 - y3));
     let hden: f64 = h * (x2 * y3 + x1 * (y2 - y3) - x3 * y2 + (x3 - x2) * y1);
     [
@@ -151,11 +151,11 @@ unsafe fn flood_fill_seed<T>(
         return;
     }
 
-    while left > 0 && (*row.offset((left - 1) as (isize)) as (i32) == from) {
+    while left > 0 && (*row.offset((left - 1) as isize) as i32 == from) {
         left = left - 1;
     }
 
-    while right < q.w - 1 && (*row.offset((right + 1) as (isize)) as (i32) == from) {
+    while right < q.w - 1 && (*row.offset((right + 1) as isize) as i32 == from) {
         right = right + 1;
     }
 
@@ -177,7 +177,7 @@ unsafe fn flood_fill_seed<T>(
 
         let mut i = left;
         while i <= right {
-            if *row.offset(i as (isize)) as (i32) == from {
+            if *row.offset(i as isize) as i32 == from {
                 flood_fill_seed(q, i, y - 1, from, to, func, user_data, depth + 1);
             }
             i += 1;
@@ -189,7 +189,7 @@ unsafe fn flood_fill_seed<T>(
 
         let mut i = left;
         while i <= right {
-            if *row.offset(i as (isize)) as (i32) == from {
+            if *row.offset(i as isize) as i32 == from {
                 flood_fill_seed(q, i, y + 1, from, to, func, user_data, depth + 1);
             }
             i += 1;
@@ -229,8 +229,8 @@ fn threshold(q: &mut Quirc) {
                 u = x as usize;
             }
 
-            avg_w = avg_w * (threshold_s - 1) / threshold_s + q.pixels[row + w] as (i32);
-            avg_u = avg_u * (threshold_s - 1) / threshold_s + q.pixels[row + u] as (i32);
+            avg_w = avg_w * (threshold_s - 1) / threshold_s + q.pixels[row + w] as i32;
+            avg_u = avg_u * (threshold_s - 1) / threshold_s + q.pixels[row + u] as i32;
 
             q.row_average[w as usize] += avg_w;
             q.row_average[u as usize] += avg_u;
@@ -336,7 +336,7 @@ unsafe fn find_other_corners(psd: *mut PolygonScoreData, y: i32, left: i32, righ
 }
 
 unsafe fn find_region_corners(q: &mut Quirc, rcode: i32, r#ref: *const Point, corners: *mut Point) {
-    let region: *mut Region = &mut q.regions[rcode as (usize)];
+    let region: *mut Region = &mut q.regions[rcode as usize];
     let mut psd: PolygonScoreData = PolygonScoreData {
         r#ref: *r#ref,
         scores: [-1, 0, 0, 0],
@@ -381,8 +381,8 @@ unsafe fn find_region_corners(q: &mut Quirc, rcode: i32, r#ref: *const Point, co
 }
 
 unsafe fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
-    let mut stone_reg: *mut Region = &mut q.regions[stone as (usize)];
-    let mut ring_reg: *mut Region = &mut q.regions[ring as (usize)];
+    let mut stone_reg: *mut Region = &mut q.regions[stone as usize];
+    let mut ring_reg: *mut Region = &mut q.regions[ring as usize];
 
     if q.num_capstones >= MAX_CAPSTONES as i32 {
         return;
@@ -886,8 +886,8 @@ unsafe fn record_qr_grid(mut q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
     };
 
     // Make sure A-B-C is clockwise
-    if (q.capstones[b as (usize)].center.x - h0.x) * -hd.y
-        + (q.capstones[b as (usize)].center.y - h0.y) * hd.x
+    if (q.capstones[b as usize].center.x - h0.x) * -hd.y
+        + (q.capstones[b as usize].center.y - h0.y) * hd.x
         > 0
     {
         let swap: i32 = a;
@@ -1049,7 +1049,7 @@ unsafe fn test_neighbours(
 }
 
 unsafe fn test_grouping(q: &mut Quirc, i: i32) {
-    let c1: *mut Capstone = &mut q.capstones[i as (usize)];
+    let c1: *mut Capstone = &mut q.capstones[i as usize];
 
     if (*c1).qr_grid >= 0 {
         return;
