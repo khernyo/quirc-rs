@@ -268,19 +268,17 @@ unsafe fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
         return -1;
     }
 
-    if q.num_regions >= MAX_REGIONS {
+    if q.regions.len() >= MAX_REGIONS {
         return -1;
     }
 
-    let region = q.num_regions;
-    let r#box: *mut Region = &mut q.regions[q.num_regions as usize];
-    q.num_regions += 1;
-
-    *r#box = Default::default();
-
-    (*r#box).seed.x = x;
-    (*r#box).seed.y = y;
-    (*r#box).capstone = -1;
+    let region: i32 = q.regions.len() as i32;
+    q.regions.push(Region {
+        seed: Point { x, y },
+        capstone: -1,
+        ..Default::default()
+    });
+    let r#box: *mut Region = q.regions.last_mut().unwrap();
 
     flood_fill_seed(q, x, y, pixel, region, Some(area_count), r#box, 0);
 
@@ -1115,7 +1113,7 @@ fn pixels_setup(q: &mut Quirc) {
 /// the image for QR-code recognition. The locations and content of each
 /// code may be obtained using accessor functions described below.
 pub unsafe fn quirc_begin(q: &mut Quirc, w: *mut i32, h: *mut i32) -> &mut [u8] {
-    q.num_regions = PIXEL_REGION;
+    q.regions.resize(2, Default::default());
     q.num_capstones = 0;
     q.num_grids = 0;
 

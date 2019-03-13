@@ -196,8 +196,7 @@ pub struct Quirc {
 
     pub w: i32,
     pub h: i32,
-    pub num_regions: i32,
-    pub regions: [Region; consts::MAX_REGIONS as usize],
+    pub regions: Vec<Region>,
     pub num_capstones: i32,
     pub capstones: [Capstone; consts::MAX_CAPSTONES],
     pub num_grids: i32,
@@ -212,8 +211,7 @@ impl Default for Quirc {
             row_average: Vec::new(),
             w: 0,
             h: 0,
-            num_regions: 0,
-            regions: [Default::default(); consts::MAX_REGIONS as usize],
+            regions: Vec::new(),
             num_capstones: 0,
             capstones: [Default::default(); consts::MAX_CAPSTONES],
             num_grids: 0,
@@ -297,7 +295,7 @@ pub mod consts {
 
     // TODO handle MAX_REGIONS > 254
     //  See https://github.com/dlbeer/quirc/commit/3a6efb3d84651f67da3ff210bc2eb0e113c0086c
-    pub const MAX_REGIONS: i32 = 254;
+    pub const MAX_REGIONS: usize = 254;
 
     pub const MAX_CAPSTONES: usize = 32;
     pub const MAX_GRIDS: usize = 8;
