@@ -560,7 +560,7 @@ unsafe fn find_leftmost_to_line(psd: *mut PolygonScoreData, y: i32, left: i32, r
 
 /// Do a Bresenham scan from one point to another and count the number
 /// of black/white transitions.
-unsafe fn timing_scan(q: &Quirc, p0: *const Point, p1: *const Point) -> i32 {
+unsafe fn timing_scan(q: &Quirc, p0: &Point, p1: &Point) -> i32 {
     if (*p0).x < 0 || (*p0).y < 0 || (*p0).x >= q.w || (*p0).y >= q.h {
         return -1;
     }
@@ -575,7 +575,7 @@ unsafe fn timing_scan(q: &Quirc, p0: *const Point, p1: *const Point) -> i32 {
     let dom: *mut i32;
     let nondom: *mut i32;
 
-    if abs(n) > abs(d) {
+    if n.abs() > d.abs() {
         let swap: i32 = n;
 
         n = d;
@@ -652,8 +652,8 @@ unsafe fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i32 {
     for i in 0..3 {
         const US: [f64; 3] = [6.5, 6.5, 0.5];
         const VS: [f64; 3] = [0.5, 6.5, 6.5];
-        let cap: *mut Capstone = &mut q.capstones[(*qr).caps[i as usize] as usize];
-        (*qr).tpep[i as usize] = perspective_map(&(*cap).c, US[i as usize], VS[i as usize]);
+        let cap: *mut Capstone = &mut q.capstones[(*qr).caps[i] as usize];
+        (*qr).tpep[i] = perspective_map(&(*cap).c, US[i], VS[i]);
     }
 
     (*qr).hscan = timing_scan(q, &mut (*qr).tpep[1], &mut (*qr).tpep[2]);
