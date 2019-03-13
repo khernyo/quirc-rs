@@ -382,25 +382,20 @@ unsafe fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
     let mut stone_reg: *mut Region = &mut q.regions[stone as usize];
     let mut ring_reg: *mut Region = &mut q.regions[ring as usize];
 
-    if q.num_capstones >= MAX_CAPSTONES as i32 {
+    if q.capstones.len() >= MAX_CAPSTONES {
         return;
     }
 
-    let cs_index = q.num_capstones;
-    let capstone: *mut Capstone = &mut q.capstones[q.num_capstones as usize];
-    q.num_capstones += 1;
-
-    memset(
-        capstone as (*mut ::std::os::raw::c_void),
-        0,
-        ::std::mem::size_of::<Capstone>(),
-    );
-
-    (*capstone).qr_grid = -1;
-    (*capstone).ring = ring;
-    (*capstone).stone = stone;
-    (*stone_reg).capstone = cs_index;
-    (*ring_reg).capstone = cs_index;
+    let cs_index = q.capstones.len();
+    q.capstones.push(Capstone {
+        qr_grid: -1,
+        ring,
+        stone,
+        ..Default::default()
+    });
+    let capstone: *mut Capstone = q.capstones.last_mut().unwrap();
+    (*stone_reg).capstone = cs_index as i32;
+    (*ring_reg).capstone = cs_index as i32;
 
     // Find the corners of the ring
     find_region_corners(
@@ -1050,7 +1045,7 @@ unsafe fn test_neighbours(
     record_qr_grid(q, best_h, i, best_v);
 }
 
-unsafe fn test_grouping(q: &mut Quirc, i: i32) {
+unsafe fn test_grouping(q: &mut Quirc, i: usize) {
     let c1: *mut Capstone = &mut q.capstones[i as usize];
 
     if (*c1).qr_grid >= 0 {
@@ -1064,7 +1059,7 @@ unsafe fn test_grouping(q: &mut Quirc, i: i32) {
 
     // Look for potential neighbours by examining the relative gradients
     // from this capstone to others.
-    for j in 0..q.num_capstones {
+    for j in 0..q.capstones.len() {
         let c2: *mut Capstone = &mut q.capstones[j as usize];
 
         if i == j || (*c2).qr_grid >= 0 {
@@ -1080,7 +1075,7 @@ unsafe fn test_grouping(q: &mut Quirc, i: i32) {
             let n: &mut Neighbour = &mut hlist.n[hlist.count as usize];
             hlist.count += 1;
 
-            n.index = j;
+            n.index = j as i32;
             n.distance = v;
         }
 
@@ -1088,7 +1083,7 @@ unsafe fn test_grouping(q: &mut Quirc, i: i32) {
             let n: &mut Neighbour = &mut vlist.n[vlist.count as usize];
             vlist.count += 1;
 
-            n.index = j;
+            n.index = j as i32;
             n.distance = u;
         }
     }
@@ -1097,7 +1092,7 @@ unsafe fn test_grouping(q: &mut Quirc, i: i32) {
         return;
     }
 
-    test_neighbours(q, i, &mut hlist, &mut vlist);
+    test_neighbours(q, i as i32, &mut hlist, &mut vlist);
 }
 
 fn pixels_setup(q: &mut Quirc) {
@@ -1114,7 +1109,6 @@ fn pixels_setup(q: &mut Quirc) {
 /// code may be obtained using accessor functions described below.
 pub unsafe fn quirc_begin(q: &mut Quirc, w: *mut i32, h: *mut i32) -> &mut [u8] {
     q.regions.resize(2, Default::default());
-    q.num_capstones = 0;
     q.num_grids = 0;
 
     if !w.is_null() {
@@ -1135,7 +1129,7 @@ pub unsafe fn quirc_end(q: &mut Quirc) {
         finder_scan(q, i);
     }
 
-    for i in 0..q.num_capstones {
+    for i in 0..q.capstones.len() {
         test_grouping(q, i);
     }
 }

@@ -72,7 +72,7 @@ impl Clone for QuircData {
 }
 
 /// This structure describes a location in the input image buffer.
-#[derive(Copy, Debug)]
+#[derive(Copy, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct Point {
     pub x: i32,
@@ -115,7 +115,7 @@ impl Default for Region {
     }
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Debug, PartialEq)]
 #[repr(C)]
 pub struct Capstone {
     pub ring: i32,
@@ -197,8 +197,7 @@ pub struct Quirc {
     pub w: i32,
     pub h: i32,
     pub regions: Vec<Region>,
-    pub num_capstones: i32,
-    pub capstones: [Capstone; consts::MAX_CAPSTONES],
+    pub capstones: Vec<Capstone>,
     pub num_grids: i32,
     pub grids: [Grid; consts::MAX_GRIDS],
 }
@@ -212,8 +211,7 @@ impl Default for Quirc {
             w: 0,
             h: 0,
             regions: Vec::new(),
-            num_capstones: 0,
-            capstones: [Default::default(); consts::MAX_CAPSTONES],
+            capstones: Vec::new(),
             num_grids: 0,
             grids: [Default::default(); consts::MAX_GRIDS],
         }

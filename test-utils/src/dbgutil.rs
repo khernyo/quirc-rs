@@ -26,6 +26,7 @@ use quirc_rs::quirc::consts::*;
 use quirc_rs::quirc::*;
 
 use quirc_wrapper as qw;
+use std::mem::size_of_val;
 
 unsafe extern "C" fn data_type_str(dt: i32) -> &'static str {
     if dt == DATA_TYPE_KANJI {
@@ -169,15 +170,18 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
         ),
         0
     );
-    assert_eq!(decoder.num_capstones, (*qw_decoder).num_capstones);
     assert_eq!(
-        memcmp(
-            decoder.capstones.as_ptr() as *const c_void,
-            (*qw_decoder).capstones.as_ptr() as *const c_void,
-            std::mem::size_of_val(&decoder.capstones[0]) * decoder.num_capstones as usize
-        ),
-        0
+        decoder.capstones.len(),
+        (*qw_decoder).num_capstones as usize
     );
+    decoder
+        .capstones
+        .iter()
+        .zip(std::slice::from_raw_parts(
+            (*qw_decoder).capstones.as_ptr(),
+            (*qw_decoder).num_capstones as usize,
+        ))
+        .all(|(c, qw_c)| capstones_equal(c, qw_c));
     assert_eq!(decoder.num_grids, (*qw_decoder).num_grids);
     assert_eq!(
         memcmp(
@@ -238,4 +242,34 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
         );
         assert_eq!(data.eci, qw_data.eci);
     }
+}
+
+unsafe fn capstones_equal(capstone: &Capstone, qw_capstone: &qw::quirc_capstone) -> bool {
+    capstone.ring == qw_capstone.ring
+        && capstone.stone == qw_capstone.stone
+        && capstone
+            .corners
+            .iter()
+            .zip(qw_capstone.corners.iter())
+            .all(|(p, qw_p)| points_equal(p, qw_p))
+        && points_equal(&capstone.center, &qw_capstone.center)
+        && capstone.c == qw_capstone.c
+        && capstone.qr_grid == qw_capstone.qr_grid
+        && size_of_val(capstone) == size_of_val(qw_capstone)
+        && memcmp(
+            capstone as *const Capstone as *const c_void,
+            qw_capstone as *const qw::quirc_capstone as *const c_void,
+            size_of_val(capstone),
+        ) == 0
+}
+
+unsafe fn points_equal(point: &Point, qw_point: &qw::quirc_point) -> bool {
+    point.x == qw_point.x
+        && point.y == qw_point.y
+        && size_of_val(point) == size_of_val(qw_point)
+        && memcmp(
+            point as *const Point as *const c_void,
+            qw_point as *const qw::quirc_point as *const c_void,
+            size_of_val(point),
+        ) == 0
 }

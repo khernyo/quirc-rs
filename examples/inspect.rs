@@ -149,13 +149,13 @@ unsafe extern "C" fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     pixel_color(canvas, x as (i16), (y - 1i32) as (i16), red);
 }
 
-unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: &mut Quirc, index: i32) {
-    let cap: &mut Capstone = &mut q.capstones[index as (usize)];
+unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: &mut Quirc, index: usize) {
+    let cap: &mut Capstone = &mut q.capstones[index];
     for j in 0..4 {
-        let p0: &mut Point = &mut cap.corners[j as (usize)];
+        let p0: &mut Point = &mut cap.corners[j];
         let p0x = p0.x as (i16);
         let p0y = p0.y as (i16);
-        let p1: &mut Point = &mut cap.corners[((j + 1i32) % 4i32) as (usize)];
+        let p1: &mut Point = &mut cap.corners[(j + 1) % 4];
         let p1x = p1.x as (i16);
         let p1y = p1.y as (i16);
         line_color(canvas, p0x, p0y, p1x, p1y, Color::RGBA(0x80, 0, 0x80, 0xff));
@@ -249,7 +249,7 @@ unsafe extern "C" fn sdl_examine(q: &mut Quirc) -> i32 {
             }
 
             draw_frame(&mut canvas, q);
-            for i in 0..q.num_capstones {
+            for i in 0..q.capstones.len() {
                 draw_capstone(&mut canvas, q, i);
             }
             for i in 0..q.num_grids {
