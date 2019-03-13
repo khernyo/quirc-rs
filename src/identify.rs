@@ -478,7 +478,7 @@ unsafe fn finder_scan(q: &mut Quirc, y: i32) {
             run_count += 1;
 
             if color == 0 && (run_count >= 5) {
-                static CHECK: [i32; 5] = [1, 1, 3, 1, 1];
+                const CHECK: [i32; 5] = [1, 1, 3, 1, 1];
                 let mut ok: i32 = 1;
 
                 let avg = (pb[0] + pb[1] + pb[3] + pb[4]) / 4;
@@ -525,8 +525,8 @@ unsafe fn find_alignment_pattern(q: &mut Quirc, index: i32) {
     // roughly the right size. Don't look too far from the estimate
     // point.
     while step_size * step_size < size_estimate * 100 {
-        static DX_MAP: [i32; 4] = [1, 0, -1, 0];
-        static DY_MAP: [i32; 4] = [0, -1, 0, 1];
+        const DX_MAP: [i32; 4] = [1, 0, -1, 0];
+        const DY_MAP: [i32; 4] = [0, -1, 0, 1];
 
         for _ in 0..step_size {
             let code: i32 = region_code(q, b.x, b.y);
@@ -653,8 +653,8 @@ unsafe fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i32 {
     let mut qr: *mut Grid = &mut q.grids[index as usize];
 
     for i in 0..3 {
-        static US: [f64; 3] = [6.5, 6.5, 0.5];
-        static VS: [f64; 3] = [0.5, 6.5, 6.5];
+        const US: [f64; 3] = [6.5, 6.5, 0.5];
+        const VS: [f64; 3] = [0.5, 6.5, 6.5];
         let cap: *mut Capstone = &mut q.capstones[(*qr).caps[i as usize] as usize];
         (*qr).tpep[i as usize] = perspective_map(&(*cap).c, US[i as usize], VS[i as usize]);
     }
@@ -699,7 +699,7 @@ unsafe fn fitness_cell(q: &mut Quirc, index: i32, x: i32, y: i32) -> i32 {
 
     for v in 0..3 {
         for u in 0..3 {
-            static OFFSETS: [f64; 3] = [0.3, 0.5, 0.7];
+            const OFFSETS: [f64; 3] = [0.3, 0.5, 0.7];
 
             let p = perspective_map(
                 &(*qr).c,
