@@ -26,7 +26,6 @@ use quirc_rs::quirc::consts::*;
 use quirc_rs::quirc::*;
 
 use quirc_wrapper as qw;
-use std::mem::size_of;
 
 unsafe extern "C" fn data_type_str(dt: i32) -> &'static str {
     if dt == DATA_TYPE_KANJI {
@@ -170,19 +169,21 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
         ),
         0
     );
-    cmp_slice_qw(
+    assert_slice_eq(
         &decoder.capstones,
         std::slice::from_raw_parts(
             (*qw_decoder).capstones.as_ptr(),
             (*qw_decoder).num_capstones as usize,
         ),
+        assert_capstone_eq,
     );
-    cmp_slice_qw(
+    assert_slice_eq(
         &decoder.grids,
         std::slice::from_raw_parts(
             (*qw_decoder).grids.as_ptr(),
             (*qw_decoder).num_grids as usize,
         ),
+        assert_grid_eq,
     );
 
     let id_count = quirc_count(decoder);
@@ -236,15 +237,35 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     }
 }
 
-unsafe fn cmp_qw<A, B>(a: &A, b: &B) -> bool {
-    size_of::<A>() == size_of::<B>()
-        && memcmp(
-            a as *const A as *const c_void,
-            b as *const B as *const c_void,
-            size_of::<A>(),
-        ) == 0
+unsafe fn assert_slice_eq<A, B>(capstones: &[A], qw_capstones: &[B], f: unsafe fn(&A, &B)) {
+    assert_eq!(capstones.len(), qw_capstones.len());
+    capstones
+        .iter()
+        .zip(qw_capstones.iter())
+        .for_each(|(c, qw_c)| f(c, qw_c));
 }
 
-unsafe fn cmp_slice_qw<A, B>(a: &[A], b: &[B]) -> bool {
-    a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| cmp_qw(a, b))
+unsafe fn assert_capstone_eq(capstone: &Capstone, qw_capstone: &qw::quirc_capstone) {
+    assert_eq!(capstone.ring, qw_capstone.ring);
+    assert_eq!(capstone.stone, qw_capstone.stone);
+    assert_slice_eq(&capstone.corners, &qw_capstone.corners, assert_point_eq);
+    assert_point_eq(&capstone.center, &qw_capstone.center);
+    assert_eq!(capstone.c, qw_capstone.c);
+    assert_eq!(capstone.qr_grid, qw_capstone.qr_grid);
+}
+
+unsafe fn assert_grid_eq(grid: &Grid, qw_grid: &qw::quirc_grid) {
+    assert_eq!(grid.caps, qw_grid.caps);
+    assert_eq!(grid.align_region, qw_grid.align_region);
+    assert_point_eq(&grid.align, &qw_grid.align);
+    assert_slice_eq(&grid.tpep, &qw_grid.tpep, assert_point_eq);
+    assert_eq!(grid.hscan, qw_grid.hscan);
+    assert_eq!(grid.vscan, qw_grid.vscan);
+    assert_eq!(grid.grid_size, qw_grid.grid_size);
+    assert_eq!(grid.c, qw_grid.c);
+}
+
+unsafe fn assert_point_eq(point: &Point, qw_point: &qw::quirc_point) {
+    assert_eq!(point.x, qw_point.x);
+    assert_eq!(point.y, qw_point.y);
 }
