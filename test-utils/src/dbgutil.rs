@@ -42,7 +42,7 @@ unsafe extern "C" fn data_type_str(dt: i32) -> &'static str {
 }
 
 /// Dump decoded information on stdout.
-pub unsafe extern "C" fn dump_data(data: *mut QuircData) {
+pub unsafe extern "C" fn dump_data(data: *const QuircData) {
     println!("    Version: {}", (*data).version);
     println!(
         "    ECC level: {}",
@@ -57,7 +57,7 @@ pub unsafe extern "C" fn dump_data(data: *mut QuircData) {
     println!("    Length: {}", (*data).payload_len);
     println!(
         "    Payload: {}",
-        CStr::from_ptr((*data).payload.as_mut_ptr() as *mut c_char)
+        CStr::from_ptr((*data).payload.as_ptr() as *const c_char)
             .to_str()
             .unwrap()
     );
@@ -190,10 +190,8 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     assert_eq!(id_count, qw::quirc_count(qw_decoder));
 
     for i in 0..id_count {
-        let decode_result;
-        let mut data: QuircData = std::mem::uninitialized();
         let code = quirc_extract(decoder, i).unwrap();
-        decode_result = quirc_decode(&code, &mut data);
+        let decode_result = quirc_decode(&code);
 
         let mut qw_code: qw::quirc_code = std::mem::uninitialized();
         let qw_decode_result;
@@ -220,20 +218,9 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
         );
 
         assert_result_eq(decode_result, qw_decode_result);
-        assert_eq!(data.version, qw_data.version);
-        assert_eq!(data.ecc_level, qw_data.ecc_level);
-        assert_eq!(data.mask, qw_data.mask);
-        assert_eq!(data.data_type, qw_data.data_type);
-        assert_eq!(data.payload_len, qw_data.payload_len);
-        assert_eq!(
-            memcmp(
-                data.payload.as_ptr() as *mut c_void,
-                qw_data.payload.as_ptr() as *mut c_void,
-                std::mem::size_of_val(&data.payload)
-            ),
-            0
-        );
-        assert_eq!(data.eci, qw_data.eci);
+        if let Ok(data) = decode_result {
+            assert_data_eq(&data, &qw_data);
+        }
     }
 }
 
@@ -275,4 +262,17 @@ fn assert_result_eq<T>(r: Result<T>, qw_r: qw::quirc_decode_error_t) {
         Ok(_) => assert_eq!(qw::quirc_decode_error_t_QUIRC_SUCCESS, qw_r),
         Err(e) => assert_eq!(e as u32, qw_r),
     }
+}
+
+fn assert_data_eq(data: &QuircData, qw_data: &qw::quirc_data) {
+    assert_eq!(data.version, qw_data.version);
+    assert_eq!(data.ecc_level, qw_data.ecc_level);
+    assert_eq!(data.mask, qw_data.mask);
+    assert_eq!(data.data_type, qw_data.data_type);
+    assert_eq!(data.payload_len, qw_data.payload_len);
+    assert_eq!(
+        &data.payload[0..data.payload_len as usize],
+        &(*qw_data).payload[0..((*qw_data).payload_len) as usize],
+    );
+    assert_eq!(data.eci, qw_data.eci);
 }

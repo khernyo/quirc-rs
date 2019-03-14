@@ -81,6 +81,20 @@ impl Clone for QuircData {
     }
 }
 
+impl Default for QuircData {
+    fn default() -> Self {
+        QuircData {
+            version: 0,
+            ecc_level: 0,
+            mask: 0,
+            data_type: 0,
+            payload: [0; consts::MAX_PAYLOAD],
+            payload_len: 0,
+            eci: 0,
+        }
+    }
+}
+
 /// This structure describes a location in the input image buffer.
 #[derive(Copy, Debug, Eq, PartialEq)]
 #[repr(C)]

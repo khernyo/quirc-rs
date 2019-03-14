@@ -47,9 +47,8 @@ unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Dat
 
     let result: Vec<_> = (0..quirc_count(&decoder))
         .map(|i| {
-            let mut data: QuircData = std::mem::uninitialized();
             let mut code = quirc_extract(&mut decoder, i).unwrap();
-            if quirc_decode(&mut code, &mut data).is_ok() {
+            if let Ok(data) = quirc_decode(&mut code) {
                 Some(Data::new(
                     data.version,
                     data.data_type,

@@ -857,25 +857,24 @@ unsafe fn decode_payload(mut data: *mut QuircData, ds: *mut DataStream) -> Resul
 }
 
 /// Decode a QR-code, returning the payload data.
-pub unsafe fn quirc_decode(code: *const QuircCode, mut data: *mut QuircData) -> Result<()> {
-    if ((*code).size - 17) % 4 != 0 {
+pub unsafe fn quirc_decode(code: &QuircCode) -> Result<QuircData> {
+    if (code.size - 17) % 4 != 0 {
         return Err(DecodeError::InvalidGridSize);
     }
 
-    memset(
-        data as (*mut ::std::os::raw::c_void),
-        0,
-        ::std::mem::size_of::<QuircData>(),
-    );
+    let version = (code.size - 17) / 4;
 
-    (*data).version = ((*code).size - 17) / 4;
-
-    if (*data).version < 1 || (*data).version > QUIRC_MAX_VERSION as i32 {
+    if version < 1 || version > QUIRC_MAX_VERSION as i32 {
         return Err(DecodeError::InvalidVersion);
     }
 
+    let mut data = QuircData {
+        version,
+        ..Default::default()
+    };
+
     // Read format information -- try both locations
-    read_format(code, data, 0).or_else(|_| read_format(code, data, 1))?;
+    read_format(code, &mut data, 0).or_else(|_| read_format(code, &mut data, 1))?;
 
     let mut ds: DataStream = DataStream {
         raw: [0; MAX_PAYLOAD],
@@ -883,8 +882,10 @@ pub unsafe fn quirc_decode(code: *const QuircCode, mut data: *mut QuircData) -> 
         ptr: 0,
         data: [0; MAX_PAYLOAD],
     };
-    read_data(code, data, &mut ds);
-    codestream_ecc(data, &mut ds)?;
+    read_data(code, &mut data, &mut ds);
+    codestream_ecc(&mut data, &mut ds)?;
 
-    decode_payload(data, &mut ds)
+    decode_payload(&mut data, &mut ds)?;
+
+    Ok(data)
 }
