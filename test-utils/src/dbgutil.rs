@@ -219,7 +219,7 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
             0
         );
 
-        assert_eq!(decode_result as u32, qw_decode_result);
+        assert_result_eq(decode_result, qw_decode_result);
         assert_eq!(data.version, qw_data.version);
         assert_eq!(data.ecc_level, qw_data.ecc_level);
         assert_eq!(data.mask, qw_data.mask);
@@ -268,4 +268,11 @@ unsafe fn assert_grid_eq(grid: &Grid, qw_grid: &qw::quirc_grid) {
 unsafe fn assert_point_eq(point: &Point, qw_point: &qw::quirc_point) {
     assert_eq!(point.x, qw_point.x);
     assert_eq!(point.y, qw_point.y);
+}
+
+fn assert_result_eq<T>(r: Result<T>, qw_r: qw::quirc_decode_error_t) {
+    match r {
+        Ok(_) => assert_eq!(qw::quirc_decode_error_t_QUIRC_SUCCESS, qw_r),
+        Err(e) => assert_eq!(e as u32, qw_r),
+    }
 }

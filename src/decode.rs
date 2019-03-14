@@ -253,13 +253,13 @@ unsafe fn eloc_poly(omega: *mut u8, s: *const u8, sigma: *const u8, npar: i32) {
     }
 }
 
-unsafe fn correct_block(data: *mut u8, ecc: *const RsParams) -> DecodeResult {
+unsafe fn correct_block(data: *mut u8, ecc: *const RsParams) -> Result<()> {
     let npar: i32 = (*ecc).bs - (*ecc).dw;
     let mut s: [u8; MAX_POLY] = [0; MAX_POLY];
 
     /* Compute syndrome vector */
     if block_syndromes(data as *const u8, (*ecc).bs, npar, s.as_mut_ptr()) == 0 {
-        return DecodeResult::Success;
+        return Ok(());
     }
 
     let mut sigma: [u8; MAX_POLY] = [0; MAX_POLY];
@@ -314,9 +314,9 @@ unsafe fn correct_block(data: *mut u8, ecc: *const RsParams) -> DecodeResult {
     }
 
     if block_syndromes(data as (*const u8), (*ecc).bs, npar, s.as_mut_ptr()) != 0 {
-        DecodeResult::ErrorDataEcc
+        Err(DecodeError::DataEcc)
     } else {
-        DecodeResult::Success
+        Ok(())
     }
 }
 
@@ -352,14 +352,14 @@ unsafe fn format_syndromes(u: u16, s: *mut u8) -> i32 {
     nonzero
 }
 
-unsafe fn correct_format(f_ret: *mut u16) -> DecodeResult {
+unsafe fn correct_format(f_ret: *mut u16) -> Result<()> {
     let mut u: u16 = *f_ret;
     let mut s: [u8; MAX_POLY] = [0; MAX_POLY];
 
     // Evaluate U (received codeword) at each of alpha_1 .. alpha_6
     // to get S_1 .. S_6 (but we index them from 0).
     if format_syndromes(u, s.as_mut_ptr()) == 0 {
-        return DecodeResult::Success;
+        return Ok(());
     }
 
     let mut sigma: [u8; MAX_POLY] = [0; MAX_POLY];
@@ -383,10 +383,10 @@ unsafe fn correct_format(f_ret: *mut u16) -> DecodeResult {
     }
 
     if format_syndromes(u, s.as_mut_ptr()) != 0 {
-        DecodeResult::ErrorFormatEcc
+        Err(DecodeError::FormatEcc)
     } else {
         *f_ret = u;
-        DecodeResult::Success
+        Ok(())
     }
 }
 
@@ -415,11 +415,7 @@ unsafe fn grid_bit(code: *const QuircCode, x: i32, y: i32) -> i32 {
     (*code).cell_bitmap[(p >> 3) as usize] as i32 >> (p & 7) & 1
 }
 
-unsafe fn read_format(
-    code: *const QuircCode,
-    mut data: *mut QuircData,
-    which: i32,
-) -> DecodeResult {
+unsafe fn read_format(code: *const QuircCode, mut data: *mut QuircData, which: i32) -> Result<()> {
     let mut format: u16 = 0;
 
     if which != 0 {
@@ -440,16 +436,13 @@ unsafe fn read_format(
 
     format = (format as i32 ^ 0x5412) as u16;
 
-    let err = correct_format(&mut format as (*mut u16));
-    if err != DecodeResult::Success {
-        err
-    } else {
-        let fdata = ((format as i32) >> 10) as u16;
-        (*data).ecc_level = (fdata as i32) >> 3;
-        (*data).mask = (fdata as i32) & 7;
+    correct_format(&mut format as (*mut u16))?;
 
-        DecodeResult::Success
-    }
+    let fdata = ((format as i32) >> 10) as u16;
+    (*data).ecc_level = (fdata as i32) >> 3;
+    (*data).mask = (fdata as i32) & 7;
+
+    Ok(())
 }
 
 unsafe fn mask_bit(mask: i32, i: i32, j: i32) -> i32 {
@@ -583,7 +576,7 @@ unsafe fn read_data(code: *const QuircCode, data: *mut QuircData, ds: *mut DataS
     }
 }
 
-unsafe fn codestream_ecc(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+unsafe fn codestream_ecc(data: *mut QuircData, ds: *mut DataStream) -> Result<()> {
     let ver: *const VersionInfo = &VERSION_DB[(*data).version as usize] as (*const VersionInfo);
     let sb_ecc: *const RsParams = &(*ver).ecc[(*data).ecc_level as usize] as (*const RsParams);
     let lb_count: i32 = ((*ver).data_bytes - (*sb_ecc).bs * (*sb_ecc).ns) / ((*sb_ecc).bs + 1);
@@ -611,16 +604,13 @@ unsafe fn codestream_ecc(data: *mut QuircData, ds: *mut DataStream) -> DecodeRes
             *dst.offset(((*ecc).dw + j) as isize) = (*ds).raw[(ecc_offset + j * bc + i) as usize];
         }
 
-        let err = correct_block(dst, ecc);
-        if err != DecodeResult::Success {
-            return err;
-        }
+        correct_block(dst, ecc)?;
 
         dst_offset += (*ecc).dw;
     }
 
     (*ds).data_bits = dst_offset * 8;
-    DecodeResult::Success
+    Ok(())
 }
 
 unsafe fn bits_remaining(ds: *const DataStream) -> i32 {
@@ -668,7 +658,7 @@ unsafe fn numeric_tuple(
     }
 }
 
-unsafe fn decode_numeric(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+unsafe fn decode_numeric(data: *mut QuircData, ds: *mut DataStream) -> Result<()> {
     let bits = if (*data).version < 10 {
         10
     } else if (*data).version < 27 {
@@ -679,30 +669,30 @@ unsafe fn decode_numeric(data: *mut QuircData, ds: *mut DataStream) -> DecodeRes
 
     let mut count = take_bits(ds, bits);
     if (*data).payload_len + count + 1 > MAX_PAYLOAD as i32 {
-        return DecodeResult::ErrorDataOverflow;
+        return Err(DecodeError::DataOverflow);
     }
 
     while count >= 3 {
         if numeric_tuple(data, ds, 10, 3) < 0 {
-            return DecodeResult::ErrorDataUnderflow;
+            return Err(DecodeError::DataUnderflow);
         }
         count -= 3;
     }
 
     if count >= 2 {
         if numeric_tuple(data, ds, 7, 2) < 0 {
-            return DecodeResult::ErrorDataUnderflow;
+            return Err(DecodeError::DataUnderflow);
         }
         count -= 2;
     }
 
     if count != 0 {
         if numeric_tuple(data, ds, 4, 1) < 0 {
-            return DecodeResult::ErrorDataUnderflow;
+            return Err(DecodeError::DataUnderflow);
         }
     }
 
-    DecodeResult::Success
+    Ok(())
 }
 
 unsafe fn alpha_tuple(
@@ -729,7 +719,7 @@ unsafe fn alpha_tuple(
     }
 }
 
-unsafe fn decode_alpha(data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+unsafe fn decode_alpha(data: *mut QuircData, ds: *mut DataStream) -> Result<()> {
     let bits = if (*data).version < 10 {
         9
     } else if (*data).version < 27 {
@@ -740,44 +730,44 @@ unsafe fn decode_alpha(data: *mut QuircData, ds: *mut DataStream) -> DecodeResul
 
     let mut count = take_bits(ds, bits);
     if (*data).payload_len + count + 1 > MAX_PAYLOAD as i32 {
-        return DecodeResult::ErrorDataOverflow;
+        return Err(DecodeError::DataOverflow);
     }
 
     while count >= 2 {
         if alpha_tuple(data, ds, 11, 2) < 0 {
-            return DecodeResult::ErrorDataUnderflow;
+            return Err(DecodeError::DataUnderflow);
         }
         count -= 2;
     }
 
     if count != 0 {
         if alpha_tuple(data, ds, 6, 1) < 0 {
-            return DecodeResult::ErrorDataUnderflow;
+            return Err(DecodeError::DataUnderflow);
         }
     }
 
-    return DecodeResult::Success;
+    Ok(())
 }
 
-unsafe fn decode_byte(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+unsafe fn decode_byte(mut data: *mut QuircData, ds: *mut DataStream) -> Result<()> {
     let bits = if (*data).version < 10 { 8 } else { 16 };
 
     let count = take_bits(ds, bits);
     if (*data).payload_len + count + 1 > MAX_PAYLOAD as i32 {
-        DecodeResult::ErrorDataOverflow
+        Err(DecodeError::DataOverflow)
     } else if bits_remaining(ds as (*const DataStream)) < count * 8 {
-        DecodeResult::ErrorDataUnderflow
+        Err(DecodeError::DataUnderflow)
     } else {
         for _ in 0..count {
             (*data).payload[(*data).payload_len as usize] = take_bits(ds, 8) as u8;
             (*data).payload_len += 1;
         }
 
-        DecodeResult::Success
+        Ok(())
     }
 }
 
-unsafe fn decode_kanji(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+unsafe fn decode_kanji(mut data: *mut QuircData, ds: *mut DataStream) -> Result<()> {
     let bits = if (*data).version < 10 {
         8
     } else if (*data).version < 27 {
@@ -788,9 +778,9 @@ unsafe fn decode_kanji(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeR
 
     let count = take_bits(ds, bits);
     if (*data).payload_len + count * 2 + 1 > MAX_PAYLOAD as i32 {
-        DecodeResult::ErrorDataOverflow
+        Err(DecodeError::DataOverflow)
     } else if bits_remaining(ds as (*const DataStream)) < count * 13 {
-        DecodeResult::ErrorDataUnderflow
+        Err(DecodeError::DataUnderflow)
     } else {
         for _ in 0..count {
             let d: i32 = take_bits(ds, 13);
@@ -812,49 +802,45 @@ unsafe fn decode_kanji(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeR
             (*data).payload_len += 1;
         }
 
-        DecodeResult::Success
+        Ok(())
     }
 }
 
-unsafe fn decode_eci(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+unsafe fn decode_eci(mut data: *mut QuircData, ds: *mut DataStream) -> Result<()> {
     if bits_remaining(ds as (*const DataStream)) < 8 {
-        DecodeResult::ErrorDataUnderflow
+        Err(DecodeError::DataUnderflow)
     } else {
         (*data).eci = take_bits(ds, 8) as u32;
 
         if (*data).eci & 0xc0 == 0x80 {
             if bits_remaining(ds as (*const DataStream)) < 8 {
-                return DecodeResult::ErrorDataUnderflow;
+                return Err(DecodeError::DataUnderflow);
             }
 
             (*data).eci = (*data).eci << 8 | take_bits(ds, 8) as u32;
         } else if (*data).eci & 0xe0 == 0xc0 {
             if bits_remaining(ds as (*const DataStream)) < 16 {
-                return DecodeResult::ErrorDataUnderflow;
+                return Err(DecodeError::DataUnderflow);
             }
 
             (*data).eci = (*data).eci << 16 | take_bits(ds, 16) as u32;
         }
 
-        DecodeResult::Success
+        Ok(())
     }
 }
 
-unsafe fn decode_payload(mut data: *mut QuircData, ds: *mut DataStream) -> DecodeResult {
+unsafe fn decode_payload(mut data: *mut QuircData, ds: *mut DataStream) -> Result<()> {
     while bits_remaining(ds as (*const DataStream)) >= 4 {
         let type_: i32 = take_bits(ds, 4);
-        let err = match type_ {
-            DATA_TYPE_NUMERIC => decode_numeric(data, ds),
-            DATA_TYPE_ALPHA => decode_alpha(data, ds),
-            DATA_TYPE_BYTE => decode_byte(data, ds),
-            DATA_TYPE_KANJI => decode_kanji(data, ds),
-            7 => decode_eci(data, ds),
+        match type_ {
+            DATA_TYPE_NUMERIC => decode_numeric(data, ds)?,
+            DATA_TYPE_ALPHA => decode_alpha(data, ds)?,
+            DATA_TYPE_BYTE => decode_byte(data, ds)?,
+            DATA_TYPE_KANJI => decode_kanji(data, ds)?,
+            7 => decode_eci(data, ds)?,
             _ => break,
         };
-
-        if err != DecodeResult::Success {
-            return err;
-        }
 
         if type_ & type_ - 1 == 0 && (type_ > (*data).data_type) {
             (*data).data_type = type_;
@@ -867,13 +853,13 @@ unsafe fn decode_payload(mut data: *mut QuircData, ds: *mut DataStream) -> Decod
     }
     (*data).payload[(*data).payload_len as usize] = 0;
 
-    DecodeResult::Success
+    Ok(())
 }
 
 /// Decode a QR-code, returning the payload data.
-pub unsafe fn quirc_decode(code: *const QuircCode, mut data: *mut QuircData) -> DecodeResult {
+pub unsafe fn quirc_decode(code: *const QuircCode, mut data: *mut QuircData) -> Result<()> {
     if ((*code).size - 17) % 4 != 0 {
-        return DecodeResult::ErrorInvalidGridSize;
+        return Err(DecodeError::InvalidGridSize);
     }
 
     memset(
@@ -885,17 +871,11 @@ pub unsafe fn quirc_decode(code: *const QuircCode, mut data: *mut QuircData) -> 
     (*data).version = ((*code).size - 17) / 4;
 
     if (*data).version < 1 || (*data).version > QUIRC_MAX_VERSION as i32 {
-        return DecodeResult::ErrorInvalidVersion;
+        return Err(DecodeError::InvalidVersion);
     }
 
     // Read format information -- try both locations
-    let mut err = read_format(code, data, 0);
-    if err != DecodeResult::Success {
-        err = read_format(code, data, 1);
-    }
-    if err != DecodeResult::Success {
-        return err;
-    }
+    read_format(code, data, 0).or_else(|_| read_format(code, data, 1))?;
 
     let mut ds: DataStream = DataStream {
         raw: [0; MAX_PAYLOAD],
@@ -904,15 +884,7 @@ pub unsafe fn quirc_decode(code: *const QuircCode, mut data: *mut QuircData) -> 
         data: [0; MAX_PAYLOAD],
     };
     read_data(code, data, &mut ds);
-    let err = codestream_ecc(data, &mut ds);
-    if err != DecodeResult::Success {
-        return err;
-    }
+    codestream_ecc(data, &mut ds)?;
 
-    let err = decode_payload(data, &mut ds);
-    if err != DecodeResult::Success {
-        err
-    } else {
-        DecodeResult::Success
-    }
+    decode_payload(data, &mut ds)
 }

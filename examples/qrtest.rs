@@ -133,7 +133,7 @@ pub unsafe extern "C" fn scan_file(
         for i in 0..(*info).id_count {
             let mut data: QuircData = std::mem::uninitialized();
             let code = quirc_extract(decoder, i).unwrap();
-            if quirc_decode(&code, &mut data) == DecodeResult::Success {
+            if quirc_decode(&code, &mut data).is_ok() {
                 (*info).decode_count = (*info).decode_count + 1;
             }
         }
@@ -159,14 +159,16 @@ pub unsafe extern "C" fn scan_file(
                 }
                 if WANT_VERBOSE {
                     let mut data: QuircData = std::mem::uninitialized();
-                    let err: DecodeResult = quirc_decode(&code, &mut data);
-                    if err != DecodeResult::Success {
-                        println!("  ERROR: {}", quirc_strerror(err));
-                        println!();
-                    } else {
-                        println!("  Decode successful:");
-                        dump_data(&mut data);
-                        println!();
+                    match quirc_decode(&code, &mut data) {
+                        Ok(_) => {
+                            println!("  Decode successful:");
+                            dump_data(&mut data);
+                            println!();
+                        }
+                        Err(e) => {
+                            println!("  ERROR: {}", quirc_strerror(e));
+                            println!();
+                        }
                     }
                 }
             }

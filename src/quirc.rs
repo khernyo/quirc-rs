@@ -266,31 +266,31 @@ pub unsafe extern "C" fn quirc_count(q: &Quirc) -> i32 {
     q.grids.len() as i32
 }
 
+pub type Result<T> = core::result::Result<T, DecodeError>;
+
 /// This enum describes the various decoder errors which may occur.
 #[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(i32)]
-pub enum DecodeResult {
-    Success = 0i32,
-    ErrorInvalidGridSize,
-    ErrorInvalidVersion,
-    ErrorFormatEcc,
-    ErrorDataEcc,
-    ErrorUnknownDataType,
-    ErrorDataOverflow,
-    ErrorDataUnderflow,
+pub enum DecodeError {
+    InvalidGridSize = 1,
+    InvalidVersion,
+    FormatEcc,
+    DataEcc,
+    UnknownDataType,
+    DataOverflow,
+    DataUnderflow,
 }
 
 /// Return a string error message for an error code.
-pub unsafe extern "C" fn quirc_strerror(err: DecodeResult) -> &'static str {
+pub unsafe extern "C" fn quirc_strerror(err: DecodeError) -> &'static str {
     match err {
-        DecodeResult::Success => "Success",
-        DecodeResult::ErrorInvalidGridSize => "Invalid grid size",
-        DecodeResult::ErrorInvalidVersion => "Invalid version",
-        DecodeResult::ErrorFormatEcc => "Format data ECC failure",
-        DecodeResult::ErrorDataEcc => "ECC failure",
-        DecodeResult::ErrorUnknownDataType => "Unknown data type",
-        DecodeResult::ErrorDataOverflow => "Data overflow",
-        DecodeResult::ErrorDataUnderflow => "Data underflow",
+        DecodeError::InvalidGridSize => "Invalid grid size",
+        DecodeError::InvalidVersion => "Invalid version",
+        DecodeError::FormatEcc => "Format data ECC failure",
+        DecodeError::DataEcc => "ECC failure",
+        DecodeError::UnknownDataType => "Unknown data type",
+        DecodeError::DataOverflow => "Data overflow",
+        DecodeError::DataUnderflow => "Data underflow",
     }
 }
 
