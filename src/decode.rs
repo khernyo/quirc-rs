@@ -19,7 +19,6 @@ use crate::quirc::*;
 use crate::version_db::*;
 
 extern "C" {
-    fn abs(__x: i32) -> i32;
     fn memcpy(
         __dest: *mut ::std::os::raw::c_void,
         __src: *const ::std::os::raw::c_void,
@@ -470,7 +469,7 @@ fn mask_bit(mask: i32, i: i32, j: i32) -> i32 {
     }
 }
 
-unsafe fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
+fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
     // Finder + format: top left
     if i < 9 && (j < 9) {
         return 1;
@@ -505,7 +504,7 @@ unsafe fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
     }
 
     // Exclude alignment patterns
-    let ver: *const VersionInfo = &VERSION_DB[version as usize] as (*const VersionInfo);
+    let ver: &VersionInfo = &VERSION_DB[version as usize];
     let mut ai: i32 = -1;
     let mut aj: i32 = -1;
 
@@ -513,10 +512,10 @@ unsafe fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
     while a < QUIRC_MAX_ALIGNMENT as i32 && (*ver).apat[a as usize] != 0 {
         let p: i32 = (*ver).apat[a as usize];
 
-        if abs(p - i) < 3 {
+        if (p - i).abs() < 3 {
             ai = a;
         }
-        if abs(p - j) < 3 {
+        if (p - j).abs() < 3 {
             aj = a;
         }
         a += 1;
@@ -554,7 +553,7 @@ fn read_bit(code: &QuircCode, data: &QuircData, ds: &mut DataStream, i: i32, j: 
     ds.data_bits += 1;
 }
 
-unsafe fn read_data(code: &QuircCode, data: &QuircData) -> DataStream {
+fn read_data(code: &QuircCode, data: &QuircData) -> DataStream {
     let mut y: i32 = code.size - 1;
     let mut x: i32 = code.size - 1;
     let mut dir: i32 = -1;
@@ -585,12 +584,12 @@ unsafe fn read_data(code: &QuircCode, data: &QuircData) -> DataStream {
     ds
 }
 
-unsafe fn codestream_ecc(data: *mut QuircData, ds: *mut DataStream) -> Result<()> {
-    let ver: *const VersionInfo = &VERSION_DB[(*data).version as usize] as (*const VersionInfo);
-    let sb_ecc: *const RsParams = &(*ver).ecc[(*data).ecc_level as usize] as (*const RsParams);
-    let lb_count: i32 = ((*ver).data_bytes - (*sb_ecc).bs * (*sb_ecc).ns) / ((*sb_ecc).bs + 1);
-    let bc: i32 = lb_count + (*sb_ecc).ns;
-    let ecc_offset: i32 = (*sb_ecc).dw * bc + lb_count;
+unsafe fn codestream_ecc(data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
+    let ver: &VersionInfo = &VERSION_DB[data.version as usize];
+    let sb_ecc: &RsParams = &ver.ecc[data.ecc_level as usize];
+    let lb_count: i32 = (ver.data_bytes - sb_ecc.bs * sb_ecc.ns) / (sb_ecc.bs + 1);
+    let bc: i32 = lb_count + sb_ecc.ns;
+    let ecc_offset: i32 = sb_ecc.dw * bc + lb_count;
     let mut dst_offset: i32 = 0;
 
     let mut lb_ecc = *sb_ecc;
@@ -598,27 +597,23 @@ unsafe fn codestream_ecc(data: *mut QuircData, ds: *mut DataStream) -> Result<()
     lb_ecc.bs += 1;
 
     for i in 0..bc {
-        let dst: *mut u8 = (*ds).data.as_mut_ptr().offset(dst_offset as isize);
-        let ecc: *const RsParams = if i < (*sb_ecc).ns {
-            sb_ecc
-        } else {
-            &mut lb_ecc
-        };
+        let ecc: &RsParams = if i < sb_ecc.ns { sb_ecc } else { &lb_ecc };
         let num_ec: i32 = (*ecc).bs - (*ecc).dw;
 
         for j in 0..(*ecc).dw {
-            *dst.offset(j as isize) = (*ds).raw[(j * bc + i) as usize];
+            ds.data[(dst_offset + j) as usize] = ds.raw[(j * bc + i) as usize];
         }
         for j in 0..num_ec {
-            *dst.offset(((*ecc).dw + j) as isize) = (*ds).raw[(ecc_offset + j * bc + i) as usize];
+            ds.data[(dst_offset + (*ecc).dw + j) as usize] =
+                ds.raw[(ecc_offset + j * bc + i) as usize];
         }
 
-        correct_block(dst, ecc)?;
+        correct_block(ds.data.as_mut_ptr().offset(dst_offset as isize), ecc)?;
 
         dst_offset += (*ecc).dw;
     }
 
-    (*ds).data_bits = dst_offset * 8;
+    ds.data_bits = dst_offset * 8;
     Ok(())
 }
 
