@@ -1127,8 +1127,8 @@ pub unsafe fn quirc_end(q: &mut Quirc) {
 }
 
 /// Extract the QR-code specified by the given index.
-pub unsafe fn quirc_extract(q: &mut Quirc, index: i32) -> Option<QuircCode> {
-    let qr: *mut Grid = &mut q.grids[index as usize];
+pub fn quirc_extract(q: &mut Quirc, index: i32) -> Option<QuircCode> {
+    let qr = &q.grids[index as usize];
 
     if index < 0 || index > q.grids.len() as i32 {
         return None;
@@ -1136,18 +1136,18 @@ pub unsafe fn quirc_extract(q: &mut Quirc, index: i32) -> Option<QuircCode> {
 
     let mut code = QuircCode {
         corners: [
-            perspective_map(&(*qr).c, 0.0, 0.0),
-            perspective_map(&(*qr).c, (*qr).grid_size as f64, 0.0),
-            perspective_map(&(*qr).c, (*qr).grid_size as f64, (*qr).grid_size as f64),
-            perspective_map(&(*qr).c, 0.0, (*qr).grid_size as f64),
+            perspective_map(&qr.c, 0.0, 0.0),
+            perspective_map(&qr.c, qr.grid_size as f64, 0.0),
+            perspective_map(&qr.c, qr.grid_size as f64, qr.grid_size as f64),
+            perspective_map(&qr.c, 0.0, qr.grid_size as f64),
         ],
-        size: (*qr).grid_size,
+        size: qr.grid_size,
         ..Default::default()
     };
 
     let mut i: i32 = 0;
-    for y in 0..(*qr).grid_size {
-        for x in 0..(*qr).grid_size {
+    for y in 0..qr.grid_size {
+        for x in 0..qr.grid_size {
             if read_cell(q, index, x, y) == Cell::Black {
                 code.cell_bitmap[(i >> 3) as usize] |= 1 << (i & 7);
             }
