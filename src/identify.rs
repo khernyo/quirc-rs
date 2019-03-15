@@ -674,19 +674,27 @@ unsafe fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i32 {
     return 0;
 }
 
+#[derive(Eq, PartialEq)]
+#[repr(i32)]
+enum Cell {
+    White = -1,
+    OutOfBounds = 0,
+    Black = 1,
+}
+
 /// Read a cell from a grid using the currently set perspective
 /// transform. Returns +/- 1 for black/white, 0 for cells which are
 /// out of image bounds.
-fn read_cell(q: &Quirc, index: i32, x: i32, y: i32) -> i32 {
+fn read_cell(q: &Quirc, index: i32, x: i32, y: i32) -> Cell {
     let qr: &Grid = &q.grids[index as usize];
 
     let p = perspective_map(&qr.c, x as f64 + 0.5f64, y as f64 + 0.5f64);
     if p.y < 0 || p.y >= q.h || p.x < 0 || p.x >= q.w {
-        0
+        Cell::OutOfBounds
     } else if q.pixels[(p.y * q.w + p.x) as usize] != 0 {
-        1
+        Cell::Black
     } else {
-        -1
+        Cell::White
     }
 }
 
@@ -1140,7 +1148,7 @@ pub unsafe fn quirc_extract(q: &mut Quirc, index: i32) -> Option<QuircCode> {
     let mut i: i32 = 0;
     for y in 0..(*qr).grid_size {
         for x in 0..(*qr).grid_size {
-            if read_cell(q, index, x, y) > 0 {
+            if read_cell(q, index, x, y) == Cell::Black {
                 code.cell_bitmap[(i >> 3) as usize] |= 1 << (i & 7);
             }
             i = i + 1;
