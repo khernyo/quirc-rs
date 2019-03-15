@@ -256,7 +256,7 @@ pub fn quirc_version() -> &'static str {
 ///
 /// This function returns 0 on success, or -1 if sufficient memory could
 /// not be allocated.
-pub unsafe extern "C" fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
+pub fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
     // XXX: w and h should be size_t (or at least unsigned) as negatives
     // values would not make much sense. The downside is that it would break
     // both the API and ABI. Thus, at the moment, let's just do a sanity
@@ -276,7 +276,7 @@ pub unsafe extern "C" fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
 
 /// Return the number of QR-codes identified in the last processed
 /// image.
-pub unsafe extern "C" fn quirc_count(q: &Quirc) -> i32 {
+pub fn quirc_count(q: &Quirc) -> i32 {
     q.grids.len() as i32
 }
 
@@ -296,7 +296,7 @@ pub enum DecodeError {
 }
 
 /// Return a string error message for an error code.
-pub unsafe extern "C" fn quirc_strerror(err: DecodeError) -> &'static str {
+pub fn quirc_strerror(err: DecodeError) -> &'static str {
     match err {
         DecodeError::InvalidGridSize => "Invalid grid size",
         DecodeError::InvalidVersion => "Invalid version",
