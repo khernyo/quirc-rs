@@ -19,7 +19,6 @@ use crate::quirc::*;
 use crate::version_db::*;
 
 use std::cmp::max;
-use std::os::raw::c_double;
 
 extern "C" {
     fn abs(__x: i32) -> i32;
@@ -28,7 +27,6 @@ extern "C" {
         __src: *const ::std::os::raw::c_void,
         __n: usize,
     ) -> *mut ::std::os::raw::c_void;
-    fn rint(x: c_double) -> c_double;
 }
 
 /************************************************************************
@@ -100,14 +98,15 @@ fn perspective_setup(rect: &[Point; 4], w: f64, h: f64) -> [f64; 8] {
     ]
 }
 
-unsafe fn perspective_map(c: &[f64; consts::PERSPECTIVE_PARAMS], u: f64, v: f64) -> Point {
+fn perspective_map(c: &[f64; consts::PERSPECTIVE_PARAMS], u: f64, v: f64) -> Point {
     let den: f64 = c[6] * u + c[7] * v + 1.0f64;
     let x: f64 = (c[0] * u + c[1] * v + c[2]) / den;
     let y: f64 = (c[3] * u + c[4] * v + c[5]) / den;
 
+    use crate::math::RoundToNearestFavorEven as _;
     Point {
-        x: rint(x) as i32,
-        y: rint(y) as i32,
+        x: x.round_to_nearest_favor_even() as i32,
+        y: y.round_to_nearest_favor_even() as i32,
     }
 }
 
