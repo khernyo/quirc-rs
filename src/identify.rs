@@ -21,7 +21,6 @@ use crate::version_db::*;
 use std::cmp::max;
 
 extern "C" {
-    fn abs(__x: i32) -> i32;
     fn memmove(
         __dest: *mut ::std::os::raw::c_void,
         __src: *const ::std::os::raw::c_void,
@@ -125,31 +124,32 @@ fn perspective_unmap(c: &[f64; consts::PERSPECTIVE_PARAMS], in_: &Point) -> (f64
 
 const FLOOD_FILL_MAX_DEPTH: i32 = 4096;
 
-type SpanFunc<T> = unsafe fn(user_data: *mut T, y: i32, left: i32, right: i32);
-
 /// Span-based floodfill routine
-unsafe fn flood_fill_seed<T>(
-    q: &mut Quirc,
+fn flood_fill_seed<F>(
+    pixels: &mut [u8],
+    w: i32,
+    h: i32,
     x: i32,
     y: i32,
     from: i32,
     to: i32,
-    func: Option<SpanFunc<T>>,
-    user_data: *mut T,
+    func: &mut F,
     depth: i32,
-) {
+) where
+    F: FnMut(/*y:*/ i32, /*left:*/ i32, /*right:*/ i32),
+{
     let mut left: i32 = x;
     let mut right: i32 = x;
-    let mut row: usize = (y * q.w) as usize;
+    let mut row: usize = (y * w) as usize;
     if depth >= FLOOD_FILL_MAX_DEPTH {
         return;
     }
 
-    while left > 0 && (q.pixels[row + (left - 1) as usize] as i32 == from) {
+    while left > 0 && (pixels[row + (left - 1) as usize] as i32 == from) {
         left = left - 1;
     }
 
-    while right < q.w - 1 && (q.pixels[row + (right + 1) as usize] as i32 == from) {
+    while right < w - 1 && (pixels[row + (right + 1) as usize] as i32 == from) {
         right = right + 1;
     }
 
@@ -157,34 +157,32 @@ unsafe fn flood_fill_seed<T>(
     // TODO Use a simple for statement (currently, it causes a stack overflow during tests)
     let mut i = left;
     while i <= right {
-        q.pixels[row + i as usize] = to as u8;
+        pixels[row + i as usize] = to as u8;
         i += 1;
     }
 
-    if let Some(f) = func {
-        f(user_data, y, left, right);
-    }
+    func(y, left, right);
 
     // Seed new flood-fills
     if y > 0 {
-        row = ((y - 1) * q.w) as usize;
+        row = ((y - 1) * w) as usize;
 
         let mut i = left;
         while i <= right {
-            if q.pixels[row + i as usize] as i32 == from {
-                flood_fill_seed(q, i, y - 1, from, to, func, user_data, depth + 1);
+            if pixels[row + i as usize] as i32 == from {
+                flood_fill_seed(pixels, w, h, i, y - 1, from, to, func, depth + 1);
             }
             i += 1;
         }
     }
 
-    if y < q.h - 1 {
-        row = ((y + 1) * q.w) as usize;
+    if y < h - 1 {
+        row = ((y + 1) * w) as usize;
 
         let mut i = left;
         while i <= right {
-            if q.pixels[row + i as usize] as i32 == from {
-                flood_fill_seed(q, i, y + 1, from, to, func, user_data, depth + 1);
+            if pixels[row + i as usize] as i32 == from {
+                flood_fill_seed(pixels, w, h, i, y + 1, from, to, func, depth + 1);
             }
             i += 1;
         }
@@ -243,11 +241,11 @@ fn threshold(q: &mut Quirc) {
     }
 }
 
-unsafe fn area_count(region: *mut Region, _y: i32, left: i32, right: i32) {
-    (*region).count += right - left + 1;
+fn area_count(region: &mut Region, left: i32, right: i32) {
+    region.count += right - left + 1;
 }
 
-unsafe fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
+fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
     if x < 0 || y < 0 || x >= q.w || y >= q.h {
         return -1;
     }
@@ -272,9 +270,19 @@ unsafe fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
         capstone: -1,
         ..Default::default()
     });
-    let r#box: *mut Region = q.regions.last_mut().unwrap();
+    let r#box: &mut Region = q.regions.last_mut().unwrap();
 
-    flood_fill_seed(q, x, y, pixel, region, Some(area_count), r#box, 0);
+    flood_fill_seed(
+        &mut q.pixels,
+        q.w,
+        q.h,
+        x,
+        y,
+        pixel,
+        region,
+        &mut |_, left, right| area_count(r#box, left, right),
+        0,
+    );
 
     region
 }
@@ -293,35 +301,35 @@ impl Clone for PolygonScoreData {
     }
 }
 
-unsafe fn find_one_corner(psd: *mut PolygonScoreData, y: i32, left: i32, right: i32) {
+unsafe fn find_one_corner(psd: &mut PolygonScoreData, y: i32, left: i32, right: i32) {
     let xs: [i32; 2] = [left, right];
-    let dy: i32 = y - (*psd).r#ref.y;
+    let dy: i32 = y - psd.r#ref.y;
 
     for i in 0..2 {
-        let dx: i32 = xs[i as usize] - (*psd).r#ref.x;
+        let dx: i32 = xs[i as usize] - psd.r#ref.x;
         let d: i32 = dx * dx + dy * dy;
 
-        if d > (*psd).scores[0] {
-            (*psd).scores[0] = d;
-            (*(*psd).corners.offset(0)).x = xs[i as usize];
-            (*(*psd).corners.offset(0)).y = y;
+        if d > psd.scores[0] {
+            psd.scores[0] = d;
+            (*psd.corners.offset(0)).x = xs[i as usize];
+            (*psd.corners.offset(0)).y = y;
         }
     }
 }
 
-unsafe fn find_other_corners(psd: *mut PolygonScoreData, y: i32, left: i32, right: i32) {
+unsafe fn find_other_corners(psd: &mut PolygonScoreData, y: i32, left: i32, right: i32) {
     let xs: [i32; 2] = [left, right];
 
     for i in 0..2 {
-        let up: i32 = xs[i as usize] * (*psd).r#ref.x + y * (*psd).r#ref.y;
-        let right: i32 = xs[i as usize] * -(*psd).r#ref.y + y * (*psd).r#ref.x;
+        let up: i32 = xs[i as usize] * psd.r#ref.x + y * psd.r#ref.y;
+        let right: i32 = xs[i as usize] * -psd.r#ref.y + y * psd.r#ref.x;
         let scores: [i32; 4] = [up, right, -up, -right];
 
         for j in 0..4 {
-            if scores[j as usize] > (*psd).scores[j as usize] {
-                (*psd).scores[j as usize] = scores[j as usize];
-                (*(*psd).corners.offset(j as isize)).x = xs[i as usize];
-                (*(*psd).corners.offset(j as isize)).y = y;
+            if scores[j as usize] > psd.scores[j as usize] {
+                psd.scores[j as usize] = scores[j as usize];
+                (*psd.corners.offset(j as isize)).x = xs[i as usize];
+                (*psd.corners.offset(j as isize)).y = y;
             }
         }
     }
@@ -336,13 +344,14 @@ unsafe fn find_region_corners(q: &mut Quirc, rcode: i32, r#ref: *const Point, co
     };
 
     flood_fill_seed(
-        q,
+        &mut q.pixels,
+        q.w,
+        q.h,
         (*region).seed.x,
         (*region).seed.y,
         rcode,
         PIXEL_BLACK,
-        Some(find_one_corner),
-        &mut psd,
+        &mut |y, left, right| find_one_corner(&mut psd, y, left, right),
         0,
     );
 
@@ -361,13 +370,14 @@ unsafe fn find_region_corners(q: &mut Quirc, rcode: i32, r#ref: *const Point, co
     psd.scores[3] = -i;
 
     flood_fill_seed(
-        q,
+        &mut q.pixels,
+        q.w,
+        q.h,
         (*region).seed.x,
         (*region).seed.y,
         PIXEL_BLACK,
         rcode,
-        Some(find_other_corners),
-        &mut psd,
+        &mut |y, left, right| find_other_corners(&mut psd, y, left, right),
         0,
     );
 }
@@ -510,7 +520,7 @@ unsafe fn find_alignment_pattern(q: &mut Quirc, index: i32) {
     let (u, v) = perspective_unmap(&(*c2).c, &mut b);
     let c = perspective_map(&(*c2).c, u + 1.0f64, v);
 
-    let size_estimate = abs((a.x - b.x) * -(c.y - b.y) + (a.y - b.y) * (c.x - b.x));
+    let size_estimate = ((a.x - b.x) * -(c.y - b.y) + (a.y - b.y) * (c.x - b.x)).abs();
 
     // Spiral outwards from the estimate point until we find something
     // roughly the right size. Don't look too far from the estimate
@@ -538,16 +548,16 @@ unsafe fn find_alignment_pattern(q: &mut Quirc, index: i32) {
     }
 }
 
-unsafe fn find_leftmost_to_line(psd: *mut PolygonScoreData, y: i32, left: i32, right: i32) {
+unsafe fn find_leftmost_to_line(psd: &mut PolygonScoreData, y: i32, left: i32, right: i32) {
     let xs: [i32; 2] = [left, right];
 
     for i in 0..2 {
-        let d: i32 = -(*psd).r#ref.y * xs[i as usize] + (*psd).r#ref.x * y;
+        let d: i32 = -psd.r#ref.y * xs[i as usize] + psd.r#ref.x * y;
 
-        if d < (*psd).scores[0] {
-            (*psd).scores[0] = d;
-            (*(*psd).corners.offset(0)).x = xs[i as usize];
-            (*(*psd).corners.offset(0)).y = y;
+        if d < psd.scores[0] {
+            psd.scores[0] = d;
+            (*psd.corners.offset(0)).x = xs[i as usize];
+            (*psd.corners.offset(0)).y = y;
         }
     }
 }
@@ -943,23 +953,25 @@ unsafe fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
                     };
 
                     flood_fill_seed(
-                        q,
+                        &mut q.pixels,
+                        q.w,
+                        q.h,
                         (*reg).seed.x,
                         (*reg).seed.y,
                         (*qr).align_region,
                         PIXEL_BLACK,
-                        None,
-                        0 as (*mut ::std::os::raw::c_void),
+                        &mut |_, _, _| (),
                         0,
                     );
                     flood_fill_seed(
-                        q,
+                        &mut q.pixels,
+                        q.w,
+                        q.h,
                         (*reg).seed.x,
                         (*reg).seed.y,
                         PIXEL_BLACK,
                         (*qr).align_region,
-                        Some(find_leftmost_to_line),
-                        &mut psd,
+                        &mut |y, left, right| find_leftmost_to_line(&mut psd, y, left, right),
                         0,
                     );
                 }
