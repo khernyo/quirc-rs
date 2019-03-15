@@ -405,7 +405,7 @@ unsafe fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
     find_region_corners(
         q,
         ring,
-        &mut (*stone_reg).seed,
+        &(*stone_reg).seed,
         (*capstone).corners.as_mut_ptr(),
     );
 
@@ -414,14 +414,10 @@ unsafe fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
     (*capstone).center = perspective_map(&(*capstone).c, 3.5f64, 3.5f64);
 }
 
-unsafe fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: *mut i32) {
-    let ring_right: i32 = region_code(q, x - *pb.offset(4), y);
-    let stone: i32 = region_code(q, x - *pb.offset(4) - *pb.offset(3) - *pb.offset(2), y);
-    let ring_left: i32 = region_code(
-        q,
-        x - *pb.offset(4) - *pb.offset(3) - *pb.offset(2) - *pb.offset(1) - *pb.offset(0),
-        y,
-    );
+unsafe fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: &[i32; 5]) {
+    let ring_right: i32 = region_code(q, x - pb[4], y);
+    let stone: i32 = region_code(q, x - pb[4] - pb[3] - pb[2], y);
+    let ring_left: i32 = region_code(q, x - pb[4] - pb[3] - pb[2] - pb[1] - pb[0], y);
 
     if ring_left < 0 || ring_right < 0 || stone < 0 {
         return;
@@ -494,7 +490,7 @@ unsafe fn finder_scan(q: &mut Quirc, y: i32) {
                 }
 
                 if ok != 0 {
-                    test_capstone(q, x, y, pb.as_mut_ptr());
+                    test_capstone(q, x, y, &pb);
                 }
             }
         }
