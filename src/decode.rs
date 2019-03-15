@@ -18,19 +18,6 @@ use crate::quirc::consts::*;
 use crate::quirc::*;
 use crate::version_db::*;
 
-extern "C" {
-    fn memcpy(
-        __dest: *mut ::std::os::raw::c_void,
-        __src: *const ::std::os::raw::c_void,
-        __n: usize,
-    ) -> *mut ::std::os::raw::c_void;
-    fn memset(
-        __s: *mut ::std::os::raw::c_void,
-        __c: i32,
-        __n: usize,
-    ) -> *mut ::std::os::raw::c_void;
-}
-
 const MAX_POLY: usize = 64;
 
 /*************************************************************************
@@ -113,38 +100,36 @@ const GF256: GaloisField = GaloisField {
  * Polynomial operations
  */
 
-unsafe fn poly_add(dst: *mut u8, src: *const u8, c: u8, shift: i32, gf: *const GaloisField) {
+fn poly_add(dst: &mut [u8; MAX_POLY], src: &[u8; MAX_POLY], c: u8, shift: i32, gf: &GaloisField) {
     if c == 0 {
         return;
     }
 
-    let log_c: i32 = (*gf).log[c as usize] as i32;
+    let log_c: i32 = gf.log[c as usize] as i32;
     for i in 0..MAX_POLY as i32 {
-        let p: i32 = i + shift;
-        let v: u8 = *src.offset(i as isize);
+        let p = i + shift;
+        let v: u8 = src[i as usize];
 
         if !(p < 0 || p >= MAX_POLY as i32) {
             if !(v == 0) {
-                *dst.offset(p as isize) ^=
-                    (*gf).exp[(((*gf).log[v as usize] as i32 + log_c) % (*gf).p) as usize];
+                dst[p as usize] ^= gf.exp[((gf.log[v as usize] as i32 + log_c) % gf.p) as usize];
             }
         }
     }
 }
 
-unsafe fn poly_eval(s: *const u8, x: u8, gf: *const GaloisField) -> u8 {
+fn poly_eval(s: &[u8; MAX_POLY], x: u8, gf: &GaloisField) -> u8 {
     if x == 0 {
-        *s.offset(0)
+        s[0]
     } else {
         let mut sum: u8 = 0;
-        let log_x: u8 = (*gf).log[x as usize];
+        let log_x: u8 = gf.log[x as usize];
 
         for i in 0..MAX_POLY as i32 {
-            let c: u8 = *s.offset(i as isize);
+            let c: u8 = s[i as usize];
 
             if !(c == 0) {
-                sum ^= (*gf).exp
-                    [(((*gf).log[c as usize] as i32 + log_x as i32 * i) % (*gf).p) as usize];
+                sum ^= gf.exp[((gf.log[c as usize] as i32 + log_x as i32 * i) % gf.p) as usize];
             }
         }
         sum
@@ -152,10 +137,10 @@ unsafe fn poly_eval(s: *const u8, x: u8, gf: *const GaloisField) -> u8 {
 }
 
 /// Berlekamp-Massey algorithm for finding error locator polynomials.
-unsafe fn berlekamp_massey(s: *const u8, N: i32, gf: *const GaloisField, sigma: *mut u8) {
+fn berlekamp_massey(s: &[u8; MAX_POLY], N: usize, gf: &GaloisField) -> [u8; MAX_POLY] {
     let mut C: [u8; MAX_POLY] = [0; MAX_POLY];
     let mut B: [u8; MAX_POLY] = [0; MAX_POLY];
-    let mut L: i32 = 0;
+    let mut L: usize = 0;
     let mut m: i32 = 1;
     let mut b: u8 = 1;
 
@@ -163,40 +148,35 @@ unsafe fn berlekamp_massey(s: *const u8, N: i32, gf: *const GaloisField, sigma: 
     C[0] = 1;
 
     for n in 0..N {
-        let mut d: u8 = *s.offset(n as isize);
+        let mut d: u8 = s[n];
 
         for i in 1..=L {
-            if C[i as usize] != 0 && (*s.offset((n - i) as isize) != 0) {
-                d ^= (*gf).exp[(((*gf).log[C[i as usize] as usize] as i32
-                    + (*gf).log[*s.offset((n - i) as isize) as usize] as i32)
-                    % (*gf).p) as usize];
+            if C[i] != 0 && (s[n - i] != 0) {
+                d ^= gf.exp[((gf.log[C[i as usize] as usize] as i32
+                    + gf.log[s[n - i] as usize] as i32)
+                    % gf.p) as usize];
             }
         }
 
-        let mult = (*gf).exp[(((*gf).p - (*gf).log[b as usize] as i32
-            + (*gf).log[d as usize] as i32)
-            % (*gf).p) as usize];
+        let mult = gf.exp
+            [((gf.p - gf.log[b as usize] as i32 + gf.log[d as usize] as i32) % gf.p) as usize];
 
         if d == 0 {
             m += 1;
         } else if L * 2 <= n {
             let T = C;
-            poly_add(C.as_mut_ptr(), B.as_mut_ptr() as (*const u8), mult, m, gf);
+            poly_add(&mut C, &B, mult, m, gf);
             B = T;
             L = n + 1 - L;
             b = d;
             m = 1;
         } else {
-            poly_add(C.as_mut_ptr(), B.as_mut_ptr() as (*const u8), mult, m, gf);
+            poly_add(&mut C, &B, mult, m, gf);
             m += 1;
         }
     }
 
-    memcpy(
-        sigma as (*mut ::std::os::raw::c_void),
-        C.as_mut_ptr() as (*const ::std::os::raw::c_void),
-        MAX_POLY,
-    );
+    C
 }
 
 /************************************************************************
@@ -205,114 +185,94 @@ unsafe fn berlekamp_massey(s: *const u8, N: i32, gf: *const GaloisField, sigma: 
  * Generator polynomial for GF(2^8) is x^8 + x^4 + x^3 + x^2 + 1
  */
 
-unsafe fn block_syndromes(data: *const u8, bs: i32, npar: i32, s: *mut u8) -> i32 {
+fn block_syndromes(data: &[u8], bs: i32, npar: i32) -> Option<[u8; MAX_POLY]> {
     let mut nonzero: i32 = 0;
-
-    memset(s as (*mut ::std::os::raw::c_void), 0, MAX_POLY);
+    let mut s: [u8; MAX_POLY] = [0; MAX_POLY];
 
     for i in 0..npar {
         for j in 0..bs {
-            let c: u8 = *data.offset((bs - j - 1) as isize);
+            let c: u8 = data[(bs - j - 1) as usize];
 
             if !(c == 0) {
-                *s.offset(i as isize) ^=
-                    GF256_EXP[((GF256_LOG[c as usize] as i32 + i * j) % 255) as usize];
+                s[i as usize] ^= GF256_EXP[((GF256_LOG[c as usize] as i32 + i * j) % 255) as usize];
             }
         }
 
-        if *s.offset(i as isize) != 0 {
+        if s[i as usize] != 0 {
             nonzero = 1;
         }
     }
 
-    nonzero
+    if nonzero != 0 {
+        Some(s)
+    } else {
+        None
+    }
 }
 
-unsafe fn eloc_poly(omega: *mut u8, s: *const u8, sigma: *const u8, npar: i32) {
-    memset(omega as (*mut ::std::os::raw::c_void), 0, MAX_POLY);
+fn eloc_poly(s: &[u8; MAX_POLY], sigma: &[u8; MAX_POLY], npar: i32) -> [u8; MAX_POLY] {
+    let mut omega: [u8; MAX_POLY] = [0; MAX_POLY];
 
-    for i in 0..npar {
-        let a: u8 = *sigma.offset(i as isize);
+    for i in 0..npar as usize {
+        let a: u8 = sigma[i];
         let log_a: u8 = GF256_LOG[a as usize];
 
         if !(a == 0) {
-            for j in 0..MAX_POLY as i32 - 1 {
-                let b: u8 = *s.offset((j + 1) as isize);
+            for j in 0..MAX_POLY - 1 {
+                let b: u8 = s[j + 1];
 
-                if i + j >= npar {
+                if i + j >= npar as usize {
                     break;
                 }
 
                 if !(b == 0) {
-                    *omega.offset((i + j) as isize) ^=
+                    omega[i + j] ^=
                         GF256_EXP[((log_a as i32 + GF256_LOG[b as usize] as i32) % 255) as usize];
                 }
             }
         }
     }
+
+    omega
 }
 
-unsafe fn correct_block(data: *mut u8, ecc: *const RsParams) -> Result<()> {
-    let npar: i32 = (*ecc).bs - (*ecc).dw;
-    let mut s: [u8; MAX_POLY] = [0; MAX_POLY];
+fn correct_block(data: &mut [u8], ecc: &RsParams) -> Result<()> {
+    let npar: i32 = ecc.bs - ecc.dw;
 
     /* Compute syndrome vector */
-    if block_syndromes(data as *const u8, (*ecc).bs, npar, s.as_mut_ptr()) == 0 {
+    let s = block_syndromes(data, ecc.bs, npar);
+    if s.is_none() {
         return Ok(());
     }
+    let s = s.unwrap();
 
-    let mut sigma: [u8; MAX_POLY] = [0; MAX_POLY];
-    berlekamp_massey(
-        s.as_mut_ptr() as (*const u8),
-        npar,
-        &GF256 as (*const GaloisField),
-        sigma.as_mut_ptr(),
-    );
+    let sigma = berlekamp_massey(&s, npar as usize, &GF256);
 
     /* Compute derivative of sigma */
     let mut sigma_deriv: [u8; MAX_POLY] = [0; MAX_POLY];
-    for i in (0..MAX_POLY as i32 - 1).step_by(2) {
-        sigma_deriv[i as usize] = sigma[(i + 1) as usize];
+    for i in (0..MAX_POLY - 1).step_by(2) {
+        sigma_deriv[i] = sigma[i + 1];
     }
 
     /* Compute error evaluator polynomial */
-    let mut omega: [u8; MAX_POLY] = [0; MAX_POLY];
-    eloc_poly(
-        omega.as_mut_ptr(),
-        s.as_mut_ptr() as (*const u8),
-        sigma.as_mut_ptr() as (*const u8),
-        npar - 1,
-    );
+    let omega = eloc_poly(&s, &sigma, npar - 1);
 
     /* Find error locations and magnitudes */
-    for i in 0..(*ecc).bs {
+    for i in 0..ecc.bs {
         let xinv: u8 = GF256_EXP[(255 - i) as usize];
 
-        if poly_eval(
-            sigma.as_mut_ptr() as (*const u8),
-            xinv,
-            &GF256 as (*const GaloisField),
-        ) == 0
-        {
-            let sd_x: u8 = poly_eval(
-                sigma_deriv.as_mut_ptr() as (*const u8),
-                xinv,
-                &GF256 as (*const GaloisField),
-            );
-            let omega_x: u8 = poly_eval(
-                omega.as_mut_ptr() as (*const u8),
-                xinv,
-                &GF256 as (*const GaloisField),
-            );
+        if poly_eval(&sigma, xinv, &GF256) == 0 {
+            let sd_x: u8 = poly_eval(&sigma_deriv, xinv, &GF256);
+            let omega_x: u8 = poly_eval(&omega, xinv, &GF256);
             let error: u8 = GF256_EXP[((255 - GF256_LOG[sd_x as usize] as i32
                 + GF256_LOG[omega_x as usize] as i32)
                 % 255) as usize];
 
-            *data.offset(((*ecc).bs - i - 1) as isize) ^= error;
+            data[(ecc.bs - i - 1) as usize] ^= error;
         }
     }
 
-    if block_syndromes(data as (*const u8), (*ecc).bs, npar, s.as_mut_ptr()) != 0 {
+    if let Some(_) = block_syndromes(data, ecc.bs, npar) {
         Err(DecodeError::DataEcc)
     } else {
         Ok(())
@@ -325,63 +285,56 @@ unsafe fn correct_block(data: *mut u8, ecc: *const RsParams) -> Result<()> {
  * Generator polynomial for GF(2^4) is x^4 + x + 1
  */
 
-const FORMAT_MAX_ERROR: i32 = 3;
-const FORMAT_SYNDROMES: i32 = (FORMAT_MAX_ERROR * 2);
-const FORMAT_BITS: i32 = 15;
+const FORMAT_MAX_ERROR: usize = 3;
+const FORMAT_SYNDROMES: usize = (FORMAT_MAX_ERROR * 2);
+const FORMAT_BITS: usize = 15;
 
-unsafe fn format_syndromes(u: u16, s: *mut u8) -> i32 {
+fn format_syndromes(u: u16) -> Option<[u8; MAX_POLY]> {
     let mut nonzero: i32 = 0;
-
-    memset(s as (*mut ::std::os::raw::c_void), 0, MAX_POLY);
+    let mut s = [0; MAX_POLY];
 
     for i in 0..FORMAT_SYNDROMES {
-        *s.offset(i as isize) = 0;
+        s[i] = 0;
 
         for j in 0..FORMAT_BITS {
             if u as i32 & 1 << j != 0 {
-                *s.offset(i as isize) ^= GF16_EXP[((i + 1) * j % 15) as usize];
+                s[i] ^= GF16_EXP[(i + 1) * j % 15];
             }
         }
 
-        if *s.offset(i as isize) != 0 {
+        if s[i] != 0 {
             nonzero = 1;
         }
     }
 
-    nonzero
+    if nonzero != 0 {
+        Some(s)
+    } else {
+        None
+    }
 }
 
-unsafe fn correct_format(f_ret: *mut u16) -> Result<()> {
+fn correct_format(f_ret: &mut u16) -> Result<()> {
     let mut u: u16 = *f_ret;
-    let mut s: [u8; MAX_POLY] = [0; MAX_POLY];
 
     // Evaluate U (received codeword) at each of alpha_1 .. alpha_6
     // to get S_1 .. S_6 (but we index them from 0).
-    if format_syndromes(u, s.as_mut_ptr()) == 0 {
+    let s = format_syndromes(u);
+    if s.is_none() {
         return Ok(());
     }
+    let s = s.unwrap();
 
-    let mut sigma: [u8; MAX_POLY] = [0; MAX_POLY];
-    berlekamp_massey(
-        s.as_mut_ptr() as (*const u8),
-        FORMAT_SYNDROMES,
-        &GF16 as (*const GaloisField),
-        sigma.as_mut_ptr(),
-    );
+    let sigma = berlekamp_massey(&s, FORMAT_SYNDROMES, &GF16);
 
     // Now, find the roots of the polynomial
     for i in 0..15 {
-        if poly_eval(
-            sigma.as_mut_ptr() as (*const u8),
-            GF16_EXP[(15 - i) as usize],
-            &GF16 as (*const GaloisField),
-        ) == 0
-        {
+        if poly_eval(&sigma, GF16_EXP[(15 - i) as usize], &GF16) == 0 {
             u = (u as i32 ^ 1 << i) as u16;
         }
     }
 
-    if format_syndromes(u, s.as_mut_ptr()) != 0 {
+    if let Some(_) = format_syndromes(u) {
         Err(DecodeError::FormatEcc)
     } else {
         *f_ret = u;
@@ -425,7 +378,7 @@ fn grid_bit(code: &QuircCode, x: i32, y: i32) -> i32 {
     code.cell_bitmap[(p >> 3) as usize] as i32 >> (p & 7) & 1
 }
 
-unsafe fn read_format(code: &QuircCode, mut data: &mut QuircData, which: i32) -> Result<()> {
+fn read_format(code: &QuircCode, mut data: &mut QuircData, which: i32) -> Result<()> {
     let mut format: u16 = 0;
 
     if which != 0 {
@@ -446,7 +399,7 @@ unsafe fn read_format(code: &QuircCode, mut data: &mut QuircData, which: i32) ->
 
     format = (format as i32 ^ 0x5412) as u16;
 
-    correct_format(&mut format as (*mut u16))?;
+    correct_format(&mut format)?;
 
     let fdata = ((format as i32) >> 10) as u16;
     data.ecc_level = (fdata as i32) >> 3;
@@ -584,7 +537,7 @@ fn read_data(code: &QuircCode, data: &QuircData) -> DataStream {
     ds
 }
 
-unsafe fn codestream_ecc(data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
+fn codestream_ecc(data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
     let ver: &VersionInfo = &VERSION_DB[data.version as usize];
     let sb_ecc: &RsParams = &ver.ecc[data.ecc_level as usize];
     let lb_count: i32 = (ver.data_bytes - sb_ecc.bs * sb_ecc.ns) / (sb_ecc.bs + 1);
@@ -608,7 +561,7 @@ unsafe fn codestream_ecc(data: &mut QuircData, ds: &mut DataStream) -> Result<()
                 ds.raw[(ecc_offset + j * bc + i) as usize];
         }
 
-        correct_block(ds.data.as_mut_ptr().offset(dst_offset as isize), ecc)?;
+        correct_block(&mut ds.data[dst_offset as usize..], ecc)?;
 
         dst_offset += (*ecc).dw;
     }
@@ -850,7 +803,7 @@ fn decode_payload(data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
 }
 
 /// Decode a QR-code, returning the payload data.
-pub unsafe fn quirc_decode(code: &QuircCode) -> Result<QuircData> {
+pub fn quirc_decode(code: &QuircCode) -> Result<QuircData> {
     if (code.size - 17) % 4 != 0 {
         return Err(DecodeError::InvalidGridSize);
     }
