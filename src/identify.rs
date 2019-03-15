@@ -704,8 +704,7 @@ fn read_cell(q: &Quirc, index: i32, x: i32, y: i32) -> Cell {
     }
 }
 
-unsafe fn fitness_cell(q: &mut Quirc, index: i32, x: i32, y: i32) -> i32 {
-    let qr: *mut Grid = &mut q.grids[index as usize];
+fn fitness_cell(pixels: &[u8], w: i32, h: i32, qr: &mut Grid, x: i32, y: i32) -> i32 {
     let mut score: i32 = 0;
 
     for v in 0..3 {
@@ -713,13 +712,13 @@ unsafe fn fitness_cell(q: &mut Quirc, index: i32, x: i32, y: i32) -> i32 {
             const OFFSETS: [f64; 3] = [0.3, 0.5, 0.7];
 
             let p = perspective_map(
-                &(*qr).c,
+                &qr.c,
                 x as f64 + OFFSETS[u as usize],
                 y as f64 + OFFSETS[v as usize],
             );
 
-            if !(p.y < 0 || p.y >= q.h || p.x < 0 || p.x >= q.w) {
-                if q.pixels[(p.y * q.w + p.x) as usize] != 0 {
+            if !(p.y < 0 || p.y >= h || p.x < 0 || p.x >= w) {
+                if pixels[(p.y * w + p.x) as usize] != 0 {
                     score += 1;
                 } else {
                     score -= 1;
@@ -730,105 +729,113 @@ unsafe fn fitness_cell(q: &mut Quirc, index: i32, x: i32, y: i32) -> i32 {
     score
 }
 
-unsafe fn fitness_ring(q: &mut Quirc, index: i32, cx: i32, cy: i32, radius: i32) -> i32 {
+fn fitness_ring(
+    pixels: &[u8],
+    w: i32,
+    h: i32,
+    grid: &mut Grid,
+    cx: i32,
+    cy: i32,
+    radius: i32,
+) -> i32 {
     let mut score: i32 = 0;
 
     for i in 0..radius * 2 {
-        score += fitness_cell(q, index, cx - radius + i, cy - radius);
-        score += fitness_cell(q, index, cx - radius, cy + radius - i);
-        score += fitness_cell(q, index, cx + radius, cy - radius + i);
-        score += fitness_cell(q, index, cx + radius - i, cy + radius);
+        score += fitness_cell(pixels, w, h, grid, cx - radius + i, cy - radius);
+        score += fitness_cell(pixels, w, h, grid, cx - radius, cy + radius - i);
+        score += fitness_cell(pixels, w, h, grid, cx + radius, cy - radius + i);
+        score += fitness_cell(pixels, w, h, grid, cx + radius - i, cy + radius);
     }
     score
 }
 
-unsafe fn fitness_apat(q: &mut Quirc, index: i32, cx: i32, cy: i32) -> i32 {
-    fitness_cell(q, index, cx, cy) - fitness_ring(q, index, cx, cy, 1)
-        + fitness_ring(q, index, cx, cy, 2)
+fn fitness_apat(pixels: &[u8], w: i32, h: i32, grid: &mut Grid, cx: i32, cy: i32) -> i32 {
+    fitness_cell(pixels, w, h, grid, cx, cy) - fitness_ring(pixels, w, h, grid, cx, cy, 1)
+        + fitness_ring(pixels, w, h, grid, cx, cy, 2)
 }
 
-unsafe fn fitness_capstone(q: &mut Quirc, index: i32, mut x: i32, mut y: i32) -> i32 {
+fn fitness_capstone(pixels: &[u8], w: i32, h: i32, grid: &mut Grid, mut x: i32, mut y: i32) -> i32 {
     x += 3;
     y += 3;
 
-    fitness_cell(q, index, x, y) + fitness_ring(q, index, x, y, 1) - fitness_ring(q, index, x, y, 2)
-        + fitness_ring(q, index, x, y, 3)
+    fitness_cell(pixels, w, h, grid, x, y) + fitness_ring(pixels, w, h, grid, x, y, 1)
+        - fitness_ring(pixels, w, h, grid, x, y, 2)
+        + fitness_ring(pixels, w, h, grid, x, y, 3)
 }
 
 /// Compute a fitness score for the currently configured perspective
 /// transform, using the features we expect to find by scanning the
 /// grid.
-unsafe fn fitness_all(q: &mut Quirc, index: i32) -> i32 {
-    let qr: *const Grid = &mut q.grids[index as usize];
-    let version: i32 = ((*qr).grid_size - 17) / 4;
+fn fitness_all(pixels: &[u8], w: i32, h: i32, qr: &mut Grid) -> i32 {
+    let version: i32 = (qr.grid_size - 17) / 4;
     let mut score: i32 = 0;
 
     // Check the timing pattern
-    for i in 0..(*qr).grid_size - 14 {
+    for i in 0..qr.grid_size - 14 {
         let expect: i32 = if i & 1 != 0 { 1 } else { -1 };
-        score += fitness_cell(q, index, i + 7, 6) * expect;
-        score += fitness_cell(q, index, 6, i + 7) * expect;
+        score += fitness_cell(pixels, w, h, qr, i + 7, 6) * expect;
+        score += fitness_cell(pixels, w, h, qr, 6, i + 7) * expect;
     }
 
     // Check capstones
-    score += fitness_capstone(q, index, 0, 0);
-    score += fitness_capstone(q, index, (*qr).grid_size - 7, 0);
-    score += fitness_capstone(q, index, 0, (*qr).grid_size - 7);
+    score += fitness_capstone(pixels, w, h, qr, 0, 0);
+    score += fitness_capstone(pixels, w, h, qr, qr.grid_size - 7, 0);
+    score += fitness_capstone(pixels, w, h, qr, 0, qr.grid_size - 7);
 
     if version < 0 || version > QUIRC_MAX_VERSION as i32 {
         score
     } else {
-        let info: *const VersionInfo = &VERSION_DB[version as usize];
+        let info: &VersionInfo = &VERSION_DB[version as usize];
 
         // Check alignment patterns
-        let mut ap_count: i32 = 0;
-        while ap_count < QUIRC_MAX_ALIGNMENT as i32 && ((*info).apat[ap_count as usize] != 0) {
+        let mut ap_count: usize = 0;
+        while ap_count < QUIRC_MAX_ALIGNMENT && (info.apat[ap_count] != 0) {
             ap_count += 1;
         }
 
-        for i in 1..ap_count - 1 {
-            score += fitness_apat(q, index, 6, (*info).apat[i as usize]);
-            score += fitness_apat(q, index, (*info).apat[i as usize], 6);
+        for i in 1..ap_count as i32 - 1 {
+            score += fitness_apat(pixels, w, h, qr, 6, info.apat[i as usize]);
+            score += fitness_apat(pixels, w, h, qr, info.apat[i as usize], 6);
         }
 
         for i in 1..ap_count {
             for j in 1..ap_count {
-                score += fitness_apat(q, index, (*info).apat[i as usize], (*info).apat[j as usize]);
+                score += fitness_apat(pixels, w, h, qr, info.apat[i], info.apat[j]);
             }
         }
         score
     }
 }
 
-unsafe fn jiggle_perspective(q: &mut Quirc, index: i32) {
-    let mut qr: *mut Grid = &mut q.grids[index as usize];
-    let mut best: i32 = fitness_all(q, index);
+fn jiggle_perspective(q: &mut Quirc, index: i32) {
+    let mut qr: &mut Grid = &mut q.grids[index as usize];
+    let mut best: i32 = fitness_all(&q.pixels, q.w, q.h, qr);
     let mut adjustments: [f64; 8] = [0f64; 8];
 
     for i in 0..8 {
-        adjustments[i as usize] = (*qr).c[i as usize] * 0.02;
+        adjustments[i as usize] = qr.c[i as usize] * 0.02;
     }
 
     for _pass in 0..5 {
         for i in 0..16 {
-            let j: i32 = i >> 1;
-            let old: f64 = (*qr).c[j as usize];
-            let step: f64 = adjustments[j as usize];
+            let j = i >> 1;
+            let old: f64 = qr.c[j];
+            let step: f64 = adjustments[j];
 
             let new = if i & 1 != 0 { old + step } else { old - step };
 
-            (*qr).c[j as usize] = new;
-            let test = fitness_all(q, index);
+            qr.c[j] = new;
+            let test = fitness_all(&q.pixels, q.w, q.h, qr);
 
             if test > best {
                 best = test;
             } else {
-                (*qr).c[j as usize] = old;
+                qr.c[j] = old;
             }
         }
 
         for i in 0..8 {
-            adjustments[i as usize] *= 0.5;
+            adjustments[i] *= 0.5;
         }
     }
 }
@@ -836,21 +843,17 @@ unsafe fn jiggle_perspective(q: &mut Quirc, index: i32) {
 /// Once the capstones are in place and an alignment point has been
 /// chosen, we call this function to set up a grid-reading perspective
 /// transform.
-unsafe fn setup_qr_perspective(q: &mut Quirc, index: i32) {
-    let qr: *mut Grid = &mut q.grids[index as usize];
+fn setup_qr_perspective(q: &mut Quirc, index: i32) {
+    let qr: &mut Grid = &mut q.grids[index as usize];
 
     // Set up the perspective map for reading the grid
     let rect: [Point; 4] = [
-        q.capstones[(*qr).caps[1] as usize].corners[0],
-        q.capstones[(*qr).caps[2] as usize].corners[0],
-        (*qr).align,
-        q.capstones[(*qr).caps[0] as usize].corners[0],
+        q.capstones[qr.caps[1] as usize].corners[0],
+        q.capstones[qr.caps[2] as usize].corners[0],
+        qr.align,
+        q.capstones[qr.caps[0] as usize].corners[0],
     ];
-    (*qr).c = perspective_setup(
-        &rect,
-        ((*qr).grid_size - 7) as f64,
-        ((*qr).grid_size - 7) as f64,
-    );
+    qr.c = perspective_setup(&rect, (qr.grid_size - 7) as f64, (qr.grid_size - 7) as f64);
 
     jiggle_perspective(q, index);
 }
