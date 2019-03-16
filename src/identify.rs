@@ -563,18 +563,18 @@ fn find_leftmost_to_line(psd: &mut PolygonScoreDataPoint, y: i32, left: i32, rig
 
 /// Do a Bresenham scan from one point to another and count the number
 /// of black/white transitions.
-fn timing_scan(q: &Quirc, p0: &Point, p1: &Point) -> i32 {
-    if p0.x < 0 || p0.y < 0 || p0.x >= q.image.w || p0.y >= q.image.h {
+fn timing_scan(image: &Image, p0: &Point, p1: &Point) -> i32 {
+    if p0.x < 0 || p0.y < 0 || p0.x >= image.w || p0.y >= image.h {
         return -1;
     }
-    if p1.x < 0 || p1.y < 0 || p1.x >= q.image.w || p1.y >= q.image.h {
+    if p1.x < 0 || p1.y < 0 || p1.x >= image.w || p1.y >= image.h {
         return -1;
     }
 
     let mut run_length: i32 = 0;
     let mut count: i32 = 0;
     for (x, y) in Bresenham::new((p0.x, p0.y), (p1.x, p1.y)) {
-        let pixel = q.image[(y * q.image.w + x) as usize] as i32;
+        let pixel = image[(y * image.w + x) as usize] as i32;
 
         if pixel != 0 {
             if run_length >= 2 {
@@ -597,21 +597,18 @@ fn timing_scan(q: &Quirc, p0: &Point, p1: &Point) -> i32 {
 /// For each capstone, we find a point in the middle of the ring band
 /// which is nearest the centre of the code. Using these points, we do
 /// a horizontal and a vertical timing scan.
-fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i32 {
-    let qr = &q.grids[index as usize];
-
+fn measure_timing_pattern(image: &Image, capstones: &[Capstone], qr: &mut Grid) -> i32 {
     let mut tpep = [Default::default(); 3];
     for i in 0..3 {
         const US: [f64; 3] = [6.5, 6.5, 0.5];
         const VS: [f64; 3] = [0.5, 6.5, 6.5];
-        let cap = &q.capstones[qr.caps[i] as usize];
+        let cap = capstones[qr.caps[i] as usize];
         tpep[i] = perspective_map(&cap.c, US[i], VS[i]);
     }
 
-    let hscan = timing_scan(q, &tpep[1], &tpep[2]);
-    let vscan = timing_scan(q, &tpep[1], &tpep[0]);
+    let hscan = timing_scan(image, &tpep[1], &tpep[2]);
+    let vscan = timing_scan(image, &tpep[1], &tpep[0]);
 
-    let qr = &mut q.grids[index as usize];
     qr.hscan = hscan;
     qr.vscan = vscan;
     qr.tpep = tpep;
@@ -750,9 +747,8 @@ fn fitness_all(image: &Image, qr: &mut Grid) -> i32 {
     }
 }
 
-fn jiggle_perspective(q: &mut Quirc, index: i32) {
-    let mut qr: &mut Grid = &mut q.grids[index as usize];
-    let mut best: i32 = fitness_all(&q.image, qr);
+fn jiggle_perspective(image: &Image, qr: &mut Grid) {
+    let mut best: i32 = fitness_all(image, qr);
     let mut adjustments: [f64; 8] = [0f64; 8];
 
     for i in 0..8 {
@@ -768,7 +764,7 @@ fn jiggle_perspective(q: &mut Quirc, index: i32) {
             let new = if i & 1 != 0 { old + step } else { old - step };
 
             qr.c[j] = new;
-            let test = fitness_all(&q.image, qr);
+            let test = fitness_all(image, qr);
 
             if test > best {
                 best = test;
@@ -786,19 +782,17 @@ fn jiggle_perspective(q: &mut Quirc, index: i32) {
 /// Once the capstones are in place and an alignment point has been
 /// chosen, we call this function to set up a grid-reading perspective
 /// transform.
-fn setup_qr_perspective(q: &mut Quirc, index: i32) {
-    let qr: &mut Grid = &mut q.grids[index as usize];
-
+fn setup_qr_perspective(image: &Image, capstones: &[Capstone], qr: &mut Grid) {
     // Set up the perspective map for reading the grid
     let rect: [Point; 4] = [
-        q.capstones[qr.caps[1] as usize].corners[0],
-        q.capstones[qr.caps[2] as usize].corners[0],
+        capstones[qr.caps[1] as usize].corners[0],
+        capstones[qr.caps[2] as usize].corners[0],
         qr.align,
-        q.capstones[qr.caps[0] as usize].corners[0],
+        capstones[qr.caps[0] as usize].corners[0],
     ];
     qr.c = perspective_setup(&rect, (qr.grid_size - 7) as f64, (qr.grid_size - 7) as f64);
 
-    jiggle_perspective(q, index);
+    jiggle_perspective(image, qr);
 }
 
 /// Rotate the capstone with so that corner 0 is the leftmost with respect
@@ -820,7 +814,7 @@ fn rotate_capstone(cap: &mut Capstone, h0: &Point, hd: &Point) {
     cap.c = perspective_setup(&cap.corners, 7.0, 7.0);
 }
 
-unsafe fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
+fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
     if q.grids.len() >= MAX_GRIDS {
         return;
     }
@@ -847,24 +841,23 @@ unsafe fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
 
     // Record the grid and its components
     let qr_index = q.grids.len() as i32;
-    q.grids.push(Grid {
+    let mut qr = Grid {
         caps: [a, b, c],
         align_region: -1,
         ..Default::default()
-    });
-    let qr: *mut Grid = q.grids.last_mut().unwrap();
+    };
 
     // Rotate each capstone so that corner 0 is top-left with respect
     // to the grid.
     for i in 0..3 {
-        let cap = &mut q.capstones[(*qr).caps[i as usize] as usize];
+        let cap = &mut q.capstones[qr.caps[i as usize] as usize];
         rotate_capstone(cap, &h0, &hd);
         (*cap).qr_grid = qr_index;
     }
 
     // Check the timing pattern. This doesn't require a perspective
     // transform.
-    if !(measure_timing_pattern(q, qr_index) < 0) {
+    if !(measure_timing_pattern(&q.image, &q.capstones, &mut qr) < 0) {
         // Make an estimate based for the alignment pattern based on extending
         // lines from capstones A and C.
         if !(line_intersect(
@@ -872,55 +865,51 @@ unsafe fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
             &q.capstones[a as usize].corners[1],
             &q.capstones[c as usize].corners[0],
             &q.capstones[c as usize].corners[3],
-            &mut (*qr).align,
+            &mut qr.align,
         ) == 0)
         {
             // On V2+ grids, we should use the alignment pattern.
-            if (*qr).grid_size > 21 {
+            if qr.grid_size > 21 {
                 // Try to find the actual location of the alignment pattern.
-                find_alignment_pattern(
-                    &mut q.image,
-                    &mut q.regions,
-                    &mut q.capstones,
-                    &mut q.grids[qr_index as usize],
-                );
+                find_alignment_pattern(&mut q.image, &mut q.regions, &mut q.capstones, &mut qr);
 
                 // Find the point of the alignment pattern closest to the
                 // top-left of the QR grid.
-                if (*qr).align_region >= 0 {
-                    let reg: *mut Region = &mut q.regions[(*qr).align_region as usize];
+                if qr.align_region >= 0 {
+                    let reg = &mut q.regions[qr.align_region as usize];
 
                     // Start from some point inside the alignment pattern
-                    (*qr).align = (*reg).seed;
+                    qr.align = reg.seed;
 
                     let mut psd = PolygonScoreDataPoint {
                         r#ref: hd,
-                        scores: [-hd.y * (*qr).align.x + hd.x * (*qr).align.y, 0, 0, 0],
-                        point: &mut (*qr).align,
+                        scores: [-hd.y * qr.align.x + hd.x * qr.align.y, 0, 0, 0],
+                        point: &mut qr.align,
                     };
 
                     flood_fill_seed(
                         &mut q.image,
-                        (*reg).seed.x,
-                        (*reg).seed.y,
-                        (*qr).align_region,
+                        reg.seed.x,
+                        reg.seed.y,
+                        qr.align_region,
                         PIXEL_BLACK,
                         &mut |_, _, _| (),
                         0,
                     );
                     flood_fill_seed(
                         &mut q.image,
-                        (*reg).seed.x,
-                        (*reg).seed.y,
+                        reg.seed.x,
+                        reg.seed.y,
                         PIXEL_BLACK,
-                        (*qr).align_region,
+                        qr.align_region,
                         &mut |y, left, right| find_leftmost_to_line(&mut psd, y, left, right),
                         0,
                     );
                 }
             }
 
-            setup_qr_perspective(q, qr_index);
+            setup_qr_perspective(&q.image, &q.capstones, &mut qr);
+            q.grids.push(qr);
             return;
         }
     }
@@ -928,9 +917,8 @@ unsafe fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
     // We've been unable to complete setup for this grid. Undo what we've
     // recorded and pretend it never happened.
     for i in 0..3 {
-        q.capstones[(*qr).caps[i as usize] as usize].qr_grid = -1;
+        q.capstones[qr.caps[i as usize] as usize].qr_grid = -1;
     }
-    q.grids.pop();
 }
 
 #[derive(Copy)]
