@@ -236,12 +236,12 @@ fn area_count(region: &mut Region, left: i32, right: i32) {
     region.count += right - left + 1;
 }
 
-fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
-    if x < 0 || y < 0 || x >= q.image.w || y >= q.image.h {
+fn region_code(image: &mut Image, regions: &mut Vec<Region>, x: i32, y: i32) -> i32 {
+    if x < 0 || y < 0 || x >= image.w || y >= image.h {
         return -1;
     }
 
-    let pixel = q.image[(y * q.image.w + x) as usize] as i32;
+    let pixel = image[(y * image.w + x) as usize] as i32;
 
     if pixel >= PIXEL_REGION {
         return pixel;
@@ -251,20 +251,20 @@ fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
         return -1;
     }
 
-    if q.regions.len() >= MAX_REGIONS {
+    if regions.len() >= MAX_REGIONS {
         return -1;
     }
 
-    let region: i32 = q.regions.len() as i32;
-    q.regions.push(Region {
+    let region: i32 = regions.len() as i32;
+    regions.push(Region {
         seed: Point { x, y },
         capstone: -1,
         ..Default::default()
     });
-    let r#box: &mut Region = q.regions.last_mut().unwrap();
+    let r#box: &mut Region = regions.last_mut().unwrap();
 
     flood_fill_seed(
-        &mut q.image,
+        image,
         x,
         y,
         pixel,
@@ -410,9 +410,14 @@ fn record_capstone(
 }
 
 fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: &[i32; 5]) {
-    let ring_right: i32 = region_code(q, x - pb[4], y);
-    let stone: i32 = region_code(q, x - pb[4] - pb[3] - pb[2], y);
-    let ring_left: i32 = region_code(q, x - pb[4] - pb[3] - pb[2] - pb[1] - pb[0], y);
+    let ring_right: i32 = region_code(&mut q.image, &mut q.regions, x - pb[4], y);
+    let stone: i32 = region_code(&mut q.image, &mut q.regions, x - pb[4] - pb[3] - pb[2], y);
+    let ring_left: i32 = region_code(
+        &mut q.image,
+        &mut q.regions,
+        x - pb[4] - pb[3] - pb[2] - pb[1] - pb[0],
+        y,
+    );
 
     if ring_left < 0 || ring_right < 0 || stone < 0 {
         return;
@@ -492,22 +497,27 @@ fn finder_scan(q: &mut Quirc, y: i32) {
     }
 }
 
-unsafe fn find_alignment_pattern(q: &mut Quirc, index: i32) {
-    let mut qr: *mut Grid = &mut q.grids[index as usize];
-    let c0: *mut Capstone = &mut q.capstones[(*qr).caps[0] as usize];
-    let c2: *mut Capstone = &mut q.capstones[(*qr).caps[2] as usize];
+fn find_alignment_pattern(
+    image: &mut Image,
+    regions: &mut Vec<Region>,
+    capstones: &mut [Capstone],
+    qr: &mut Grid,
+) {
     let mut step_size: i32 = 1;
     let mut dir: i32 = 0;
 
     // Grab our previous estimate of the alignment pattern corner
-    let mut b = (*qr).align;
+    let mut b = qr.align;
 
     // Guess another two corners of the alignment pattern so that we
     // can estimate its size.
-    let (u, v) = perspective_unmap(&(*c0).c, &mut b);
-    let a = perspective_map(&(*c0).c, u, v + 1.0f64);
-    let (u, v) = perspective_unmap(&(*c2).c, &mut b);
-    let c = perspective_map(&(*c2).c, u + 1.0f64, v);
+    let c0 = &mut capstones[(*qr).caps[0] as usize];
+    let (u, v) = perspective_unmap(&c0.c, &mut b);
+    let a = perspective_map(&c0.c, u, v + 1.0f64);
+
+    let c2 = &mut capstones[(*qr).caps[2] as usize];
+    let (u, v) = perspective_unmap(&c2.c, &mut b);
+    let c = perspective_map(&c2.c, u + 1.0f64, v);
 
     let size_estimate = ((a.x - b.x) * -(c.y - b.y) + (a.y - b.y) * (c.x - b.x)).abs();
 
@@ -519,11 +529,11 @@ unsafe fn find_alignment_pattern(q: &mut Quirc, index: i32) {
         const DY_MAP: [i32; 4] = [0, -1, 0, 1];
 
         for _ in 0..step_size {
-            let code: i32 = region_code(q, b.x, b.y);
+            let code: i32 = region_code(image, regions, b.x, b.y);
             if code >= 0 {
-                let reg: *mut Region = &mut q.regions[code as usize];
-                if (*reg).count >= size_estimate / 2 && ((*reg).count <= size_estimate * 2) {
-                    (*qr).align_region = code;
+                let reg = &mut regions[code as usize];
+                if reg.count >= size_estimate / 2 && (reg.count <= size_estimate * 2) {
+                    qr.align_region = code;
                     return;
                 }
             }
@@ -868,7 +878,12 @@ unsafe fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
             // On V2+ grids, we should use the alignment pattern.
             if (*qr).grid_size > 21 {
                 // Try to find the actual location of the alignment pattern.
-                find_alignment_pattern(q, qr_index);
+                find_alignment_pattern(
+                    &mut q.image,
+                    &mut q.regions,
+                    &mut q.capstones,
+                    &mut q.grids[qr_index as usize],
+                );
 
                 // Find the point of the alignment pattern closest to the
                 // top-left of the QR grid.
