@@ -275,21 +275,21 @@ fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
     region
 }
 
-#[derive(Copy)]
 #[repr(C)]
-struct PolygonScoreData {
+struct PolygonScoreDataCorners<'a> {
     r#ref: Point,
     scores: [i32; 4],
-    corners: *mut Point,
+    corners: &'a mut [Point],
 }
 
-impl Clone for PolygonScoreData {
-    fn clone(&self) -> Self {
-        *self
-    }
+#[repr(C)]
+struct PolygonScoreDataPoint<'a> {
+    r#ref: Point,
+    scores: [i32; 4],
+    point: &'a mut Point,
 }
 
-unsafe fn find_one_corner(psd: &mut PolygonScoreData, y: i32, left: i32, right: i32) {
+fn find_one_corner(psd: &mut PolygonScoreDataCorners, y: i32, left: i32, right: i32) {
     let xs: [i32; 2] = [left, right];
     let dy: i32 = y - psd.r#ref.y;
 
@@ -299,40 +299,40 @@ unsafe fn find_one_corner(psd: &mut PolygonScoreData, y: i32, left: i32, right: 
 
         if d > psd.scores[0] {
             psd.scores[0] = d;
-            (*psd.corners.offset(0)).x = xs[i as usize];
-            (*psd.corners.offset(0)).y = y;
+            psd.corners[0].x = xs[i as usize];
+            psd.corners[0].y = y;
         }
     }
 }
 
-unsafe fn find_other_corners(psd: &mut PolygonScoreData, y: i32, left: i32, right: i32) {
+fn find_other_corners(psd: &mut PolygonScoreDataCorners, y: i32, left: i32, right: i32) {
     let xs: [i32; 2] = [left, right];
 
     for i in 0..2 {
-        let up: i32 = xs[i as usize] * psd.r#ref.x + y * psd.r#ref.y;
-        let right: i32 = xs[i as usize] * -psd.r#ref.y + y * psd.r#ref.x;
+        let up: i32 = xs[i] * psd.r#ref.x + y * psd.r#ref.y;
+        let right: i32 = xs[i] * -psd.r#ref.y + y * psd.r#ref.x;
         let scores: [i32; 4] = [up, right, -up, -right];
 
         for j in 0..4 {
-            if scores[j as usize] > psd.scores[j as usize] {
-                psd.scores[j as usize] = scores[j as usize];
-                (*psd.corners.offset(j as isize)).x = xs[i as usize];
-                (*psd.corners.offset(j as isize)).y = y;
+            if scores[j] > psd.scores[j] {
+                psd.scores[j] = scores[j];
+                psd.corners[j].x = xs[i];
+                psd.corners[j].y = y;
             }
         }
     }
 }
 
-unsafe fn find_region_corners(
+fn find_region_corners(
     image: &mut Image,
     regions: &mut [Region],
     rcode: i32,
-    r#ref: *const Point,
-    corners: *mut Point,
+    r#ref: Point,
+    corners: &mut [Point; 4],
 ) {
     let region = &mut regions[rcode as usize];
-    let mut psd: PolygonScoreData = PolygonScoreData {
-        r#ref: *r#ref,
+    let mut psd: PolygonScoreDataCorners = PolygonScoreDataCorners {
+        r#ref,
         scores: [-1, 0, 0, 0],
         corners,
     };
@@ -347,11 +347,11 @@ unsafe fn find_region_corners(
         0,
     );
 
-    psd.r#ref.x = (*psd.corners.offset(0)).x - psd.r#ref.x;
-    psd.r#ref.y = (*psd.corners.offset(0)).y - psd.r#ref.y;
+    psd.r#ref.x = psd.corners[0].x - psd.r#ref.x;
+    psd.r#ref.y = psd.corners[0].y - psd.r#ref.y;
 
     for i in 0..4 {
-        *psd.corners.offset(i as isize) = region.seed;
+        psd.corners[i] = region.seed;
     }
 
     let i = region.seed.x * psd.r#ref.x + region.seed.y * psd.r#ref.y;
@@ -372,7 +372,7 @@ unsafe fn find_region_corners(
     );
 }
 
-unsafe fn record_capstone(
+fn record_capstone(
     image: &mut Image,
     capstones: &mut Vec<Capstone>,
     regions: &mut [Region],
@@ -399,8 +399,8 @@ unsafe fn record_capstone(
         image,
         regions,
         ring,
-        &regions[stone as usize].seed,
-        capstone.corners.as_mut_ptr(),
+        regions[stone as usize].seed,
+        &mut capstone.corners,
     );
 
     // Set up the perspective transform and find the center
@@ -408,7 +408,7 @@ unsafe fn record_capstone(
     capstone.center = perspective_map(&capstone.c, 3.5f64, 3.5f64);
 }
 
-unsafe fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: &[i32; 5]) {
+fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: &[i32; 5]) {
     let ring_right: i32 = region_code(q, x - pb[4], y);
     let stone: i32 = region_code(q, x - pb[4] - pb[3] - pb[2], y);
     let ring_left: i32 = region_code(q, x - pb[4] - pb[3] - pb[2] - pb[1] - pb[0], y);
@@ -450,7 +450,7 @@ unsafe fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: &[i32; 5]) {
     );
 }
 
-unsafe fn finder_scan(q: &mut Quirc, y: i32) {
+fn finder_scan(q: &mut Quirc, y: i32) {
     let row: usize = (y * q.image.w) as usize;
     let mut last_color: i32 = 0;
     let mut run_length: i32 = 0;
@@ -536,7 +536,7 @@ unsafe fn find_alignment_pattern(q: &mut Quirc, index: i32) {
     }
 }
 
-unsafe fn find_leftmost_to_line(psd: &mut PolygonScoreData, y: i32, left: i32, right: i32) {
+fn find_leftmost_to_line(psd: &mut PolygonScoreDataPoint, y: i32, left: i32, right: i32) {
     let xs: [i32; 2] = [left, right];
 
     for i in 0..2 {
@@ -544,8 +544,8 @@ unsafe fn find_leftmost_to_line(psd: &mut PolygonScoreData, y: i32, left: i32, r
 
         if d < psd.scores[0] {
             psd.scores[0] = d;
-            (*psd.corners.offset(0)).x = xs[i as usize];
-            (*psd.corners.offset(0)).y = y;
+            psd.point.x = xs[i as usize];
+            psd.point.y = y;
         }
     }
 }
@@ -929,10 +929,10 @@ unsafe fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
                     // Start from some point inside the alignment pattern
                     (*qr).align = (*reg).seed;
 
-                    let mut psd = PolygonScoreData {
+                    let mut psd = PolygonScoreDataPoint {
                         r#ref: hd,
                         scores: [-hd.y * (*qr).align.x + hd.x * (*qr).align.y, 0, 0, 0],
-                        corners: &mut (*qr).align,
+                        point: &mut (*qr).align,
                     };
 
                     flood_fill_seed(
