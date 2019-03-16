@@ -278,15 +278,10 @@ pub unsafe extern "C" fn _c_main() {
     let path = matches.value_of(paths_arg_name).unwrap();
 
     let mut q = Quirc::new();
-    let status: i32;
-    status = load_image(&mut q, &Path::new(path));
-    if status < 0i32 {
+    let image_bytes = load_image(&mut q, &Path::new(path)).unwrap();
+    quirc_identify(&mut q, &image_bytes);
+    dump_info(&mut q);
+    if sdl_examine(&mut q) < 0i32 {
         panic!();
-    } else {
-        quirc_end(&mut q);
-        dump_info(&mut q);
-        if sdl_examine(&mut q) < 0i32 {
-            panic!();
-        }
     }
 }

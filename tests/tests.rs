@@ -38,12 +38,9 @@ impl Data {
 
 unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Data>]) {
     let mut decoder = Quirc::new();
-    let ret = load_image(&mut decoder, path);
-    assert_eq!(ret, 0);
+    let image_bytes = load_image(&mut decoder, path).unwrap();
 
-    let image_bytes = decoder.image.clone();
-
-    quirc_end(&mut decoder);
+    quirc_identify(&mut decoder, &image_bytes);
 
     let result: Vec<_> = (0..quirc_count(&decoder))
         .map(|i| {

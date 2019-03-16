@@ -112,24 +112,17 @@ pub unsafe extern "C" fn dump_cells(code: *const QuircCode) {
 ///
 /// Note that you must call quirc_end() if the function returns
 /// successfully (0).
-pub unsafe fn load_image(q: &mut Quirc, path: &Path) -> i32 {
+pub unsafe fn load_image(q: &mut Quirc, path: &Path) -> Option<Vec<u8>> {
     let img = image::open(path).unwrap().grayscale().to_luma();
     let (width, height) = img.dimensions();
 
     if !(quirc_resize(q, width as i32, height as i32) < 0i32) {
-        let image_bytes = quirc_begin(
-            q,
-            0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
-            0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
-        );
-
         let img_bytes = img.into_raw();
         assert_eq!(img_bytes.len(), width as usize * height as usize);
-        image_bytes.copy_from_slice(&img_bytes);
-
-        return 0i32;
+        Some(img_bytes)
+    } else {
+        None
     }
-    -1i32
 }
 
 pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {

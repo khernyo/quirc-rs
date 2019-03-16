@@ -105,28 +105,23 @@ pub unsafe extern "C" fn scan_file(
     let mut tp: libc::timespec = std::mem::uninitialized();
     let mut start: u32;
     let total_start: u32;
-    let ret: i32;
 
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     total_start = {
         start = ms(tp);
         start
     };
-    ret = load_image(decoder, path);
+    let image_bytes = load_image(decoder, path);
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     (*info).load_time = ms(tp).wrapping_sub(start);
-    let image_bytes = if WANT_VALIDATE {
-        decoder.image.clone()
-    } else {
-        Vec::new()
-    };
-    if ret < 0i32 {
+    if image_bytes.is_none() {
         eprintln!("{}: load failed", filename.to_str().unwrap());
         -1i32
     } else {
+        let image_bytes = image_bytes.unwrap();
         libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
         start = ms(tp);
-        quirc_end(decoder);
+        quirc_identify(decoder, &image_bytes);
         libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
         (*info).identify_time = ms(tp).wrapping_sub(start);
         (*info).id_count = quirc_count(decoder);

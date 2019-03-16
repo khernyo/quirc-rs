@@ -16,13 +16,7 @@ use test_utils::dbgutil::*;
 unsafe fn run(width: u32, height: u32, image_bytes: &[u8]) {
     let mut decoder = Quirc::new();
     quirc_resize(&mut decoder, width as i32, height as i32);
-    let quirc_image_bytes = quirc_begin(
-        &mut decoder,
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
-    );
-    quirc_image_bytes.copy_from_slice(image_bytes);
-    quirc_end(&mut decoder);
+    quirc_identify(&mut decoder, image_bytes);
 
     let id_count = quirc_count(&decoder);
     for i in 0..id_count {
@@ -68,16 +62,15 @@ unsafe fn bench(
     path: &Path,
     f: unsafe fn(width: u32, height: u32, image_bytes: &[u8]),
 ) {
-    let (width, height, q) = {
+    let (width, height, image_bytes) = {
         let mut decoder = Quirc::new();
         // TODO move quirc setup out of load_image()
-        let ret = load_image(&mut decoder, path);
-        assert_eq!(ret, 0);
+        let image_bytes = load_image(&mut decoder, path).unwrap();
 
-        (decoder.w as u32, decoder.h as u32, decoder)
+        (decoder.w as u32, decoder.h as u32, image_bytes)
     };
 
-    b.iter(|| f(width, height, &q.image));
+    b.iter(|| f(width, height, &image_bytes));
 }
 
 macro_rules! bench {

@@ -212,7 +212,6 @@ impl Default for Grid {
 
 #[repr(C)]
 pub struct Quirc {
-    pub image: Vec<u8>,
     pub pixels: Vec<u8>,
 
     /// used by threshold()
@@ -228,12 +227,11 @@ pub struct Quirc {
 impl Default for Quirc {
     fn default() -> Self {
         Quirc {
-            image: Vec::new(),
             pixels: Vec::new(),
             row_average: Vec::new(),
             w: 0,
             h: 0,
-            regions: Vec::new(),
+            regions: vec![Default::default(); 2],
             capstones: Vec::new(),
             grids: Vec::new(),
         }
@@ -266,7 +264,6 @@ pub fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
     }
 
     let newdim: usize = (w * h) as usize;
-    q.image.resize(newdim, 0);
     q.pixels.resize(newdim, 0);
     q.row_average.resize(w as usize, 0);
     q.w = w;

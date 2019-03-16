@@ -1099,33 +1099,12 @@ unsafe fn test_grouping(q: &mut Quirc, i: usize) {
     test_neighbours(q, i as i32, &mut hlist, &mut vlist);
 }
 
-fn pixels_setup(q: &mut Quirc) {
-    q.pixels.copy_from_slice(&q.image);
+fn pixels_setup(q: &mut Quirc, image: &[u8]) {
+    q.pixels.copy_from_slice(image);
 }
 
-/// These functions are used to process images for QR-code recognition.
-/// quirc_begin() must first be called to obtain access to a buffer into
-/// which the input image should be placed. Optionally, the current
-/// width and height may be returned.
-///
-/// After filling the buffer, quirc_end() should be called to process
-/// the image for QR-code recognition. The locations and content of each
-/// code may be obtained using accessor functions described below.
-pub unsafe fn quirc_begin(q: &mut Quirc, w: *mut i32, h: *mut i32) -> &mut [u8] {
-    q.regions.resize(2, Default::default());
-
-    if !w.is_null() {
-        *w = q.w;
-    }
-    if !h.is_null() {
-        *h = q.h;
-    }
-
-    q.image.as_mut()
-}
-
-pub unsafe fn quirc_end(q: &mut Quirc) {
-    pixels_setup(q);
+pub unsafe fn quirc_identify(q: &mut Quirc, image: &[u8]) {
+    pixels_setup(q, image);
     threshold(q);
 
     for i in 0..q.h {
