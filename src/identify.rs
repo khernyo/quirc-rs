@@ -323,8 +323,14 @@ unsafe fn find_other_corners(psd: &mut PolygonScoreData, y: i32, left: i32, righ
     }
 }
 
-unsafe fn find_region_corners(q: &mut Quirc, rcode: i32, r#ref: *const Point, corners: *mut Point) {
-    let region: *mut Region = &mut q.regions[rcode as usize];
+unsafe fn find_region_corners(
+    image: &mut Image,
+    regions: &mut [Region],
+    rcode: i32,
+    r#ref: *const Point,
+    corners: *mut Point,
+) {
+    let region = &mut regions[rcode as usize];
     let mut psd: PolygonScoreData = PolygonScoreData {
         r#ref: *r#ref,
         scores: [-1, 0, 0, 0],
@@ -332,9 +338,9 @@ unsafe fn find_region_corners(q: &mut Quirc, rcode: i32, r#ref: *const Point, co
     };
 
     flood_fill_seed(
-        &mut q.image,
-        (*region).seed.x,
-        (*region).seed.y,
+        image,
+        region.seed.x,
+        region.seed.y,
         rcode,
         PIXEL_BLACK,
         &mut |y, left, right| find_one_corner(&mut psd, y, left, right),
@@ -345,20 +351,20 @@ unsafe fn find_region_corners(q: &mut Quirc, rcode: i32, r#ref: *const Point, co
     psd.r#ref.y = (*psd.corners.offset(0)).y - psd.r#ref.y;
 
     for i in 0..4 {
-        *psd.corners.offset(i as isize) = (*region).seed;
+        *psd.corners.offset(i as isize) = region.seed;
     }
 
-    let i = (*region).seed.x * psd.r#ref.x + (*region).seed.y * psd.r#ref.y;
+    let i = region.seed.x * psd.r#ref.x + region.seed.y * psd.r#ref.y;
     psd.scores[0] = i;
     psd.scores[2] = -i;
-    let i = (*region).seed.x * -psd.r#ref.y + (*region).seed.y * psd.r#ref.x;
+    let i = region.seed.x * -psd.r#ref.y + region.seed.y * psd.r#ref.x;
     psd.scores[1] = i;
     psd.scores[3] = -i;
 
     flood_fill_seed(
-        &mut q.image,
-        (*region).seed.x,
-        (*region).seed.y,
+        image,
+        region.seed.x,
+        region.seed.y,
         PIXEL_BLACK,
         rcode,
         &mut |y, left, right| find_other_corners(&mut psd, y, left, right),
@@ -366,36 +372,40 @@ unsafe fn find_region_corners(q: &mut Quirc, rcode: i32, r#ref: *const Point, co
     );
 }
 
-unsafe fn record_capstone(q: &mut Quirc, ring: i32, stone: i32) {
-    let mut stone_reg: *mut Region = &mut q.regions[stone as usize];
-    let mut ring_reg: *mut Region = &mut q.regions[ring as usize];
-
-    if q.capstones.len() >= MAX_CAPSTONES {
+unsafe fn record_capstone(
+    image: &mut Image,
+    capstones: &mut Vec<Capstone>,
+    regions: &mut [Region],
+    ring: i32,
+    stone: i32,
+) {
+    if capstones.len() >= MAX_CAPSTONES {
         return;
     }
 
-    let cs_index = q.capstones.len();
-    q.capstones.push(Capstone {
+    let cs_index = capstones.len();
+    capstones.push(Capstone {
         qr_grid: -1,
         ring,
         stone,
         ..Default::default()
     });
-    let capstone: *mut Capstone = q.capstones.last_mut().unwrap();
-    (*stone_reg).capstone = cs_index as i32;
-    (*ring_reg).capstone = cs_index as i32;
+    let capstone = capstones.last_mut().unwrap();
+    regions[stone as usize].capstone = cs_index as i32;
+    regions[ring as usize].capstone = cs_index as i32;
 
     // Find the corners of the ring
     find_region_corners(
-        q,
+        image,
+        regions,
         ring,
-        &(*stone_reg).seed,
-        (*capstone).corners.as_mut_ptr(),
+        &regions[stone as usize].seed,
+        capstone.corners.as_mut_ptr(),
     );
 
     // Set up the perspective transform and find the center
-    (*capstone).c = perspective_setup(&(*capstone).corners, 7.0f64, 7.0f64);
-    (*capstone).center = perspective_map(&(*capstone).c, 3.5f64, 3.5f64);
+    capstone.c = perspective_setup(&capstone.corners, 7.0f64, 7.0f64);
+    capstone.center = perspective_map(&capstone.c, 3.5f64, 3.5f64);
 }
 
 unsafe fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: &[i32; 5]) {
@@ -417,21 +427,27 @@ unsafe fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: &[i32; 5]) {
         return;
     }
 
-    let stone_reg = &mut q.regions[stone as usize] as *mut Region;
-    let ring_reg = &mut q.regions[ring_left as usize] as *mut Region;
+    let stone_reg = &q.regions[stone as usize];
+    let ring_reg = &q.regions[ring_left as usize];
 
     // Already detected
-    if (*stone_reg).capstone >= 0 || (*ring_reg).capstone >= 0 {
+    if stone_reg.capstone >= 0 || ring_reg.capstone >= 0 {
         return;
     }
 
     // Ratio should ideally be 37.5
-    let ratio = (*stone_reg).count * 100 / (*ring_reg).count;
+    let ratio = stone_reg.count * 100 / ring_reg.count;
     if ratio < 10 || ratio > 70 {
         return;
     }
 
-    record_capstone(q, ring_left, stone);
+    record_capstone(
+        &mut q.image,
+        &mut q.capstones,
+        &mut q.regions,
+        ring_left,
+        stone,
+    );
 }
 
 unsafe fn finder_scan(q: &mut Quirc, y: i32) {
