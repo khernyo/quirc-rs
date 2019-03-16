@@ -1,4 +1,5 @@
 #![feature(copysign)]
+#![feature(copy_within)]
 #![allow(non_snake_case)]
 
 pub mod decode;

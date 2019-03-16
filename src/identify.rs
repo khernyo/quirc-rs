@@ -20,14 +20,6 @@ use crate::version_db::*;
 
 use std::cmp::max;
 
-extern "C" {
-    fn memmove(
-        __dest: *mut ::std::os::raw::c_void,
-        __src: *const ::std::os::raw::c_void,
-        __n: usize,
-    ) -> *mut ::std::os::raw::c_void;
-}
-
 /************************************************************************
  * Linear algebra routines
  */
@@ -453,11 +445,7 @@ unsafe fn finder_scan(q: &mut Quirc, y: i32) {
         let color: i32 = if q.image[row + x as usize] != 0 { 1 } else { 0 };
 
         if x != 0 && (color != last_color) {
-            memmove(
-                pb.as_mut_ptr() as *mut ::std::os::raw::c_void,
-                pb.as_mut_ptr().offset(1) as *const ::std::os::raw::c_void,
-                ::std::mem::size_of::<i32>().wrapping_mul(4),
-            );
+            pb.copy_within(1.., 0);
             pb[4] = run_length;
             run_length = 0;
             run_count += 1;
