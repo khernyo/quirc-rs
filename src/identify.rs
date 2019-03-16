@@ -18,6 +18,7 @@ use crate::quirc::consts::*;
 use crate::quirc::*;
 use crate::version_db::*;
 
+use line_drawing::Bresenham;
 use std::cmp::max;
 
 /************************************************************************
@@ -552,7 +553,7 @@ fn find_leftmost_to_line(psd: &mut PolygonScoreDataPoint, y: i32, left: i32, rig
 
 /// Do a Bresenham scan from one point to another and count the number
 /// of black/white transitions.
-unsafe fn timing_scan(q: &Quirc, p0: &Point, p1: &Point) -> i32 {
+fn timing_scan(q: &Quirc, p0: &Point, p1: &Point) -> i32 {
     if p0.x < 0 || p0.y < 0 || p0.x >= q.image.w || p0.y >= q.image.h {
         return -1;
     }
@@ -560,56 +561,10 @@ unsafe fn timing_scan(q: &Quirc, p0: &Point, p1: &Point) -> i32 {
         return -1;
     }
 
-    let mut n: i32 = p1.x - p0.x;
-    let mut d: i32 = p1.y - p0.y;
-    let mut x: i32 = p0.x;
-    let mut y: i32 = p0.y;
-    let dom: *mut i32;
-    let nondom: *mut i32;
-
-    if n.abs() > d.abs() {
-        let swap: i32 = n;
-
-        n = d;
-        d = swap;
-
-        dom = &mut x as *mut i32;
-        nondom = &mut y as *mut i32;
-    } else {
-        dom = &mut y as *mut i32;
-        nondom = &mut x as *mut i32;
-    }
-
-    let nondom_step: i32;
-    if n < 0 {
-        n = -n;
-        nondom_step = -1;
-    } else {
-        nondom_step = 1;
-    }
-
-    let dom_step: i32;
-    if d < 0 {
-        d = -d;
-        dom_step = -1;
-    } else {
-        dom_step = 1;
-    }
-
-    let mut a: i32 = 0;
     let mut run_length: i32 = 0;
     let mut count: i32 = 0;
-
-    x = p0.x;
-    y = p0.y;
-    for _ in 0..=d {
-        let pixel: i32;
-
-        if y < 0 || y >= q.image.h || x < 0 || x >= q.image.w {
-            break;
-        }
-
-        pixel = q.image[(y * q.image.w + x) as usize] as i32;
+    for (x, y) in Bresenham::new((p0.x, p0.y), (p1.x, p1.y)) {
+        let pixel = q.image[(y * q.image.w + x) as usize] as i32;
 
         if pixel != 0 {
             if run_length >= 2 {
@@ -619,14 +574,8 @@ unsafe fn timing_scan(q: &Quirc, p0: &Point, p1: &Point) -> i32 {
         } else {
             run_length += 1;
         }
-
-        a += n;
-        *dom = *dom + dom_step;
-        if a >= d {
-            *nondom = *nondom + nondom_step;
-            a -= d;
-        }
     }
+
     count
 }
 
@@ -638,7 +587,7 @@ unsafe fn timing_scan(q: &Quirc, p0: &Point, p1: &Point) -> i32 {
 /// For each capstone, we find a point in the middle of the ring band
 /// which is nearest the centre of the code. Using these points, we do
 /// a horizontal and a vertical timing scan.
-unsafe fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i32 {
+fn measure_timing_pattern(q: &mut Quirc, index: i32) -> i32 {
     let qr = &q.grids[index as usize];
 
     let mut tpep = [Default::default(); 3];
