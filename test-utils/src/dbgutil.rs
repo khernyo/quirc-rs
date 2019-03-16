@@ -112,22 +112,19 @@ pub unsafe extern "C" fn dump_cells(code: *const QuircCode) {
 ///
 /// Note that you must call quirc_end() if the function returns
 /// successfully (0).
-pub unsafe fn load_image(q: &mut Quirc, path: &Path) -> Option<Vec<u8>> {
+pub unsafe fn load_image(q: &mut Quirc, path: &Path) -> Vec<u8> {
     let img = image::open(path).unwrap().grayscale().to_luma();
     let (width, height) = img.dimensions();
 
-    if !(quirc_resize(q, width as i32, height as i32) < 0i32) {
-        let img_bytes = img.into_raw();
-        assert_eq!(img_bytes.len(), width as usize * height as usize);
-        Some(img_bytes)
-    } else {
-        None
-    }
+    quirc_resize(q, width, height);
+    let img_bytes = img.into_raw();
+    assert_eq!(img_bytes.len(), width as usize * height as usize);
+    img_bytes
 }
 
 pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     let qw_decoder: *mut qw::quirc = qw::quirc_new();
-    assert!(qw::quirc_resize(qw_decoder, decoder.w, decoder.h) >= 0);
+    assert!(qw::quirc_resize(qw_decoder, decoder.image.w, decoder.image.h) >= 0);
     let image_bytes = qw::quirc_begin(
         qw_decoder,
         0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
@@ -136,12 +133,12 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     memcpy(
         image_bytes as *mut c_void,
         image.as_ptr() as *const c_void,
-        (decoder.w * decoder.h) as usize,
+        (decoder.image.w * decoder.image.h) as usize,
     );
     qw::quirc_end(qw_decoder);
 
     assert_eq!(
-        decoder.pixels.as_slice(),
+        decoder.image.pixels.as_slice(),
         std::slice::from_raw_parts(
             (*qw_decoder).pixels,
             ((*qw_decoder).w * (*qw_decoder).h) as usize
@@ -149,10 +146,10 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     );
     assert_eq!(
         decoder.row_average.as_slice(),
-        std::slice::from_raw_parts((*qw_decoder).row_average, decoder.w as usize)
+        std::slice::from_raw_parts((*qw_decoder).row_average, decoder.image.w as usize)
     );
-    assert_eq!(decoder.w, (*qw_decoder).w);
-    assert_eq!(decoder.h, (*qw_decoder).h);
+    assert_eq!(decoder.image.w, (*qw_decoder).w);
+    assert_eq!(decoder.image.h, (*qw_decoder).h);
     assert_eq!(decoder.regions.len(), (*qw_decoder).num_regions as usize);
     assert_eq!(
         memcmp(

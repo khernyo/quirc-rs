@@ -96,11 +96,7 @@ pub unsafe extern "C" fn add_result(mut sum: *mut ResultInfo, inf: *mut ResultIn
     (*sum).total_time = (*sum).total_time.wrapping_add((*inf).total_time);
 }
 
-pub unsafe extern "C" fn scan_file(
-    decoder: &mut Quirc,
-    path: &Path,
-    mut info: *mut ResultInfo,
-) -> i32 {
+pub unsafe extern "C" fn scan_file(decoder: &mut Quirc, path: &Path, mut info: *mut ResultInfo) {
     let filename = path.file_name().unwrap();
     let mut tp: libc::timespec = std::mem::uninitialized();
     let mut start: u32;
@@ -114,64 +110,58 @@ pub unsafe extern "C" fn scan_file(
     let image_bytes = load_image(decoder, path);
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     (*info).load_time = ms(tp).wrapping_sub(start);
-    if image_bytes.is_none() {
-        eprintln!("{}: load failed", filename.to_str().unwrap());
-        -1i32
-    } else {
-        let image_bytes = image_bytes.unwrap();
-        libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
-        start = ms(tp);
-        quirc_identify(decoder, &image_bytes);
-        libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
-        (*info).identify_time = ms(tp).wrapping_sub(start);
-        (*info).id_count = quirc_count(decoder);
+
+    libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
+    start = ms(tp);
+    quirc_identify(decoder, &image_bytes);
+    libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
+    (*info).identify_time = ms(tp).wrapping_sub(start);
+    (*info).id_count = quirc_count(decoder);
+    for i in 0..(*info).id_count {
+        let code = quirc_extract(decoder, i).unwrap();
+        if let Ok(_) = quirc_decode(&code) {
+            (*info).decode_count = (*info).decode_count + 1;
+        }
+    }
+    libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
+    (*info).total_time = (*info)
+        .total_time
+        .wrapping_add(ms(tp).wrapping_sub(total_start));
+    println!(
+        "  {:-30}: {:5} {:5} {:5} {:5} {:5}",
+        filename.to_str().unwrap(),
+        (*info).load_time,
+        (*info).identify_time,
+        (*info).total_time,
+        (*info).id_count,
+        (*info).decode_count
+    );
+    if WANT_CELL_DUMP || WANT_VERBOSE {
         for i in 0..(*info).id_count {
             let code = quirc_extract(decoder, i).unwrap();
-            if let Ok(_) = quirc_decode(&code) {
-                (*info).decode_count = (*info).decode_count + 1;
+            if WANT_CELL_DUMP {
+                dump_cells(&code);
+                println!();
             }
-        }
-        libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
-        (*info).total_time = (*info)
-            .total_time
-            .wrapping_add(ms(tp).wrapping_sub(total_start));
-        println!(
-            "  {:-30}: {:5} {:5} {:5} {:5} {:5}",
-            filename.to_str().unwrap(),
-            (*info).load_time,
-            (*info).identify_time,
-            (*info).total_time,
-            (*info).id_count,
-            (*info).decode_count
-        );
-        if WANT_CELL_DUMP || WANT_VERBOSE {
-            for i in 0..(*info).id_count {
-                let code = quirc_extract(decoder, i).unwrap();
-                if WANT_CELL_DUMP {
-                    dump_cells(&code);
-                    println!();
-                }
-                if WANT_VERBOSE {
-                    match quirc_decode(&code) {
-                        Ok(data) => {
-                            println!("  Decode successful:");
-                            dump_data(&data);
-                            println!();
-                        }
-                        Err(e) => {
-                            println!("  ERROR: {}", quirc_strerror(e));
-                            println!();
-                        }
+            if WANT_VERBOSE {
+                match quirc_decode(&code) {
+                    Ok(data) => {
+                        println!("  Decode successful:");
+                        dump_data(&data);
+                        println!();
+                    }
+                    Err(e) => {
+                        println!("  ERROR: {}", quirc_strerror(e));
+                        println!();
                     }
                 }
             }
         }
-        if WANT_VALIDATE {
-            validate(decoder, &image_bytes);
-        }
-        (*info).file_count = 1i32;
-        1i32
     }
+    if WANT_VALIDATE {
+        validate(decoder, &image_bytes);
+    }
+    (*info).file_count = 1i32;
 }
 
 pub unsafe extern "C" fn scan_dir(decoder: &mut Quirc, path: &Path, info: *mut ResultInfo) -> i32 {
@@ -209,9 +199,11 @@ pub unsafe extern "C" fn test_scan(decoder: &mut Quirc, path: &Path, info: *mut 
     );
 
     if path.is_file() {
-        scan_file(decoder, path, info)
+        scan_file(decoder, path, info);
+        1
     } else if path.is_dir() {
-        scan_dir(decoder, path, info)
+        scan_dir(decoder, path, info);
+        1
     } else {
         0
     }

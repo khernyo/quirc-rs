@@ -38,7 +38,7 @@ impl Data {
 
 unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Data>]) {
     let mut decoder = Quirc::new();
-    let image_bytes = load_image(&mut decoder, path).unwrap();
+    let image_bytes = load_image(&mut decoder, path);
 
     quirc_identify(&mut decoder, &image_bytes);
 

@@ -15,7 +15,7 @@ use test_utils::dbgutil::*;
 
 unsafe fn run(width: u32, height: u32, image_bytes: &[u8]) {
     let mut decoder = Quirc::new();
-    quirc_resize(&mut decoder, width as i32, height as i32);
+    quirc_resize(&mut decoder, width, height);
     quirc_identify(&mut decoder, image_bytes);
 
     let id_count = quirc_count(&decoder);
@@ -65,9 +65,9 @@ unsafe fn bench(
     let (width, height, image_bytes) = {
         let mut decoder = Quirc::new();
         // TODO move quirc setup out of load_image()
-        let image_bytes = load_image(&mut decoder, path).unwrap();
+        let image_bytes = load_image(&mut decoder, path);
 
-        (decoder.w as u32, decoder.h as u32, image_bytes)
+        (decoder.image.w as u32, decoder.image.h as u32, image_bytes)
     };
 
     b.iter(|| f(width, height, &image_bytes));

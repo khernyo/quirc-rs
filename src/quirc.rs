@@ -14,6 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+use std::ops::{Index, IndexMut};
+
 /// This structure is used to return information about detected QR codes
 /// in the input image.
 #[derive(Copy)]
@@ -210,15 +212,52 @@ impl Default for Grid {
     }
 }
 
+pub struct Image {
+    pub pixels: Vec<u8>,
+    pub w: i32,
+    pub h: i32,
+}
+
+impl Default for Image {
+    fn default() -> Self {
+        Image {
+            pixels: vec![],
+            w: 0,
+            h: 0,
+        }
+    }
+}
+
+impl Index<usize> for Image {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.pixels[index]
+    }
+}
+
+impl IndexMut<usize> for Image {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.pixels[index]
+    }
+}
+
+impl Image {
+    fn resize(&mut self, w: u32, h: u32) {
+        let newdim: usize = (w * h) as usize;
+        self.pixels.resize(newdim, 0);
+        self.w = w as i32;
+        self.h = h as i32;
+    }
+}
+
 #[repr(C)]
 pub struct Quirc {
-    pub pixels: Vec<u8>,
+    pub image: Image,
 
     /// used by threshold()
     pub row_average: Vec<i32>,
 
-    pub w: i32,
-    pub h: i32,
     pub regions: Vec<Region>,
     pub capstones: Vec<Capstone>,
     pub grids: Vec<Grid>,
@@ -227,10 +266,8 @@ pub struct Quirc {
 impl Default for Quirc {
     fn default() -> Self {
         Quirc {
-            pixels: Vec::new(),
+            image: Default::default(),
             row_average: Vec::new(),
-            w: 0,
-            h: 0,
             regions: vec![Default::default(); 2],
             capstones: Vec::new(),
             grids: Vec::new(),
@@ -254,21 +291,9 @@ pub fn quirc_version() -> &'static str {
 ///
 /// This function returns 0 on success, or -1 if sufficient memory could
 /// not be allocated.
-pub fn quirc_resize(q: &mut Quirc, w: i32, h: i32) -> i32 {
-    // XXX: w and h should be size_t (or at least unsigned) as negatives
-    // values would not make much sense. The downside is that it would break
-    // both the API and ABI. Thus, at the moment, let's just do a sanity
-    // check.
-    if w < 0i32 || h < 0i32 {
-        return -1i32;
-    }
-
-    let newdim: usize = (w * h) as usize;
-    q.pixels.resize(newdim, 0);
+pub fn quirc_resize(q: &mut Quirc, w: u32, h: u32) {
+    q.image.resize(w, h);
     q.row_average.resize(w as usize, 0);
-    q.w = w;
-    q.h = h;
-    return 0i32;
 }
 
 /// Return the number of QR-codes identified in the last processed

@@ -99,10 +99,10 @@ unsafe fn string_color(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, col
 }
 
 unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: &mut Quirc) {
-    let mut raw = q.pixels.as_ptr();
+    let mut raw = q.image.pixels.as_ptr();
 
-    for y in 0..q.h {
-        for x in 0..q.w {
+    for y in 0..q.image.h {
+        for x in 0..q.image.w {
             let v: u8 = *{
                 let _old = raw;
                 raw = raw.offset(1isize);
@@ -228,7 +228,7 @@ unsafe extern "C" fn sdl_examine(q: &mut Quirc) -> i32 {
 
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("", q.w as u32, q.h as u32)
+        .window("", q.image.w as u32, q.image.h as u32)
         .position_centered()
         .build()
         .unwrap();
@@ -278,7 +278,7 @@ pub unsafe extern "C" fn _c_main() {
     let path = matches.value_of(paths_arg_name).unwrap();
 
     let mut q = Quirc::new();
-    let image_bytes = load_image(&mut q, &Path::new(path)).unwrap();
+    let image_bytes = load_image(&mut q, &Path::new(path));
     quirc_identify(&mut q, &image_bytes);
     dump_info(&mut q);
     if sdl_examine(&mut q) < 0i32 {

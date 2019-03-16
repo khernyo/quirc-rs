@@ -126,9 +126,7 @@ const FLOOD_FILL_MAX_DEPTH: i32 = 4096;
 
 /// Span-based floodfill routine
 fn flood_fill_seed<F>(
-    pixels: &mut [u8],
-    w: i32,
-    h: i32,
+    image: &mut Image,
     x: i32,
     y: i32,
     from: i32,
@@ -140,16 +138,16 @@ fn flood_fill_seed<F>(
 {
     let mut left: i32 = x;
     let mut right: i32 = x;
-    let mut row: usize = (y * w) as usize;
+    let mut row: usize = (y * image.w) as usize;
     if depth >= FLOOD_FILL_MAX_DEPTH {
         return;
     }
 
-    while left > 0 && (pixels[row + (left - 1) as usize] as i32 == from) {
+    while left > 0 && (image[row + (left - 1) as usize] as i32 == from) {
         left = left - 1;
     }
 
-    while right < w - 1 && (pixels[row + (right + 1) as usize] as i32 == from) {
+    while right < image.w - 1 && (image[row + (right + 1) as usize] as i32 == from) {
         right = right + 1;
     }
 
@@ -157,7 +155,7 @@ fn flood_fill_seed<F>(
     // TODO Use a simple for statement (currently, it causes a stack overflow during tests)
     let mut i = left;
     while i <= right {
-        pixels[row + i as usize] = to as u8;
+        image[row + i as usize] = to as u8;
         i += 1;
     }
 
@@ -165,24 +163,24 @@ fn flood_fill_seed<F>(
 
     // Seed new flood-fills
     if y > 0 {
-        row = ((y - 1) * w) as usize;
+        row = ((y - 1) * image.w) as usize;
 
         let mut i = left;
         while i <= right {
-            if pixels[row + i as usize] as i32 == from {
-                flood_fill_seed(pixels, w, h, i, y - 1, from, to, func, depth + 1);
+            if image[row + i as usize] as i32 == from {
+                flood_fill_seed(image, i, y - 1, from, to, func, depth + 1);
             }
             i += 1;
         }
     }
 
-    if y < h - 1 {
-        row = ((y + 1) * w) as usize;
+    if y < image.h - 1 {
+        row = ((y + 1) * image.w) as usize;
 
         let mut i = left;
         while i <= right {
-            if pixels[row + i as usize] as i32 == from {
-                flood_fill_seed(pixels, w, h, i, y + 1, from, to, func, depth + 1);
+            if image[row + i as usize] as i32 == from {
+                flood_fill_seed(image, i, y + 1, from, to, func, depth + 1);
             }
             i += 1;
         }
@@ -197,7 +195,7 @@ const THRESHOLD_T: i32 = 5;
 fn threshold(q: &mut Quirc) {
     let mut avg_w: i32 = 0;
     let mut avg_u: i32 = 0;
-    let mut threshold_s: i32 = q.w / THRESHOLD_S_DEN;
+    let mut threshold_s: i32 = q.image.w / THRESHOLD_S_DEN;
     let mut row: usize = 0;
 
     // Ensure a sane, non-zero value for threshold_s.
@@ -206,38 +204,38 @@ fn threshold(q: &mut Quirc) {
     // SIGFPE as it will be used as divisor.
     threshold_s = max(threshold_s, THRESHOLD_S_MIN);
 
-    for y in 0..q.h {
+    for y in 0..q.image.h {
         q.row_average.iter_mut().for_each(|x| *x = 0);
 
-        for x in 0..q.w {
+        for x in 0..q.image.w {
             let w: usize;
             let u: usize;
 
             if y & 1 != 0 {
                 w = x as usize;
-                u = (q.w - 1 - x) as usize;
+                u = (q.image.w - 1 - x) as usize;
             } else {
-                w = (q.w - 1 - x) as usize;
+                w = (q.image.w - 1 - x) as usize;
                 u = x as usize;
             }
 
-            avg_w = avg_w * (threshold_s - 1) / threshold_s + q.pixels[row + w] as i32;
-            avg_u = avg_u * (threshold_s - 1) / threshold_s + q.pixels[row + u] as i32;
+            avg_w = avg_w * (threshold_s - 1) / threshold_s + q.image[row + w] as i32;
+            avg_u = avg_u * (threshold_s - 1) / threshold_s + q.image[row + u] as i32;
 
             q.row_average[w as usize] += avg_w;
             q.row_average[u as usize] += avg_u;
         }
 
-        for x in 0..q.w {
-            if (q.pixels[row + x as usize] as i32)
+        for x in 0..q.image.w {
+            if (q.image[row + x as usize] as i32)
                 < q.row_average[x as usize] * (100 - THRESHOLD_T) / (200 * threshold_s)
             {
-                q.pixels[row + x as usize] = PIXEL_BLACK as u8;
+                q.image[row + x as usize] = PIXEL_BLACK as u8;
             } else {
-                q.pixels[row + x as usize] = PIXEL_WHITE as u8;
+                q.image[row + x as usize] = PIXEL_WHITE as u8;
             }
         }
-        row += q.w as usize;
+        row += q.image.w as usize;
     }
 }
 
@@ -246,11 +244,11 @@ fn area_count(region: &mut Region, left: i32, right: i32) {
 }
 
 fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
-    if x < 0 || y < 0 || x >= q.w || y >= q.h {
+    if x < 0 || y < 0 || x >= q.image.w || y >= q.image.h {
         return -1;
     }
 
-    let pixel = q.pixels[(y * q.w + x) as usize] as i32;
+    let pixel = q.image[(y * q.image.w + x) as usize] as i32;
 
     if pixel >= PIXEL_REGION {
         return pixel;
@@ -273,9 +271,7 @@ fn region_code(q: &mut Quirc, x: i32, y: i32) -> i32 {
     let r#box: &mut Region = q.regions.last_mut().unwrap();
 
     flood_fill_seed(
-        &mut q.pixels,
-        q.w,
-        q.h,
+        &mut q.image,
         x,
         y,
         pixel,
@@ -344,9 +340,7 @@ unsafe fn find_region_corners(q: &mut Quirc, rcode: i32, r#ref: *const Point, co
     };
 
     flood_fill_seed(
-        &mut q.pixels,
-        q.w,
-        q.h,
+        &mut q.image,
         (*region).seed.x,
         (*region).seed.y,
         rcode,
@@ -370,9 +364,7 @@ unsafe fn find_region_corners(q: &mut Quirc, rcode: i32, r#ref: *const Point, co
     psd.scores[3] = -i;
 
     flood_fill_seed(
-        &mut q.pixels,
-        q.w,
-        q.h,
+        &mut q.image,
         (*region).seed.x,
         (*region).seed.y,
         PIXEL_BLACK,
@@ -451,18 +443,14 @@ unsafe fn test_capstone(q: &mut Quirc, x: i32, y: i32, pb: &[i32; 5]) {
 }
 
 unsafe fn finder_scan(q: &mut Quirc, y: i32) {
-    let row: usize = (y * q.w) as usize;
+    let row: usize = (y * q.image.w) as usize;
     let mut last_color: i32 = 0;
     let mut run_length: i32 = 0;
     let mut run_count: i32 = 0;
     let mut pb: [i32; 5] = [0; 5];
 
-    for x in 0..q.w {
-        let color: i32 = if q.pixels[row + x as usize] != 0 {
-            1
-        } else {
-            0
-        };
+    for x in 0..q.image.w {
+        let color: i32 = if q.image[row + x as usize] != 0 { 1 } else { 0 };
 
         if x != 0 && (color != last_color) {
             memmove(
@@ -561,10 +549,10 @@ unsafe fn find_leftmost_to_line(psd: &mut PolygonScoreData, y: i32, left: i32, r
 /// Do a Bresenham scan from one point to another and count the number
 /// of black/white transitions.
 unsafe fn timing_scan(q: &Quirc, p0: &Point, p1: &Point) -> i32 {
-    if p0.x < 0 || p0.y < 0 || p0.x >= q.w || p0.y >= q.h {
+    if p0.x < 0 || p0.y < 0 || p0.x >= q.image.w || p0.y >= q.image.h {
         return -1;
     }
-    if p1.x < 0 || p1.y < 0 || p1.x >= q.w || p1.y >= q.h {
+    if p1.x < 0 || p1.y < 0 || p1.x >= q.image.w || p1.y >= q.image.h {
         return -1;
     }
 
@@ -613,11 +601,11 @@ unsafe fn timing_scan(q: &Quirc, p0: &Point, p1: &Point) -> i32 {
     for _ in 0..=d {
         let pixel: i32;
 
-        if y < 0 || y >= q.h || x < 0 || x >= q.w {
+        if y < 0 || y >= q.image.h || x < 0 || x >= q.image.w {
             break;
         }
 
-        pixel = q.pixels[(y * q.w + x) as usize] as i32;
+        pixel = q.image[(y * q.image.w + x) as usize] as i32;
 
         if pixel != 0 {
             if run_length >= 2 {
@@ -695,16 +683,16 @@ fn read_cell(q: &Quirc, index: i32, x: i32, y: i32) -> Cell {
     let qr: &Grid = &q.grids[index as usize];
 
     let p = perspective_map(&qr.c, x as f64 + 0.5f64, y as f64 + 0.5f64);
-    if p.y < 0 || p.y >= q.h || p.x < 0 || p.x >= q.w {
+    if p.y < 0 || p.y >= q.image.h || p.x < 0 || p.x >= q.image.w {
         Cell::OutOfBounds
-    } else if q.pixels[(p.y * q.w + p.x) as usize] != 0 {
+    } else if q.image[(p.y * q.image.w + p.x) as usize] != 0 {
         Cell::Black
     } else {
         Cell::White
     }
 }
 
-fn fitness_cell(pixels: &[u8], w: i32, h: i32, qr: &mut Grid, x: i32, y: i32) -> i32 {
+fn fitness_cell(image: &Image, qr: &mut Grid, x: i32, y: i32) -> i32 {
     let mut score: i32 = 0;
 
     for v in 0..3 {
@@ -717,8 +705,8 @@ fn fitness_cell(pixels: &[u8], w: i32, h: i32, qr: &mut Grid, x: i32, y: i32) ->
                 y as f64 + OFFSETS[v as usize],
             );
 
-            if !(p.y < 0 || p.y >= h || p.x < 0 || p.x >= w) {
-                if pixels[(p.y * w + p.x) as usize] != 0 {
+            if !(p.y < 0 || p.y >= image.h || p.x < 0 || p.x >= image.w) {
+                if image[(p.y * image.w + p.x) as usize] != 0 {
                     score += 1;
                 } else {
                     score -= 1;
@@ -729,58 +717,50 @@ fn fitness_cell(pixels: &[u8], w: i32, h: i32, qr: &mut Grid, x: i32, y: i32) ->
     score
 }
 
-fn fitness_ring(
-    pixels: &[u8],
-    w: i32,
-    h: i32,
-    grid: &mut Grid,
-    cx: i32,
-    cy: i32,
-    radius: i32,
-) -> i32 {
+fn fitness_ring(image: &Image, grid: &mut Grid, cx: i32, cy: i32, radius: i32) -> i32 {
     let mut score: i32 = 0;
 
     for i in 0..radius * 2 {
-        score += fitness_cell(pixels, w, h, grid, cx - radius + i, cy - radius);
-        score += fitness_cell(pixels, w, h, grid, cx - radius, cy + radius - i);
-        score += fitness_cell(pixels, w, h, grid, cx + radius, cy - radius + i);
-        score += fitness_cell(pixels, w, h, grid, cx + radius - i, cy + radius);
+        score += fitness_cell(image, grid, cx - radius + i, cy - radius);
+        score += fitness_cell(image, grid, cx - radius, cy + radius - i);
+        score += fitness_cell(image, grid, cx + radius, cy - radius + i);
+        score += fitness_cell(image, grid, cx + radius - i, cy + radius);
     }
     score
 }
 
-fn fitness_apat(pixels: &[u8], w: i32, h: i32, grid: &mut Grid, cx: i32, cy: i32) -> i32 {
-    fitness_cell(pixels, w, h, grid, cx, cy) - fitness_ring(pixels, w, h, grid, cx, cy, 1)
-        + fitness_ring(pixels, w, h, grid, cx, cy, 2)
+fn fitness_apat(image: &Image, grid: &mut Grid, cx: i32, cy: i32) -> i32 {
+    fitness_cell(image, grid, cx, cy) - fitness_ring(image, grid, cx, cy, 1)
+        + fitness_ring(image, grid, cx, cy, 2)
 }
 
-fn fitness_capstone(pixels: &[u8], w: i32, h: i32, grid: &mut Grid, mut x: i32, mut y: i32) -> i32 {
+fn fitness_capstone(image: &Image, grid: &mut Grid, mut x: i32, mut y: i32) -> i32 {
     x += 3;
     y += 3;
 
-    fitness_cell(pixels, w, h, grid, x, y) + fitness_ring(pixels, w, h, grid, x, y, 1)
-        - fitness_ring(pixels, w, h, grid, x, y, 2)
-        + fitness_ring(pixels, w, h, grid, x, y, 3)
+    fitness_cell(image, grid, x, y) + fitness_ring(image, grid, x, y, 1)
+        - fitness_ring(image, grid, x, y, 2)
+        + fitness_ring(image, grid, x, y, 3)
 }
 
 /// Compute a fitness score for the currently configured perspective
 /// transform, using the features we expect to find by scanning the
 /// grid.
-fn fitness_all(pixels: &[u8], w: i32, h: i32, qr: &mut Grid) -> i32 {
+fn fitness_all(image: &Image, qr: &mut Grid) -> i32 {
     let version: i32 = (qr.grid_size - 17) / 4;
     let mut score: i32 = 0;
 
     // Check the timing pattern
     for i in 0..qr.grid_size - 14 {
         let expect: i32 = if i & 1 != 0 { 1 } else { -1 };
-        score += fitness_cell(pixels, w, h, qr, i + 7, 6) * expect;
-        score += fitness_cell(pixels, w, h, qr, 6, i + 7) * expect;
+        score += fitness_cell(image, qr, i + 7, 6) * expect;
+        score += fitness_cell(image, qr, 6, i + 7) * expect;
     }
 
     // Check capstones
-    score += fitness_capstone(pixels, w, h, qr, 0, 0);
-    score += fitness_capstone(pixels, w, h, qr, qr.grid_size - 7, 0);
-    score += fitness_capstone(pixels, w, h, qr, 0, qr.grid_size - 7);
+    score += fitness_capstone(image, qr, 0, 0);
+    score += fitness_capstone(image, qr, qr.grid_size - 7, 0);
+    score += fitness_capstone(image, qr, 0, qr.grid_size - 7);
 
     if version < 0 || version > QUIRC_MAX_VERSION as i32 {
         score
@@ -794,13 +774,13 @@ fn fitness_all(pixels: &[u8], w: i32, h: i32, qr: &mut Grid) -> i32 {
         }
 
         for i in 1..ap_count as i32 - 1 {
-            score += fitness_apat(pixels, w, h, qr, 6, info.apat[i as usize]);
-            score += fitness_apat(pixels, w, h, qr, info.apat[i as usize], 6);
+            score += fitness_apat(image, qr, 6, info.apat[i as usize]);
+            score += fitness_apat(image, qr, info.apat[i as usize], 6);
         }
 
         for i in 1..ap_count {
             for j in 1..ap_count {
-                score += fitness_apat(pixels, w, h, qr, info.apat[i], info.apat[j]);
+                score += fitness_apat(image, qr, info.apat[i], info.apat[j]);
             }
         }
         score
@@ -809,7 +789,7 @@ fn fitness_all(pixels: &[u8], w: i32, h: i32, qr: &mut Grid) -> i32 {
 
 fn jiggle_perspective(q: &mut Quirc, index: i32) {
     let mut qr: &mut Grid = &mut q.grids[index as usize];
-    let mut best: i32 = fitness_all(&q.pixels, q.w, q.h, qr);
+    let mut best: i32 = fitness_all(&q.image, qr);
     let mut adjustments: [f64; 8] = [0f64; 8];
 
     for i in 0..8 {
@@ -825,7 +805,7 @@ fn jiggle_perspective(q: &mut Quirc, index: i32) {
             let new = if i & 1 != 0 { old + step } else { old - step };
 
             qr.c[j] = new;
-            let test = fitness_all(&q.pixels, q.w, q.h, qr);
+            let test = fitness_all(&q.image, qr);
 
             if test > best {
                 best = test;
@@ -952,9 +932,7 @@ unsafe fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
                     };
 
                     flood_fill_seed(
-                        &mut q.pixels,
-                        q.w,
-                        q.h,
+                        &mut q.image,
                         (*reg).seed.x,
                         (*reg).seed.y,
                         (*qr).align_region,
@@ -963,9 +941,7 @@ unsafe fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
                         0,
                     );
                     flood_fill_seed(
-                        &mut q.pixels,
-                        q.w,
-                        q.h,
+                        &mut q.image,
                         (*reg).seed.x,
                         (*reg).seed.y,
                         PIXEL_BLACK,
@@ -1100,14 +1076,14 @@ unsafe fn test_grouping(q: &mut Quirc, i: usize) {
 }
 
 fn pixels_setup(q: &mut Quirc, image: &[u8]) {
-    q.pixels.copy_from_slice(image);
+    q.image.pixels.copy_from_slice(image);
 }
 
 pub unsafe fn quirc_identify(q: &mut Quirc, image: &[u8]) {
     pixels_setup(q, image);
     threshold(q);
 
-    for i in 0..q.h {
+    for i in 0..q.image.h {
         finder_scan(q, i);
     }
 
