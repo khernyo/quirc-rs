@@ -40,7 +40,7 @@ extern "C" {
     fn rint(x: c_double) -> c_double;
 }
 
-unsafe extern "C" fn dump_info(q: &mut Quirc) {
+unsafe fn dump_info(q: &mut Quirc) {
     let count: i32 = quirc_count(q);
     let mut i: i32;
     println!("{} QR-codes found:\n", count);
@@ -98,7 +98,7 @@ unsafe fn string_color(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, col
     canvas.copy(&tex, None, None).unwrap();
 }
 
-unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: &mut Quirc) {
+unsafe fn draw_frame(canvas: &mut Canvas<Window>, q: &mut Quirc) {
     let mut raw = q.image.pixels.as_ptr();
 
     for y in 0..q.image.h {
@@ -125,7 +125,7 @@ unsafe extern "C" fn draw_frame(canvas: &mut Canvas<Window>, q: &mut Quirc) {
     }
 }
 
-unsafe extern "C" fn draw_blob(canvas: &mut Canvas<Window>, x: i32, y: i32) {
+unsafe fn draw_blob(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     for i in -2..=2 {
         for j in -2..=2 {
             pixel_color(
@@ -138,7 +138,7 @@ unsafe extern "C" fn draw_blob(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     }
 }
 
-unsafe extern "C" fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
+unsafe fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     let red = Color::RGBA(0xff, 0, 0, 0xff);
     pixel_color(canvas, x as (i16), y as (i16), red);
     pixel_color(canvas, (x + 1i32) as (i16), y as (i16), red);
@@ -147,7 +147,7 @@ unsafe extern "C" fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     pixel_color(canvas, x as (i16), (y - 1i32) as (i16), red);
 }
 
-unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: &mut Quirc, index: usize) {
+unsafe fn draw_capstone(canvas: &mut Canvas<Window>, q: &mut Quirc, index: usize) {
     let cap: &mut Capstone = &mut q.capstones[index];
     for j in 0..4 {
         let p0: &mut Point = &mut cap.corners[j];
@@ -171,7 +171,7 @@ unsafe extern "C" fn draw_capstone(canvas: &mut Canvas<Window>, q: &mut Quirc, i
     }
 }
 
-unsafe extern "C" fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mut Point) {
+unsafe fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mut Point) {
     let den: f64 = *c.offset(6isize) * u + *c.offset(7isize) * v + 1.0f64;
     let x: f64 = (*c.offset(0isize) * u + *c.offset(1isize) * v + *c.offset(2isize)) / den;
     let y: f64 = (*c.offset(3isize) * u + *c.offset(4isize) * v + *c.offset(5isize)) / den;
@@ -180,7 +180,7 @@ unsafe extern "C" fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mu
     (*ret).y = rint(y) as i32;
 }
 
-unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: &mut Quirc, index: usize) {
+unsafe fn draw_grid(canvas: &mut Canvas<Window>, q: &mut Quirc, index: usize) {
     let qr: &mut Grid = &mut q.grids[index];
     for i in 0..3 {
         let cap: &mut Capstone = &mut q.capstones[qr.caps[i] as (usize)];
@@ -223,7 +223,7 @@ unsafe extern "C" fn draw_grid(canvas: &mut Canvas<Window>, q: &mut Quirc, index
     }
 }
 
-unsafe extern "C" fn sdl_examine(q: &mut Quirc) -> i32 {
+unsafe fn sdl_examine(q: &mut Quirc) -> i32 {
     let sdl_context = sdl2::init().unwrap();
 
     let video_subsystem = sdl_context.video().unwrap();
@@ -264,7 +264,7 @@ fn main() {
     unsafe { _c_main() }
 }
 
-pub unsafe extern "C" fn _c_main() {
+pub unsafe fn _c_main() {
     let paths_arg_name = "paths";
     let paths_arg = Arg::with_name(paths_arg_name).required(true);
 

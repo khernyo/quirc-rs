@@ -27,7 +27,7 @@ use quirc_rs::quirc::*;
 
 use quirc_wrapper as qw;
 
-unsafe extern "C" fn data_type_str(dt: i32) -> &'static str {
+unsafe fn data_type_str(dt: i32) -> &'static str {
     if dt == DATA_TYPE_KANJI {
         "KANJI"
     } else if dt == DATA_TYPE_BYTE {
@@ -42,7 +42,7 @@ unsafe extern "C" fn data_type_str(dt: i32) -> &'static str {
 }
 
 /// Dump decoded information on stdout.
-pub unsafe extern "C" fn dump_data(data: *const QuircData) {
+pub unsafe fn dump_data(data: *const QuircData) {
     println!("    Version: {}", (*data).version);
     println!(
         "    ECC level: {}",
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn dump_data(data: *const QuircData) {
 }
 
 /// Dump a grid cell map on stdout.
-pub unsafe extern "C" fn dump_cells(code: *const QuircCode) {
+pub unsafe fn dump_cells(code: *const QuircCode) {
     let mut u: i32;
     let mut v: i32;
     print!("    {} cells, corners:", (*code).size);
