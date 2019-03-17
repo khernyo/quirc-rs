@@ -934,34 +934,16 @@ impl Clone for Neighbour {
     }
 }
 
-#[derive(Copy)]
-#[repr(C)]
-struct NeighbourList {
-    n: [Neighbour; MAX_CAPSTONES],
-    count: i32,
-}
-
-impl Clone for NeighbourList {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-unsafe fn test_neighbours(
-    q: &mut Quirc,
-    i: i32,
-    hlist: *mut NeighbourList,
-    vlist: *mut NeighbourList,
-) {
+fn test_neighbours(q: &mut Quirc, i: i32, hlist: &[Neighbour], vlist: &[Neighbour]) {
     let mut best_score: f64 = 0.0;
     let mut best_h: i32 = -1;
     let mut best_v: i32 = -1;
 
     // Test each possible grouping
-    for j in 0..(*hlist).count {
-        for k in 0..(*vlist).count {
-            let hn: &Neighbour = &(*hlist).n[j as usize];
-            let vn: &Neighbour = &(*vlist).n[k as usize];
+    for j in 0..hlist.len() {
+        for k in 0..vlist.len() {
+            let hn: &Neighbour = &hlist[j];
+            let vn: &Neighbour = &vlist[k];
             let score: f64 = (1.0 - hn.distance / vn.distance).abs();
 
             if !(score > 2.5) {
@@ -988,10 +970,8 @@ unsafe fn test_grouping(q: &mut Quirc, i: usize) {
         return;
     }
 
-    let mut hlist: NeighbourList = std::mem::uninitialized();
-    let mut vlist: NeighbourList = std::mem::uninitialized();
-    hlist.count = 0;
-    vlist.count = 0;
+    let mut hlist = Vec::new();
+    let mut vlist = Vec::new();
 
     // Look for potential neighbours by examining the relative gradients
     // from this capstone to others.
@@ -1008,23 +988,21 @@ unsafe fn test_grouping(q: &mut Quirc, i: usize) {
         v = (v - 3.5).abs();
 
         if u < 0.2 * v {
-            let n: &mut Neighbour = &mut hlist.n[hlist.count as usize];
-            hlist.count += 1;
-
-            n.index = j as i32;
-            n.distance = v;
+            hlist.push(Neighbour {
+                index: j as i32,
+                distance: v,
+            });
         }
 
         if v < 0.2 * u {
-            let n: &mut Neighbour = &mut vlist.n[vlist.count as usize];
-            vlist.count += 1;
-
-            n.index = j as i32;
-            n.distance = u;
+            vlist.push(Neighbour {
+                index: j as i32,
+                distance: u,
+            });
         }
     }
 
-    if !(hlist.count != 0 && (vlist.count != 0)) {
+    if !(hlist.len() != 0 && (vlist.len() != 0)) {
         return;
     }
 
