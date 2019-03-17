@@ -13,7 +13,7 @@ use quirc_rs::quirc::*;
 use quirc_wrapper as qw;
 use test_utils::dbgutil::*;
 
-unsafe fn run(width: u32, height: u32, image_bytes: &[u8]) {
+fn run(width: u32, height: u32, image_bytes: &[u8]) {
     let mut decoder = Quirc::new();
     quirc_resize(&mut decoder, width, height);
     quirc_identify(&mut decoder, image_bytes);

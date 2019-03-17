@@ -27,7 +27,7 @@ use quirc_rs::quirc::*;
 
 use quirc_wrapper as qw;
 
-unsafe fn data_type_str(dt: i32) -> &'static str {
+fn data_type_str(dt: i32) -> &'static str {
     if dt == DATA_TYPE_KANJI {
         "KANJI"
     } else if dt == DATA_TYPE_BYTE {
@@ -112,7 +112,7 @@ pub unsafe fn dump_cells(code: *const QuircCode) {
 ///
 /// Note that you must call quirc_end() if the function returns
 /// successfully (0).
-pub unsafe fn load_image(q: &mut Quirc, path: &Path) -> Vec<u8> {
+pub fn load_image(q: &mut Quirc, path: &Path) -> Vec<u8> {
     let img = image::open(path).unwrap().grayscale().to_luma();
     let (width, height) = img.dimensions();
 
@@ -214,7 +214,7 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     }
 }
 
-unsafe fn assert_slice_eq<A, B>(capstones: &[A], qw_capstones: &[B], f: unsafe fn(&A, &B)) {
+fn assert_slice_eq<A, B>(capstones: &[A], qw_capstones: &[B], f: fn(&A, &B)) {
     assert_eq!(capstones.len(), qw_capstones.len());
     capstones
         .iter()
@@ -222,7 +222,7 @@ unsafe fn assert_slice_eq<A, B>(capstones: &[A], qw_capstones: &[B], f: unsafe f
         .for_each(|(c, qw_c)| f(c, qw_c));
 }
 
-unsafe fn assert_capstone_eq(capstone: &Capstone, qw_capstone: &qw::quirc_capstone) {
+fn assert_capstone_eq(capstone: &Capstone, qw_capstone: &qw::quirc_capstone) {
     assert_eq!(capstone.ring, qw_capstone.ring);
     assert_eq!(capstone.stone, qw_capstone.stone);
     assert_slice_eq(&capstone.corners, &qw_capstone.corners, assert_point_eq);
@@ -231,7 +231,7 @@ unsafe fn assert_capstone_eq(capstone: &Capstone, qw_capstone: &qw::quirc_capsto
     assert_eq!(capstone.qr_grid, qw_capstone.qr_grid);
 }
 
-unsafe fn assert_grid_eq(grid: &Grid, qw_grid: &qw::quirc_grid) {
+fn assert_grid_eq(grid: &Grid, qw_grid: &qw::quirc_grid) {
     assert_eq!(grid.caps, qw_grid.caps);
     assert_eq!(grid.align_region, qw_grid.align_region);
     assert_point_eq(&grid.align, &qw_grid.align);
@@ -242,7 +242,7 @@ unsafe fn assert_grid_eq(grid: &Grid, qw_grid: &qw::quirc_grid) {
     assert_eq!(grid.c, qw_grid.c);
 }
 
-unsafe fn assert_point_eq(point: &Point, qw_point: &qw::quirc_point) {
+fn assert_point_eq(point: &Point, qw_point: &qw::quirc_point) {
     assert_eq!(point.x, qw_point.x);
     assert_eq!(point.y, qw_point.y);
 }

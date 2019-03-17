@@ -65,26 +65,19 @@ unsafe fn dump_info(q: &mut Quirc) {
     }
 }
 
-unsafe fn pixel_color(canvas: &mut Canvas<Window>, x: i16, y: i16, color: Color) {
+fn pixel_color(canvas: &mut Canvas<Window>, x: i16, y: i16, color: Color) {
     canvas.set_draw_color(color);
     canvas.draw_point((x as i32, y as i32)).unwrap();
 }
 
-unsafe fn line_color(
-    canvas: &mut Canvas<Window>,
-    x1: i16,
-    y1: i16,
-    x2: i16,
-    y2: i16,
-    color: Color,
-) {
+fn line_color(canvas: &mut Canvas<Window>, x1: i16, y1: i16, x2: i16, y2: i16, color: Color) {
     canvas.set_draw_color(color);
     canvas
         .draw_line((x1 as i32, y1 as i32), (x2 as i32, y2 as i32))
         .unwrap();
 }
 
-unsafe fn string_color(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, color: Color) {
+fn string_color(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, color: Color) {
     let renderer = sdl2_unifont::renderer::SurfaceRenderer::new(color, Color::RGBA(0, 0, 0, 0));
     let surface = renderer.draw(s).unwrap();
     let (w, h) = canvas.output_size().unwrap();
@@ -125,7 +118,7 @@ unsafe fn draw_frame(canvas: &mut Canvas<Window>, q: &mut Quirc) {
     }
 }
 
-unsafe fn draw_blob(canvas: &mut Canvas<Window>, x: i32, y: i32) {
+fn draw_blob(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     for i in -2..=2 {
         for j in -2..=2 {
             pixel_color(
@@ -138,7 +131,7 @@ unsafe fn draw_blob(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     }
 }
 
-unsafe fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
+fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     let red = Color::RGBA(0xff, 0, 0, 0xff);
     pixel_color(canvas, x as (i16), y as (i16), red);
     pixel_color(canvas, (x + 1i32) as (i16), y as (i16), red);
@@ -147,7 +140,7 @@ unsafe fn draw_mark(canvas: &mut Canvas<Window>, x: i32, y: i32) {
     pixel_color(canvas, x as (i16), (y - 1i32) as (i16), red);
 }
 
-unsafe fn draw_capstone(canvas: &mut Canvas<Window>, q: &mut Quirc, index: usize) {
+fn draw_capstone(canvas: &mut Canvas<Window>, q: &mut Quirc, index: usize) {
     let cap: &mut Capstone = &mut q.capstones[index];
     for j in 0..4 {
         let p0: &mut Point = &mut cap.corners[j];
