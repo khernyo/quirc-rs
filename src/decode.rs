@@ -372,10 +372,10 @@ impl Default for DataStream {
     }
 }
 
-fn grid_bit(code: &QuircCode, x: i32, y: i32) -> i32 {
+fn grid_bit(code: &QuircCode, x: i32, y: i32) -> bool {
     let p: i32 = y * code.size + x;
 
-    i32::from(code.cell_bitmap[(p >> 3) as usize]) >> (p & 7) & 1
+    i32::from(code.cell_bitmap[(p >> 3) as usize]) >> (p & 7) & 1 == 1
 }
 
 fn read_format(code: &QuircCode, mut data: &mut QuircData, which: i32) -> Result<()> {
@@ -383,18 +383,19 @@ fn read_format(code: &QuircCode, mut data: &mut QuircData, which: i32) -> Result
 
     if which != 0 {
         for i in 0..7 {
-            format = (i32::from(format) << 1 | grid_bit(code, 8, code.size - 1 - i)) as u16;
+            format = (i32::from(format) << 1 | grid_bit(code, 8, code.size - 1 - i) as i32) as u16;
         }
         for i in 0..8 {
-            format = (i32::from(format) << 1 | grid_bit(code, code.size - 8 + i, 8)) as u16;
+            format = (i32::from(format) << 1 | grid_bit(code, code.size - 8 + i, 8) as i32) as u16;
         }
     } else {
         const XS: [i32; 15] = [8, 8, 8, 8, 8, 8, 8, 8, 7, 5, 4, 3, 2, 1, 0];
         const YS: [i32; 15] = [0, 1, 2, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 8, 8];
 
         for i in (0..=14).rev() {
-            format =
-                (i32::from(format) << 1 | grid_bit(code, XS[i as usize], YS[i as usize])) as u16;
+            format = (i32::from(format) << 1
+                | grid_bit(code, XS[i as usize], YS[i as usize]) as i32)
+                as u16;
         }
     }
 
@@ -409,17 +410,17 @@ fn read_format(code: &QuircCode, mut data: &mut QuircData, which: i32) -> Result
     Ok(())
 }
 
-fn mask_bit(mask: i32, i: i32, j: i32) -> i32 {
+fn mask_bit(mask: i32, i: i32, j: i32) -> bool {
     match mask {
-        0 => ((i + j) % 2 == 0) as i32,
-        1 => (i % 2 == 0) as i32,
-        2 => (j % 3 == 0) as i32,
-        3 => ((i + j) % 3 == 0) as i32,
-        4 => ((i / 2 + j / 3) % 2 == 0) as i32,
-        5 => (i * j % 2 + i * j % 3 == 0) as i32,
-        6 => ((i * j % 2 + i * j % 3) % 2 == 0) as i32,
-        7 => ((i * j % 3 + (i + j) % 2) % 2 == 0) as i32,
-        _ => 0,
+        0 => (i + j) % 2 == 0,
+        1 => i % 2 == 0,
+        2 => j % 3 == 0,
+        3 => (i + j) % 3 == 0,
+        4 => (i / 2 + j / 3) % 2 == 0,
+        5 => i * j % 2 + i * j % 3 == 0,
+        6 => (i * j % 2 + i * j % 3) % 2 == 0,
+        7 => (i * j % 3 + (i + j) % 2) % 2 == 0,
+        _ => false,
     }
 }
 
@@ -494,13 +495,11 @@ fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
 fn read_bit(code: &QuircCode, data: &QuircData, ds: &mut DataStream, i: i32, j: i32) {
     let bitpos: i32 = ds.data_bits & 7;
     let bytepos: i32 = ds.data_bits >> 3;
-    let mut v: i32 = grid_bit(code, j, i);
+    let mut v = grid_bit(code, j, i);
 
-    if mask_bit(data.mask, i, j) != 0 {
-        v ^= 1;
-    }
+    v ^= mask_bit(data.mask, i, j);
 
-    if v != 0 {
+    if v {
         ds.raw[bytepos as usize] |= 0x80 >> bitpos
     }
 
