@@ -1007,7 +1007,7 @@ fn test_grouping(q: &mut Quirc, i: usize) {
                 continue;
             }
 
-            let (mut u, mut v) = perspective_unmap(&c1.c, &mut c2.center);
+            let (mut u, mut v) = perspective_unmap(&c1.c, &c2.center);
 
             u = (u - 3.5).abs();
             v = (v - 3.5).abs();
@@ -1028,11 +1028,11 @@ fn test_grouping(q: &mut Quirc, i: usize) {
         }
     }
 
-    if !(hlist.len() != 0 && (vlist.len() != 0)) {
+    if !(!hlist.is_empty() && (!vlist.is_empty())) {
         return;
     }
 
-    test_neighbours(q, i as i32, &mut hlist, &mut vlist);
+    test_neighbours(q, i as i32, &hlist, &vlist);
 }
 
 fn pixels_setup(q: &mut Quirc, image: &[u8]) {
@@ -1063,9 +1063,9 @@ pub fn quirc_extract(q: &mut Quirc, index: i32) -> Option<QuircCode> {
     let mut code = QuircCode {
         corners: [
             perspective_map(&qr.c, 0.0, 0.0),
-            perspective_map(&qr.c, qr.grid_size as f64, 0.0),
-            perspective_map(&qr.c, qr.grid_size as f64, qr.grid_size as f64),
-            perspective_map(&qr.c, 0.0, qr.grid_size as f64),
+            perspective_map(&qr.c, f64::from(qr.grid_size), 0.0),
+            perspective_map(&qr.c, f64::from(qr.grid_size), f64::from(qr.grid_size)),
+            perspective_map(&qr.c, 0.0, f64::from(qr.grid_size)),
         ],
         size: qr.grid_size,
         ..Default::default()
@@ -1077,7 +1077,7 @@ pub fn quirc_extract(q: &mut Quirc, index: i32) -> Option<QuircCode> {
             if read_cell(q, index, x, y) == Cell::Black {
                 code.cell_bitmap[(i >> 3) as usize] |= 1 << (i & 7);
             }
-            i = i + 1;
+            i += 1;
         }
     }
 
