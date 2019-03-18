@@ -424,26 +424,26 @@ fn mask_bit(mask: i32, i: i32, j: i32) -> bool {
     }
 }
 
-fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
+fn reserved_cell(version: i32, i: i32, j: i32) -> bool {
     // Finder + format: top left
     if i < 9 && (j < 9) {
-        return 1;
+        return true;
     }
 
     // Finder + format: bottom left
     let size: i32 = version * 4 + 17;
     if i + 8 >= size && (j < 9) {
-        return 1;
+        return true;
     }
 
     // Finder + format: top right
     if i < 9 && (j + 8 >= size) {
-        return 1;
+        return true;
     }
 
     // Exclude timing patterns
     if i == 6 || j == 6 {
-        return 1;
+        return true;
     }
 
     // Exclude version info, if it exists. Version info sits adjacent to
@@ -451,10 +451,10 @@ fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
     // the timing pattern.
     if version >= 7 {
         if i < 6 && (j + 11 >= size) {
-            return 1;
+            return true;
         }
         if i + 11 >= size && (j < 6) {
-            return 1;
+            return true;
         }
     }
 
@@ -479,17 +479,17 @@ fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
     if ai >= 0 && (aj >= 0) {
         a -= 1;
         if ai > 0 && (ai < a) {
-            return 1;
+            return true;
         }
         if aj > 0 && (aj < a) {
-            return 1;
+            return true;
         }
         if aj == a && (ai == a) {
-            return 1;
+            return true;
         }
     }
 
-    0
+    false
 }
 
 fn read_bit(code: &QuircCode, data: &QuircData, ds: &mut DataStream, i: i32, j: i32) {
@@ -518,11 +518,11 @@ fn read_data(code: &QuircCode, data: &QuircData) -> DataStream {
             x -= 1;
         }
 
-        if reserved_cell(data.version, y, x) == 0 {
+        if !reserved_cell(data.version, y, x) {
             read_bit(code, data, &mut ds, y, x);
         }
 
-        if reserved_cell(data.version, y, x - 1) == 0 {
+        if !reserved_cell(data.version, y, x - 1) {
             read_bit(code, data, &mut ds, y, x - 1);
         }
 
