@@ -42,13 +42,8 @@ extern "C" {
 
 unsafe fn dump_info(q: &mut Quirc) {
     let count: i32 = quirc_count(q);
-    let mut i: i32;
     println!("{} QR-codes found:\n", count);
-    i = 0i32;
-    'loop1: loop {
-        if !(i < count) {
-            break;
-        }
+    for i in 0..count {
         let code = quirc_extract(q, i).unwrap();
         let result = quirc_decode(&code);
         dump_cells(&code);
@@ -61,30 +56,37 @@ unsafe fn dump_info(q: &mut Quirc) {
             Err(e) => println!("  Decoding FAILED: {}", quirc_strerror(e)),
         }
         println!();
-        i = i + 1;
     }
 }
 
 fn pixel_color(canvas: &mut Canvas<Window>, x: i16, y: i16, color: Color) {
     canvas.set_draw_color(color);
-    canvas.draw_point((x as i32, y as i32)).unwrap();
+    canvas.draw_point((i32::from(x), i32::from(y))).unwrap();
 }
 
 fn line_color(canvas: &mut Canvas<Window>, x1: i16, y1: i16, x2: i16, y2: i16, color: Color) {
     canvas.set_draw_color(color);
     canvas
-        .draw_line((x1 as i32, y1 as i32), (x2 as i32, y2 as i32))
+        .draw_line(
+            (i32::from(x1), i32::from(y1)),
+            (i32::from(x2), i32::from(y2)),
+        )
         .unwrap();
 }
 
 fn string_color(canvas: &mut Canvas<Window>, x: i16, y: i16, s: &str, color: Color) {
     let renderer = sdl2_unifont::renderer::SurfaceRenderer::new(color, Color::RGBA(0, 0, 0, 0));
     let surface = renderer.draw(s).unwrap();
-    let (w, h) = canvas.output_size().unwrap();
+    let (width, height) = canvas.output_size().unwrap();
     let mut screen =
-        sdl2::surface::Surface::new(w, h, sdl2::pixels::PixelFormatEnum::RGBA8888).unwrap();
+        sdl2::surface::Surface::new(width, height, sdl2::pixels::PixelFormatEnum::RGBA8888)
+            .unwrap();
     surface
-        .blit(None, &mut screen, Rect::new(x as i32, y as i32, 0, 0))
+        .blit(
+            None,
+            &mut screen,
+            Rect::new(i32::from(x), i32::from(y), 0, 0),
+        )
         .unwrap();
     let texture_creator = canvas.texture_creator();
     let tex = texture_creator.create_texture_from_surface(screen).unwrap();
@@ -102,7 +104,7 @@ unsafe fn draw_frame(canvas: &mut Canvas<Window>, q: &mut Quirc) {
                 _old
             };
             let reg: &mut Region = &mut q.regions[v as (usize)];
-            let color = match v as (i32) {
+            let color = match i32::from(v) {
                 PIXEL_BLACK => Color::RGB(0, 0, 0),
                 PIXEL_WHITE => Color::RGB(0xff, 0xff, 0xff),
                 _ => {
@@ -164,6 +166,7 @@ fn draw_capstone(canvas: &mut Canvas<Window>, q: &mut Quirc, index: usize) {
     }
 }
 
+#[allow(clippy::many_single_char_names)]
 unsafe fn perspective_map(c: *const f64, u: f64, v: f64, mut ret: *mut Point) {
     let den: f64 = *c.offset(6isize) * u + *c.offset(7isize) * v + 1.0f64;
     let x: f64 = (*c.offset(0isize) * u + *c.offset(1isize) * v + *c.offset(2isize)) / den;
@@ -207,8 +210,8 @@ unsafe fn draw_grid(canvas: &mut Canvas<Window>, q: &mut Quirc, index: usize) {
     }
     for y in 0..qr.grid_size {
         for x in 0..qr.grid_size {
-            let u: f64 = x as (f64) + 0.5f64;
-            let v: f64 = y as (f64) + 0.5f64;
+            let u: f64 = f64::from(x) + 0.5f64;
+            let v: f64 = f64::from(y) + 0.5f64;
             let mut p: Point = std::mem::uninitialized();
             perspective_map(qr.c.as_mut_ptr() as (*const f64), u, v, &mut p);
             draw_mark(canvas, p.x, p.y);

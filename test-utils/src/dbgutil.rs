@@ -46,7 +46,7 @@ pub unsafe fn dump_data(data: *const QuircData) {
     println!("    Version: {}", (*data).version);
     println!(
         "    ECC level: {}",
-        (*b"MLHQ\0")[(*data).ecc_level as (usize)] as (i32)
+        i32::from((*b"MLHQ\0")[(*data).ecc_level as (usize)])
     );
     println!("    Mask: {}", (*data).mask);
     println!(
@@ -68,43 +68,26 @@ pub unsafe fn dump_data(data: *const QuircData) {
 
 /// Dump a grid cell map on stdout.
 pub unsafe fn dump_cells(code: *const QuircCode) {
-    let mut u: i32;
-    let mut v: i32;
     print!("    {} cells, corners:", (*code).size);
-    u = 0i32;
-    'loop1: loop {
-        if !(u < 4i32) {
-            break;
-        }
+    for u in 0..4 {
         print!(
             " ({},{})",
             (*code).corners[u as (usize)].x,
             (*code).corners[u as (usize)].y
         );
-        u = u + 1;
     }
     println!();
-    v = 0i32;
-    'loop3: loop {
-        if !(v < (*code).size) {
-            break;
-        }
+    for v in 0..(*code).size {
         print!("    ");
-        u = 0i32;
-        'loop6: loop {
-            if !(u < (*code).size) {
-                break;
-            }
+        for u in 0..(*code).size {
             let p: i32 = v * (*code).size + u;
-            if (*code).cell_bitmap[(p >> 3i32) as (usize)] as (i32) & 1i32 << (p & 7i32) != 0 {
+            if i32::from((*code).cell_bitmap[(p >> 3i32) as (usize)]) & 1i32 << (p & 7i32) != 0 {
                 print!("[]");
             } else {
                 print!("  ");
             }
-            u = u + 1;
         }
         println!();
-        v = v + 1;
     }
 }
 
@@ -127,8 +110,8 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     assert!(qw::quirc_resize(qw_decoder, decoder.image.w, decoder.image.h) >= 0);
     let image_bytes = qw::quirc_begin(
         qw_decoder,
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
+        std::ptr::null_mut() as (*mut i32),
+        std::ptr::null_mut() as (*mut i32),
     );
     memcpy(
         image_bytes as *mut c_void,
@@ -242,6 +225,7 @@ fn assert_grid_eq(grid: &Grid, qw_grid: &qw::quirc_grid) {
     assert_eq!(grid.c, qw_grid.c);
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn assert_point_eq(point: &Point, qw_point: &qw::quirc_point) {
     assert_eq!(point.x, qw_point.x);
     assert_eq!(point.y, qw_point.y);

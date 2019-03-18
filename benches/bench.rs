@@ -30,8 +30,8 @@ unsafe fn run_original(width: u32, height: u32, image_bytes: &[u8]) {
     qw::quirc_resize(decoder, width as i32, height as i32);
     let quirc_image_bytes = qw::quirc_begin(
         decoder,
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut i32),
+        std::ptr::null_mut() as (*mut i32),
+        std::ptr::null_mut() as (*mut i32),
     );
     memcpy(
         quirc_image_bytes as *mut c_void,
