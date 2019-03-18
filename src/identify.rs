@@ -964,15 +964,7 @@ fn test_neighbours(q: &mut Quirc, i: i32, hlist: &[Neighbour], vlist: &[Neighbou
 }
 
 fn test_grouping(q: &mut Quirc, i: usize) {
-    // Dance around the borrow checker by splitting the capstones into three parts:
-    // 1. first_capstones: capstones before the ith capstone
-    // 2. c1: the ith capstone
-    // 3. last_capstones: capstones after the ith capstone
-    let (first_capstones, c1, last_capstones) = {
-        let (first, last) = q.capstones.split_at_mut(i);
-        let (mid, last) = last.split_at_mut(1);
-        (first, &mid[0], last)
-    };
+    let c1 = &q.capstones[i];
 
     if c1.qr_grid >= 0 {
         return;
@@ -983,48 +975,28 @@ fn test_grouping(q: &mut Quirc, i: usize) {
 
     // Look for potential neighbours by examining the relative gradients
     // from this capstone to others.
-    // (This is done in two loops because of the slice-splitting above)
-    examine(&mut hlist, &mut vlist, c1, first_capstones, 0);
-    examine(
-        &mut hlist,
-        &mut vlist,
-        c1,
-        last_capstones,
-        first_capstones.len() + 1,
-    );
+    for (j, c2) in q.capstones.iter().enumerate() {
+        if i == j || c2.qr_grid >= 0 {
+            continue;
+        }
 
-    fn examine(
-        hlist: &mut Vec<Neighbour>,
-        vlist: &mut Vec<Neighbour>,
-        c1: &Capstone,
-        others: &mut [Capstone],
-        offset: usize,
-    ) {
-        for (j, c2) in others.iter_mut().enumerate() {
-            let j = j + offset;
+        let (mut u, mut v) = perspective_unmap(&c1.c, &c2.center);
 
-            if c2.qr_grid >= 0 {
-                continue;
-            }
+        u = (u - 3.5).abs();
+        v = (v - 3.5).abs();
 
-            let (mut u, mut v) = perspective_unmap(&c1.c, &c2.center);
+        if u < 0.2 * v {
+            hlist.push(Neighbour {
+                index: j as i32,
+                distance: v,
+            });
+        }
 
-            u = (u - 3.5).abs();
-            v = (v - 3.5).abs();
-
-            if u < 0.2 * v {
-                hlist.push(Neighbour {
-                    index: j as i32,
-                    distance: v,
-                });
-            }
-
-            if v < 0.2 * u {
-                vlist.push(Neighbour {
-                    index: j as i32,
-                    distance: u,
-                });
-            }
+        if v < 0.2 * u {
+            vlist.push(Neighbour {
+                index: j as i32,
+                distance: u,
+            });
         }
     }
 
