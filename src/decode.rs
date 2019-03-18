@@ -611,12 +611,10 @@ fn numeric_tuple(data: &mut QuircData, ds: &mut DataStream, bits: i32, digits: i
 }
 
 fn decode_numeric(data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
-    let bits = if data.version < 10 {
-        10
-    } else if data.version < 27 {
-        12
-    } else {
-        14
+    let bits = match data.version {
+        v if v < 10 => 10,
+        v if v < 27 => 12,
+        _ => 14,
     };
 
     let mut count = take_bits(ds, bits);
@@ -664,12 +662,10 @@ fn alpha_tuple(data: &mut QuircData, ds: &mut DataStream, bits: i32, digits: i32
 }
 
 fn decode_alpha(data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
-    let bits = if data.version < 10 {
-        9
-    } else if data.version < 27 {
-        11
-    } else {
-        13
+    let bits = match data.version {
+        v if v < 10 => 9,
+        v if v < 27 => 11,
+        _ => 13,
     };
 
     let mut count = take_bits(ds, bits);
@@ -710,12 +706,10 @@ fn decode_byte(mut data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
 }
 
 fn decode_kanji(mut data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
-    let bits = if data.version < 10 {
-        8
-    } else if data.version < 27 {
-        10
-    } else {
-        12
+    let bits = match data.version {
+        v if v < 10 => 8,
+        v if v < 27 => 10,
+        _ => 12,
     };
 
     let count = take_bits(ds, bits);
