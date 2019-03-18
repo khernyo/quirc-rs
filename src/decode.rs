@@ -464,8 +464,8 @@ fn reserved_cell(version: i32, i: i32, j: i32) -> i32 {
     let mut aj: i32 = -1;
 
     let mut a = 0;
-    while a < QUIRC_MAX_ALIGNMENT as i32 && (*ver).apat[a as usize] != 0 {
-        let p: i32 = (*ver).apat[a as usize];
+    while a < QUIRC_MAX_ALIGNMENT as i32 && ver.apat[a as usize] != 0 {
+        let p: i32 = ver.apat[a as usize];
 
         if (p - i).abs() < 3 {
             ai = a;
@@ -551,19 +551,19 @@ fn codestream_ecc(data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
 
     for i in 0..bc {
         let ecc: &RsParams = if i < sb_ecc.ns { sb_ecc } else { &lb_ecc };
-        let num_ec: i32 = (*ecc).bs - (*ecc).dw;
+        let num_ec: i32 = ecc.bs - ecc.dw;
 
-        for j in 0..(*ecc).dw {
+        for j in 0..ecc.dw {
             ds.data[(dst_offset + j) as usize] = ds.raw[(j * bc + i) as usize];
         }
         for j in 0..num_ec {
-            ds.data[(dst_offset + (*ecc).dw + j) as usize] =
+            ds.data[(dst_offset + ecc.dw + j) as usize] =
                 ds.raw[(ecc_offset + j * bc + i) as usize];
         }
 
         correct_block(&mut ds.data[dst_offset as usize..], ecc)?;
 
-        dst_offset += (*ecc).dw;
+        dst_offset += ecc.dw;
     }
 
     ds.data_bits = dst_offset * 8;

@@ -510,11 +510,11 @@ fn find_alignment_pattern(
 
     // Guess another two corners of the alignment pattern so that we
     // can estimate its size.
-    let c0 = &mut capstones[(*qr).caps[0] as usize];
+    let c0 = &mut capstones[qr.caps[0] as usize];
     let (u, v) = perspective_unmap(&c0.c, b);
     let a = perspective_map(&c0.c, u, v + 1.0f64);
 
-    let c2 = &mut capstones[(*qr).caps[2] as usize];
+    let c2 = &mut capstones[qr.caps[2] as usize];
     let (u, v) = perspective_unmap(&c2.c, b);
     let c = perspective_map(&c2.c, u + 1.0f64, v);
 
@@ -853,7 +853,7 @@ fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
     for i in 0..3 {
         let cap = &mut q.capstones[qr.caps[i as usize] as usize];
         rotate_capstone(cap, h0, hd);
-        (*cap).qr_grid = qr_index;
+        cap.qr_grid = qr_index;
     }
 
     // Check the timing pattern. This doesn't require a perspective
