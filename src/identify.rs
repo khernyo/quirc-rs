@@ -25,7 +25,8 @@ use std::cmp::max;
  * Linear algebra routines
  */
 
-fn line_intersect(p0: &Point, p1: &Point, q0: &Point, q1: &Point, r: &mut Point) -> i32 {
+#[allow(clippy::many_single_char_names)]
+fn line_intersect(p0: Point, p1: Point, q0: Point, q1: Point, r: &mut Point) -> i32 {
     // (a, b) is perpendicular to line p
     let a: i32 = -(p1.y - p0.y);
     let b: i32 = p1.x - p0.x;
@@ -57,14 +58,14 @@ fn line_intersect(p0: &Point, p1: &Point, q0: &Point, q1: &Point, r: &mut Point)
 }
 
 fn perspective_setup(rect: &[Point; 4], w: f64, h: f64) -> [f64; 8] {
-    let x0: f64 = rect[0].x as f64;
-    let y0: f64 = rect[0].y as f64;
-    let x1: f64 = rect[1].x as f64;
-    let y1: f64 = rect[1].y as f64;
-    let x2: f64 = rect[2].x as f64;
-    let y2: f64 = rect[2].y as f64;
-    let x3: f64 = rect[3].x as f64;
-    let y3: f64 = rect[3].y as f64;
+    let x0: f64 = f64::from(rect[0].x);
+    let y0: f64 = f64::from(rect[0].y);
+    let x1: f64 = f64::from(rect[1].x);
+    let y1: f64 = f64::from(rect[1].y);
+    let x2: f64 = f64::from(rect[2].x);
+    let y2: f64 = f64::from(rect[2].y);
+    let x3: f64 = f64::from(rect[3].x);
+    let y3: f64 = f64::from(rect[3].y);
     let wden: f64 = w * (x2 * y3 - x3 * y2 + (x3 - x2) * y1 + x1 * (y2 - y3));
     let hden: f64 = h * (x2 * y3 + x1 * (y2 - y3) - x3 * y2 + (x3 - x2) * y1);
     [
@@ -90,6 +91,7 @@ fn perspective_setup(rect: &[Point; 4], w: f64, h: f64) -> [f64; 8] {
     ]
 }
 
+#[allow(clippy::many_single_char_names)]
 fn perspective_map(c: &[f64; consts::PERSPECTIVE_PARAMS], u: f64, v: f64) -> Point {
     let den: f64 = c[6] * u + c[7] * v + 1.0f64;
     let x: f64 = (c[0] * u + c[1] * v + c[2]) / den;
@@ -102,9 +104,10 @@ fn perspective_map(c: &[f64; consts::PERSPECTIVE_PARAMS], u: f64, v: f64) -> Poi
     }
 }
 
-fn perspective_unmap(c: &[f64; consts::PERSPECTIVE_PARAMS], in_: &Point) -> (f64, f64) {
-    let x: f64 = in_.x as f64;
-    let y: f64 = in_.y as f64;
+#[allow(clippy::many_single_char_names)]
+fn perspective_unmap(c: &[f64; consts::PERSPECTIVE_PARAMS], in_: Point) -> (f64, f64) {
+    let x: f64 = f64::from(in_.x);
+    let y: f64 = f64::from(in_.y);
     let den: f64 =
         -c[0] * c[7] * y + c[1] * c[6] * y + (c[3] * c[7] - c[4] * c[6]) * x + c[0] * c[4]
             - c[1] * c[3];
@@ -136,12 +139,12 @@ fn flood_fill_seed<F>(
         return;
     }
 
-    while left > 0 && (image[row + (left - 1) as usize] as i32 == from) {
-        left = left - 1;
+    while left > 0 && (i32::from(image[row + (left - 1) as usize]) == from) {
+        left -= 1;
     }
 
-    while right < image.w - 1 && (image[row + (right + 1) as usize] as i32 == from) {
-        right = right + 1;
+    while right < image.w - 1 && (i32::from(image[row + (right + 1) as usize]) == from) {
+        right += 1;
     }
 
     // Fill the extent
@@ -160,7 +163,7 @@ fn flood_fill_seed<F>(
 
         let mut i = left;
         while i <= right {
-            if image[row + i as usize] as i32 == from {
+            if i32::from(image[row + i as usize]) == from {
                 flood_fill_seed(image, i, y - 1, from, to, func, depth + 1);
             }
             i += 1;
@@ -172,7 +175,7 @@ fn flood_fill_seed<F>(
 
         let mut i = left;
         while i <= right {
-            if image[row + i as usize] as i32 == from {
+            if i32::from(image[row + i as usize]) == from {
                 flood_fill_seed(image, i, y + 1, from, to, func, depth + 1);
             }
             i += 1;
@@ -201,26 +204,21 @@ fn threshold(q: &mut Quirc) {
         q.row_average.iter_mut().for_each(|x| *x = 0);
 
         for x in 0..q.image.w {
-            let w: usize;
-            let u: usize;
-
-            if y & 1 != 0 {
-                w = x as usize;
-                u = (q.image.w - 1 - x) as usize;
+            let (w, u) = if y & 1 != 0 {
+                (x as usize, (q.image.w - 1 - x) as usize)
             } else {
-                w = (q.image.w - 1 - x) as usize;
-                u = x as usize;
-            }
+                ((q.image.w - 1 - x) as usize, x as usize)
+            };
 
-            avg_w = avg_w * (threshold_s - 1) / threshold_s + q.image[row + w] as i32;
-            avg_u = avg_u * (threshold_s - 1) / threshold_s + q.image[row + u] as i32;
+            avg_w = avg_w * (threshold_s - 1) / threshold_s + i32::from(q.image[row + w]);
+            avg_u = avg_u * (threshold_s - 1) / threshold_s + i32::from(q.image[row + u]);
 
             q.row_average[w as usize] += avg_w;
             q.row_average[u as usize] += avg_u;
         }
 
         for x in 0..q.image.w {
-            if (q.image[row + x as usize] as i32)
+            if i32::from(q.image[row + x as usize])
                 < q.row_average[x as usize] * (100 - THRESHOLD_T) / (200 * threshold_s)
             {
                 q.image[row + x as usize] = PIXEL_BLACK as u8;
@@ -241,7 +239,7 @@ fn region_code(image: &mut Image, regions: &mut Vec<Region>, x: i32, y: i32) -> 
         return -1;
     }
 
-    let pixel = image[(y * image.w + x) as usize] as i32;
+    let pixel = i32::from(image[(y * image.w + x) as usize]);
 
     if pixel >= PIXEL_REGION {
         return pixel;
@@ -309,15 +307,15 @@ fn find_one_corner(psd: &mut PolygonScoreDataCorners, y: i32, left: i32, right: 
 fn find_other_corners(psd: &mut PolygonScoreDataCorners, y: i32, left: i32, right: i32) {
     let xs: [i32; 2] = [left, right];
 
-    for i in 0..2 {
-        let up: i32 = xs[i] * psd.r#ref.x + y * psd.r#ref.y;
-        let right: i32 = xs[i] * -psd.r#ref.y + y * psd.r#ref.x;
+    for &x in &xs {
+        let up: i32 = x * psd.r#ref.x + y * psd.r#ref.y;
+        let right: i32 = x * -psd.r#ref.y + y * psd.r#ref.x;
         let scores: [i32; 4] = [up, right, -up, -right];
 
-        for j in 0..4 {
-            if scores[j] > psd.scores[j] {
-                psd.scores[j] = scores[j];
-                psd.corners[j].x = xs[i];
+        for (j, &score) in scores.iter().enumerate() {
+            if score > psd.scores[j] {
+                psd.scores[j] = score;
+                psd.corners[j].x = x;
                 psd.corners[j].y = y;
             }
         }
@@ -497,6 +495,7 @@ fn finder_scan(q: &mut Quirc, y: i32) {
     }
 }
 
+#[allow(clippy::many_single_char_names)]
 fn find_alignment_pattern(
     image: &mut Image,
     regions: &mut Vec<Region>,
@@ -512,11 +511,11 @@ fn find_alignment_pattern(
     // Guess another two corners of the alignment pattern so that we
     // can estimate its size.
     let c0 = &mut capstones[(*qr).caps[0] as usize];
-    let (u, v) = perspective_unmap(&c0.c, &mut b);
+    let (u, v) = perspective_unmap(&c0.c, b);
     let a = perspective_map(&c0.c, u, v + 1.0f64);
 
     let c2 = &mut capstones[(*qr).caps[2] as usize];
-    let (u, v) = perspective_unmap(&c2.c, &mut b);
+    let (u, v) = perspective_unmap(&c2.c, b);
     let c = perspective_map(&c2.c, u + 1.0f64, v);
 
     let size_estimate = ((a.x - b.x) * -(c.y - b.y) + (a.y - b.y) * (c.x - b.x)).abs();
@@ -537,8 +536,8 @@ fn find_alignment_pattern(
                     return;
                 }
             }
-            b.x = b.x + DX_MAP[dir as usize];
-            b.y = b.y + DY_MAP[dir as usize];
+            b.x += DX_MAP[dir as usize];
+            b.y += DY_MAP[dir as usize];
         }
         dir = (dir + 1) % 4;
         if dir & 1 == 0 {
@@ -563,7 +562,7 @@ fn find_leftmost_to_line(psd: &mut PolygonScoreDataPoint, y: i32, left: i32, rig
 
 /// Do a Bresenham scan from one point to another and count the number
 /// of black/white transitions.
-fn timing_scan(image: &Image, p0: &Point, p1: &Point) -> i32 {
+fn timing_scan(image: &Image, p0: Point, p1: Point) -> i32 {
     if p0.x < 0 || p0.y < 0 || p0.x >= image.w || p0.y >= image.h {
         return -1;
     }
@@ -574,7 +573,7 @@ fn timing_scan(image: &Image, p0: &Point, p1: &Point) -> i32 {
     let mut run_length: i32 = 0;
     let mut count: i32 = 0;
     for (x, y) in Bresenham::new((p0.x, p0.y), (p1.x, p1.y)) {
-        let pixel = image[(y * image.w + x) as usize] as i32;
+        let pixel = i32::from(image[(y * image.w + x) as usize]);
 
         if pixel != 0 {
             if run_length >= 2 {
@@ -606,8 +605,8 @@ fn measure_timing_pattern(image: &Image, capstones: &[Capstone], qr: &mut Grid) 
         tpep[i] = perspective_map(&cap.c, US[i], VS[i]);
     }
 
-    let hscan = timing_scan(image, &tpep[1], &tpep[2]);
-    let vscan = timing_scan(image, &tpep[1], &tpep[0]);
+    let hscan = timing_scan(image, tpep[1], tpep[2]);
+    let vscan = timing_scan(image, tpep[1], tpep[0]);
 
     qr.hscan = hscan;
     qr.vscan = vscan;
@@ -625,7 +624,7 @@ fn measure_timing_pattern(image: &Image, capstones: &[Capstone], qr: &mut Grid) 
     let ver = (size - 15) / 4;
     qr.grid_size = ver * 4 + 17;
 
-    return 0;
+    0
 }
 
 #[derive(Eq, PartialEq)]
@@ -642,7 +641,7 @@ enum Cell {
 fn read_cell(q: &Quirc, index: i32, x: i32, y: i32) -> Cell {
     let qr: &Grid = &q.grids[index as usize];
 
-    let p = perspective_map(&qr.c, x as f64 + 0.5f64, y as f64 + 0.5f64);
+    let p = perspective_map(&qr.c, f64::from(x) + 0.5f64, f64::from(y) + 0.5f64);
     if p.y < 0 || p.y >= q.image.h || p.x < 0 || p.x >= q.image.w {
         Cell::OutOfBounds
     } else if q.image[(p.y * q.image.w + p.x) as usize] != 0 {
@@ -661,8 +660,8 @@ fn fitness_cell(image: &Image, qr: &mut Grid, x: i32, y: i32) -> i32 {
 
             let p = perspective_map(
                 &qr.c,
-                x as f64 + OFFSETS[u as usize],
-                y as f64 + OFFSETS[v as usize],
+                f64::from(x) + OFFSETS[u as usize],
+                f64::from(y) + OFFSETS[v as usize],
             );
 
             if !(p.y < 0 || p.y >= image.h || p.x < 0 || p.x >= image.w) {
@@ -773,8 +772,8 @@ fn jiggle_perspective(image: &Image, qr: &mut Grid) {
             }
         }
 
-        for i in 0..8 {
-            adjustments[i] *= 0.5;
+        for adjustment in &mut adjustments {
+            *adjustment *= 0.5;
         }
     }
 }
@@ -790,14 +789,18 @@ fn setup_qr_perspective(image: &Image, capstones: &[Capstone], qr: &mut Grid) {
         qr.align,
         capstones[qr.caps[0] as usize].corners[0],
     ];
-    qr.c = perspective_setup(&rect, (qr.grid_size - 7) as f64, (qr.grid_size - 7) as f64);
+    qr.c = perspective_setup(
+        &rect,
+        f64::from(qr.grid_size - 7),
+        f64::from(qr.grid_size - 7),
+    );
 
     jiggle_perspective(image, qr);
 }
 
 /// Rotate the capstone with so that corner 0 is the leftmost with respect
 /// to the given reference line.
-fn rotate_capstone(cap: &mut Capstone, h0: &Point, hd: &Point) {
+fn rotate_capstone(cap: &mut Capstone, h0: Point, hd: Point) {
     let (best, _best_score) = cap
         .corners
         .iter()
@@ -832,9 +835,7 @@ fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
         + (q.capstones[b as usize].center.y - h0.y) * hd.x
         > 0
     {
-        let swap: i32 = a;
-        a = c;
-        c = swap;
+        std::mem::swap(&mut a, &mut c);
         hd.x = -hd.x;
         hd.y = -hd.y;
     }
@@ -851,22 +852,22 @@ fn record_qr_grid(q: &mut Quirc, mut a: i32, b: i32, mut c: i32) {
     // to the grid.
     for i in 0..3 {
         let cap = &mut q.capstones[qr.caps[i as usize] as usize];
-        rotate_capstone(cap, &h0, &hd);
+        rotate_capstone(cap, h0, hd);
         (*cap).qr_grid = qr_index;
     }
 
     // Check the timing pattern. This doesn't require a perspective
     // transform.
-    if !(measure_timing_pattern(&q.image, &q.capstones, &mut qr) < 0) {
+    if measure_timing_pattern(&q.image, &q.capstones, &mut qr) >= 0 {
         // Make an estimate based for the alignment pattern based on extending
         // lines from capstones A and C.
-        if !(line_intersect(
-            &q.capstones[a as usize].corners[0],
-            &q.capstones[a as usize].corners[1],
-            &q.capstones[c as usize].corners[0],
-            &q.capstones[c as usize].corners[3],
+        if line_intersect(
+            q.capstones[a as usize].corners[0],
+            q.capstones[a as usize].corners[1],
+            q.capstones[c as usize].corners[0],
+            q.capstones[c as usize].corners[3],
             &mut qr.align,
-        ) == 0)
+        ) != 0
         {
             // On V2+ grids, we should use the alignment pattern.
             if qr.grid_size > 21 {
@@ -940,18 +941,18 @@ fn test_neighbours(q: &mut Quirc, i: i32, hlist: &[Neighbour], vlist: &[Neighbou
     let mut best_v: i32 = -1;
 
     // Test each possible grouping
-    for j in 0..hlist.len() {
-        for k in 0..vlist.len() {
-            let hn: &Neighbour = &hlist[j];
-            let vn: &Neighbour = &vlist[k];
+    for hn in hlist {
+        for vn in vlist {
             let score: f64 = (1.0 - hn.distance / vn.distance).abs();
 
-            if !(score > 2.5) {
-                if best_h < 0 || score < best_score {
-                    best_h = hn.index;
-                    best_v = vn.index;
-                    best_score = score;
-                }
+            if score > 2.5 {
+                continue;
+            }
+
+            if best_h < 0 || score < best_score {
+                best_h = hn.index;
+                best_v = vn.index;
+                best_score = score;
             }
         }
     }
@@ -980,7 +981,7 @@ fn test_grouping(q: &mut Quirc, i: usize) {
             continue;
         }
 
-        let (mut u, mut v) = perspective_unmap(&c1.c, &c2.center);
+        let (mut u, mut v) = perspective_unmap(&c1.c, c2.center);
 
         u = (u - 3.5).abs();
         v = (v - 3.5).abs();

@@ -105,15 +105,13 @@ fn poly_add(dst: &mut [u8; MAX_POLY], src: &[u8; MAX_POLY], c: u8, shift: i32, g
         return;
     }
 
-    let log_c: i32 = gf.log[c as usize] as i32;
+    let log_c: i32 = i32::from(gf.log[c as usize]);
     for i in 0..MAX_POLY as i32 {
         let p = i + shift;
         let v: u8 = src[i as usize];
 
-        if !(p < 0 || p >= MAX_POLY as i32) {
-            if !(v == 0) {
-                dst[p as usize] ^= gf.exp[((gf.log[v as usize] as i32 + log_c) % gf.p) as usize];
-            }
+        if !(p < 0 || p >= MAX_POLY as i32) && v != 0 {
+            dst[p as usize] ^= gf.exp[((i32::from(gf.log[v as usize]) + log_c) % gf.p) as usize];
         }
     }
 }
@@ -128,8 +126,9 @@ fn poly_eval(s: &[u8; MAX_POLY], x: u8, gf: &GaloisField) -> u8 {
         for i in 0..MAX_POLY as i32 {
             let c: u8 = s[i as usize];
 
-            if !(c == 0) {
-                sum ^= gf.exp[((gf.log[c as usize] as i32 + log_x as i32 * i) % gf.p) as usize];
+            if c != 0 {
+                sum ^= gf.exp
+                    [((i32::from(gf.log[c as usize]) + i32::from(log_x) * i) % gf.p) as usize];
             }
         }
         sum
@@ -152,14 +151,14 @@ fn berlekamp_massey(s: &[u8; MAX_POLY], N: usize, gf: &GaloisField) -> [u8; MAX_
 
         for i in 1..=L {
             if C[i] != 0 && (s[n - i] != 0) {
-                d ^= gf.exp[((gf.log[C[i as usize] as usize] as i32
-                    + gf.log[s[n - i] as usize] as i32)
+                d ^= gf.exp[((i32::from(gf.log[C[i as usize] as usize])
+                    + i32::from(gf.log[s[n - i] as usize]))
                     % gf.p) as usize];
             }
         }
 
-        let mult = gf.exp
-            [((gf.p - gf.log[b as usize] as i32 + gf.log[d as usize] as i32) % gf.p) as usize];
+        let mult = gf.exp[((gf.p - i32::from(gf.log[b as usize]) + i32::from(gf.log[d as usize]))
+            % gf.p) as usize];
 
         if d == 0 {
             m += 1;
@@ -193,8 +192,9 @@ fn block_syndromes(data: &[u8], bs: i32, npar: i32) -> Option<[u8; MAX_POLY]> {
         for j in 0..bs {
             let c: u8 = data[(bs - j - 1) as usize];
 
-            if !(c == 0) {
-                s[i as usize] ^= GF256_EXP[((GF256_LOG[c as usize] as i32 + i * j) % 255) as usize];
+            if c != 0 {
+                s[i as usize] ^=
+                    GF256_EXP[((i32::from(GF256_LOG[c as usize]) + i * j) % 255) as usize];
             }
         }
 
@@ -217,7 +217,7 @@ fn eloc_poly(s: &[u8; MAX_POLY], sigma: &[u8; MAX_POLY], npar: i32) -> [u8; MAX_
         let a: u8 = sigma[i];
         let log_a: u8 = GF256_LOG[a as usize];
 
-        if !(a == 0) {
+        if a != 0 {
             for j in 0..MAX_POLY - 1 {
                 let b: u8 = s[j + 1];
 
@@ -225,9 +225,9 @@ fn eloc_poly(s: &[u8; MAX_POLY], sigma: &[u8; MAX_POLY], npar: i32) -> [u8; MAX_
                     break;
                 }
 
-                if !(b == 0) {
-                    omega[i + j] ^=
-                        GF256_EXP[((log_a as i32 + GF256_LOG[b as usize] as i32) % 255) as usize];
+                if b != 0 {
+                    omega[i + j] ^= GF256_EXP
+                        [((i32::from(log_a) + i32::from(GF256_LOG[b as usize])) % 255) as usize];
                 }
             }
         }
@@ -264,15 +264,15 @@ fn correct_block(data: &mut [u8], ecc: &RsParams) -> Result<()> {
         if poly_eval(&sigma, xinv, &GF256) == 0 {
             let sd_x: u8 = poly_eval(&sigma_deriv, xinv, &GF256);
             let omega_x: u8 = poly_eval(&omega, xinv, &GF256);
-            let error: u8 = GF256_EXP[((255 - GF256_LOG[sd_x as usize] as i32
-                + GF256_LOG[omega_x as usize] as i32)
+            let error: u8 = GF256_EXP[((255 - i32::from(GF256_LOG[sd_x as usize])
+                + i32::from(GF256_LOG[omega_x as usize]))
                 % 255) as usize];
 
             data[(ecc.bs - i - 1) as usize] ^= error;
         }
     }
 
-    if let Some(_) = block_syndromes(data, ecc.bs, npar) {
+    if block_syndromes(data, ecc.bs, npar).is_some() {
         Err(DecodeError::DataEcc)
     } else {
         Ok(())
@@ -297,7 +297,7 @@ fn format_syndromes(u: u16) -> Option<[u8; MAX_POLY]> {
         s[i] = 0;
 
         for j in 0..FORMAT_BITS {
-            if u as i32 & 1 << j != 0 {
+            if i32::from(u) & 1 << j != 0 {
                 s[i] ^= GF16_EXP[(i + 1) * j % 15];
             }
         }
@@ -330,11 +330,11 @@ fn correct_format(f_ret: &mut u16) -> Result<()> {
     // Now, find the roots of the polynomial
     for i in 0..15 {
         if poly_eval(&sigma, GF16_EXP[(15 - i) as usize], &GF16) == 0 {
-            u = (u as i32 ^ 1 << i) as u16;
+            u = (i32::from(u) ^ 1 << i) as u16;
         }
     }
 
-    if let Some(_) = format_syndromes(u) {
+    if format_syndromes(u).is_some() {
         Err(DecodeError::FormatEcc)
     } else {
         *f_ret = u;
@@ -375,7 +375,7 @@ impl Default for DataStream {
 fn grid_bit(code: &QuircCode, x: i32, y: i32) -> i32 {
     let p: i32 = y * code.size + x;
 
-    code.cell_bitmap[(p >> 3) as usize] as i32 >> (p & 7) & 1
+    i32::from(code.cell_bitmap[(p >> 3) as usize]) >> (p & 7) & 1
 }
 
 fn read_format(code: &QuircCode, mut data: &mut QuircData, which: i32) -> Result<()> {
@@ -383,27 +383,28 @@ fn read_format(code: &QuircCode, mut data: &mut QuircData, which: i32) -> Result
 
     if which != 0 {
         for i in 0..7 {
-            format = ((format as i32) << 1 | grid_bit(code, 8, code.size - 1 - i)) as u16;
+            format = (i32::from(format) << 1 | grid_bit(code, 8, code.size - 1 - i)) as u16;
         }
         for i in 0..8 {
-            format = ((format as i32) << 1 | grid_bit(code, code.size - 8 + i, 8)) as u16;
+            format = (i32::from(format) << 1 | grid_bit(code, code.size - 8 + i, 8)) as u16;
         }
     } else {
         const XS: [i32; 15] = [8, 8, 8, 8, 8, 8, 8, 8, 7, 5, 4, 3, 2, 1, 0];
         const YS: [i32; 15] = [0, 1, 2, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 8, 8];
 
         for i in (0..=14).rev() {
-            format = ((format as i32) << 1 | grid_bit(code, XS[i as usize], YS[i as usize])) as u16;
+            format =
+                (i32::from(format) << 1 | grid_bit(code, XS[i as usize], YS[i as usize])) as u16;
         }
     }
 
-    format = (format as i32 ^ 0x5412) as u16;
+    format = (i32::from(format) ^ 0x5412) as u16;
 
     correct_format(&mut format)?;
 
-    let fdata = ((format as i32) >> 10) as u16;
-    data.ecc_level = (fdata as i32) >> 3;
-    data.mask = (fdata as i32) & 7;
+    let fdata = (i32::from(format) >> 10) as u16;
+    data.ecc_level = i32::from(fdata) >> 3;
+    data.mask = i32::from(fdata) & 7;
 
     Ok(())
 }
@@ -526,11 +527,11 @@ fn read_data(code: &QuircCode, data: &QuircData) -> DataStream {
             read_bit(code, data, &mut ds, y, x - 1);
         }
 
-        y = y + dir;
+        y += dir;
         if y < 0 || y >= code.size {
             dir = -dir;
-            x = x - 2;
-            y = y + dir;
+            x -= 2;
+            y += dir;
         }
     }
 
@@ -582,7 +583,7 @@ fn take_bits(ds: &mut DataStream, mut len: i32) -> i32 {
         let bitpos: i32 = ds.ptr & 7;
 
         ret <<= 1;
-        if (b as i32) << bitpos & 0x80 != 0 {
+        if i32::from(b) << bitpos & 0x80 != 0 {
             ret |= 1;
         }
 
@@ -599,8 +600,8 @@ fn numeric_tuple(data: &mut QuircData, ds: &mut DataStream, bits: i32, digits: i
     } else {
         let mut tuple = take_bits(ds, bits);
 
-        for i in (0..=digits - 1).rev() {
-            data.payload[(data.payload_len + i) as usize] = (tuple % 10 + b'0' as i32) as u8;
+        for i in (0..digits).rev() {
+            data.payload[(data.payload_len + i) as usize] = (tuple % 10 + i32::from(b'0')) as u8;
             tuple /= 10;
         }
 
@@ -638,10 +639,8 @@ fn decode_numeric(data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
         count -= 2;
     }
 
-    if count != 0 {
-        if numeric_tuple(data, ds, 4, 1) < 0 {
-            return Err(DecodeError::DataUnderflow);
-        }
+    if count != 0 && numeric_tuple(data, ds, 4, 1) < 0 {
+        return Err(DecodeError::DataUnderflow);
     }
 
     Ok(())
@@ -686,10 +685,8 @@ fn decode_alpha(data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
         count -= 2;
     }
 
-    if count != 0 {
-        if alpha_tuple(data, ds, 6, 1) < 0 {
-            return Err(DecodeError::DataUnderflow);
-        }
+    if count != 0 && alpha_tuple(data, ds, 6, 1) < 0 {
+        return Err(DecodeError::DataUnderflow);
     }
 
     Ok(())
@@ -742,9 +739,9 @@ fn decode_kanji(mut data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
                 (intermediate + 0xc140) as u16
             };
 
-            data.payload[data.payload_len as usize] = (sjw as i32 >> 8) as u8;
+            data.payload[data.payload_len as usize] = (i32::from(sjw) >> 8) as u8;
             data.payload_len += 1;
-            data.payload[data.payload_len as usize] = (sjw as i32 & 0xff) as u8;
+            data.payload[data.payload_len as usize] = (i32::from(sjw) & 0xff) as u8;
             data.payload_len += 1;
         }
 
@@ -788,7 +785,7 @@ fn decode_payload(data: &mut QuircData, ds: &mut DataStream) -> Result<()> {
             _ => break,
         };
 
-        if type_ & type_ - 1 == 0 && (type_ > data.data_type) {
+        if type_ & (type_ - 1) == 0 && (type_ > data.data_type) {
             data.data_type = type_;
         }
     }
@@ -822,7 +819,7 @@ pub fn quirc_decode(code: &QuircCode) -> Result<QuircData> {
     // Read format information -- try both locations
     read_format(code, &mut data, 0).or_else(|_| read_format(code, &mut data, 1))?;
 
-    let mut ds = read_data(code, &mut data);
+    let mut ds = read_data(code, &data);
     codestream_ecc(&mut data, &mut ds)?;
 
     decode_payload(&mut data, &mut ds)?;
