@@ -654,15 +654,10 @@ fn read_cell(q: &Quirc, index: i32, x: i32, y: i32) -> Cell {
 fn fitness_cell(image: &Image, qr: &mut Grid, x: i32, y: i32) -> i32 {
     let mut score: i32 = 0;
 
-    for v in 0..3 {
-        for u in 0..3 {
-            const OFFSETS: [f64; 3] = [0.3, 0.5, 0.7];
-
-            let p = perspective_map(
-                &qr.c,
-                f64::from(x) + OFFSETS[u as usize],
-                f64::from(y) + OFFSETS[v as usize],
-            );
+    const OFFSETS: [f64; 3] = [0.3, 0.5, 0.7];
+    for v in &OFFSETS {
+        for u in &OFFSETS {
+            let p = perspective_map(&qr.c, f64::from(x) + u, f64::from(y) + v);
 
             if !(p.y < 0 || p.y >= image.h || p.x < 0 || p.x >= image.w) {
                 if image[(p.y * image.w + p.x) as usize] != 0 {
