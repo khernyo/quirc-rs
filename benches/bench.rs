@@ -16,11 +16,7 @@ use test_utils::dbgutil::*;
 fn run(width: u32, height: u32, image_bytes: &[u8]) {
     let mut image_bytes = image_bytes.to_owned();
 
-    let mut decoder = Quirc::new(Image {
-        pixels: &mut image_bytes,
-        w: width as i32,
-        h: height as i32,
-    });
+    let mut decoder = Quirc::new(Image::new(width, height, &mut image_bytes));
     quirc_identify(&mut decoder);
 
     let id_count = quirc_count(&decoder);

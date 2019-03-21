@@ -39,11 +39,7 @@ fn main() {
     let (width, height) = img.dimensions();
     let mut image_bytes = img.into_raw();
 
-    let mut decoder = Quirc::new(Image {
-        pixels: &mut image_bytes,
-        w: width as i32,
-        h: height as i32,
-    });
+    let mut decoder = Quirc::new(Image::new(width, height, &mut image_bytes));
     quirc_identify(&mut decoder);
 
     let count: i32 = quirc_count(&decoder);

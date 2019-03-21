@@ -104,9 +104,9 @@ pub fn load_image(path: &Path) -> (u32, u32, Vec<u8>) {
     (width, height, img_bytes)
 }
 
-pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
+pub unsafe fn validate(decoder: &mut Quirc, image: Image) {
     let qw_decoder: *mut qw::quirc = qw::quirc_new();
-    assert!(qw::quirc_resize(qw_decoder, decoder.image.w, decoder.image.h) >= 0);
+    assert!(qw::quirc_resize(qw_decoder, image.width(), image.height()) >= 0);
     let image_bytes = qw::quirc_begin(
         qw_decoder,
         std::ptr::null_mut() as (*mut i32),
@@ -114,13 +114,13 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     );
     memcpy(
         image_bytes as *mut c_void,
-        image.as_ptr() as *const c_void,
-        (decoder.image.w * decoder.image.h) as usize,
+        image.pixels().as_ptr() as *const c_void,
+        image.pixels().len(),
     );
     qw::quirc_end(qw_decoder);
 
     assert_eq!(
-        decoder.image.pixels,
+        decoder.image.pixels(),
         std::slice::from_raw_parts(
             (*qw_decoder).pixels,
             ((*qw_decoder).w * (*qw_decoder).h) as usize
@@ -128,10 +128,10 @@ pub unsafe fn validate(decoder: &mut Quirc, image: &[u8]) {
     );
     assert_eq!(
         decoder.row_average.as_slice(),
-        std::slice::from_raw_parts((*qw_decoder).row_average, decoder.image.w as usize)
+        std::slice::from_raw_parts((*qw_decoder).row_average, decoder.image.width() as usize)
     );
-    assert_eq!(decoder.image.w, (*qw_decoder).w);
-    assert_eq!(decoder.image.h, (*qw_decoder).h);
+    assert_eq!(decoder.image.width(), (*qw_decoder).w);
+    assert_eq!(decoder.image.height(), (*qw_decoder).h);
     assert_eq!(decoder.regions.len(), (*qw_decoder).num_regions as usize);
     assert_eq!(
         memcmp(

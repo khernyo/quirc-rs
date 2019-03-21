@@ -213,9 +213,33 @@ impl Default for Grid {
 }
 
 pub struct Image<'a> {
-    pub pixels: &'a mut [u8],
-    pub w: i32,
-    pub h: i32,
+    pub(crate) pixels: &'a mut [u8],
+    pub(crate) w: i32,
+    pub(crate) h: i32,
+}
+
+impl<'a> Image<'a> {
+    pub fn new(width: u32, height: u32, pixels: &mut [u8]) -> Image {
+        assert_eq!((width * height) as usize, pixels.len());
+
+        Image {
+            pixels,
+            w: width as i32,
+            h: height as i32,
+        }
+    }
+
+    pub fn pixels(&self) -> &[u8] {
+        self.pixels
+    }
+
+    pub fn width(&self) -> i32 {
+        self.w
+    }
+
+    pub fn height(&self) -> i32 {
+        self.h
+    }
 }
 
 impl<'a> Index<usize> for Image<'a> {

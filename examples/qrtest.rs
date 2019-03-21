@@ -111,15 +111,11 @@ pub unsafe fn scan_file(path: &Path, mut info: *mut ResultInfo) {
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     (*info).load_time = ms(tp).wrapping_sub(start);
 
-    let image_bytes_clone = image_bytes.clone();
+    let mut image_bytes_clone = image_bytes.clone();
 
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     start = ms(tp);
-    let mut decoder = Quirc::new(Image {
-        pixels: &mut image_bytes,
-        w: width as i32,
-        h: height as i32,
-    });
+    let mut decoder = Quirc::new(Image::new(width, height, &mut image_bytes));
     quirc_identify(&mut decoder);
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     (*info).identify_time = ms(tp).wrapping_sub(start);
@@ -166,7 +162,10 @@ pub unsafe fn scan_file(path: &Path, mut info: *mut ResultInfo) {
         }
     }
     if WANT_VALIDATE {
-        validate(&mut decoder, &image_bytes_clone);
+        validate(
+            &mut decoder,
+            Image::new(width, height, &mut image_bytes_clone),
+        );
     }
     (*info).file_count = 1i32;
 }
