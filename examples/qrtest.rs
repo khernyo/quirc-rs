@@ -96,7 +96,7 @@ pub unsafe fn add_result(mut sum: *mut ResultInfo, inf: *mut ResultInfo) {
     (*sum).total_time = (*sum).total_time.wrapping_add((*inf).total_time);
 }
 
-pub unsafe fn scan_file(decoder: &mut Quirc, path: &Path, mut info: *mut ResultInfo) {
+pub unsafe fn scan_file(path: &Path, mut info: *mut ResultInfo) {
     let filename = path.file_name().unwrap();
     let mut tp: libc::timespec = std::mem::uninitialized();
     let mut start: u32;
@@ -107,18 +107,25 @@ pub unsafe fn scan_file(decoder: &mut Quirc, path: &Path, mut info: *mut ResultI
         start = ms(tp);
         start
     };
-    let image_bytes = load_image(decoder, path);
+    let (width, height, mut image_bytes) = load_image(path);
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     (*info).load_time = ms(tp).wrapping_sub(start);
 
+    let image_bytes_clone = image_bytes.clone();
+
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     start = ms(tp);
-    quirc_identify(decoder, &image_bytes);
+    let mut decoder = Quirc::new(Image {
+        pixels: &mut image_bytes,
+        w: width as i32,
+        h: height as i32,
+    });
+    quirc_identify(&mut decoder);
     libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut tp as (*mut timespec));
     (*info).identify_time = ms(tp).wrapping_sub(start);
-    (*info).id_count = quirc_count(decoder);
+    (*info).id_count = quirc_count(&decoder);
     for i in 0..(*info).id_count {
-        let code = quirc_extract(decoder, i).unwrap();
+        let code = quirc_extract(&mut decoder, i).unwrap();
         if quirc_decode(&code).is_ok() {
             (*info).decode_count += 1;
         }
@@ -138,7 +145,7 @@ pub unsafe fn scan_file(decoder: &mut Quirc, path: &Path, mut info: *mut ResultI
     );
     if WANT_CELL_DUMP || WANT_VERBOSE {
         for i in 0..(*info).id_count {
-            let code = quirc_extract(decoder, i).unwrap();
+            let code = quirc_extract(&mut decoder, i).unwrap();
             if WANT_CELL_DUMP {
                 dump_cells(&code);
                 println!();
@@ -159,12 +166,12 @@ pub unsafe fn scan_file(decoder: &mut Quirc, path: &Path, mut info: *mut ResultI
         }
     }
     if WANT_VALIDATE {
-        validate(decoder, &image_bytes);
+        validate(&mut decoder, &image_bytes_clone);
     }
     (*info).file_count = 1i32;
 }
 
-pub unsafe fn scan_dir(decoder: &mut Quirc, path: &Path, info: *mut ResultInfo) -> i32 {
+pub unsafe fn scan_dir(path: &Path, info: *mut ResultInfo) -> i32 {
     let entries = path.read_dir().unwrap();
 
     println!("{}:", path.display());
@@ -177,7 +184,7 @@ pub unsafe fn scan_dir(decoder: &mut Quirc, path: &Path, info: *mut ResultInfo) 
             let p = entry.path();
             let fullpath = p.as_path();
 
-            if test_scan(decoder, fullpath, &mut sub) > 0i32 {
+            if test_scan(fullpath, &mut sub) > 0i32 {
                 add_result(info, &mut sub);
                 count += 1;
             }
@@ -191,7 +198,7 @@ pub unsafe fn scan_dir(decoder: &mut Quirc, path: &Path, info: *mut ResultInfo) 
     (count > 0i32) as (i32)
 }
 
-pub unsafe fn test_scan(decoder: &mut Quirc, path: &Path, info: *mut ResultInfo) -> i32 {
+pub unsafe fn test_scan(path: &Path, info: *mut ResultInfo) -> i32 {
     memset(
         info as (*mut ::std::os::raw::c_void),
         0i32,
@@ -199,10 +206,10 @@ pub unsafe fn test_scan(decoder: &mut Quirc, path: &Path, info: *mut ResultInfo)
     );
 
     if path.is_file() {
-        scan_file(decoder, path, info);
+        scan_file(path, info);
         1
     } else if path.is_dir() {
-        scan_dir(decoder, path, info);
+        scan_dir(path, info);
         1
     } else {
         0
@@ -212,7 +219,6 @@ pub unsafe fn test_scan(decoder: &mut Quirc, path: &Path, info: *mut ResultInfo)
 pub unsafe fn run_tests(paths: Vec<&str>) {
     let mut sum: ResultInfo = std::mem::uninitialized();
     let mut count: i32 = 0i32;
-    let mut decoder = Quirc::new();
 
     println!("  {:30}  {:>17} {:>11}", "", "Time (ms)", "Count");
     println!(
@@ -227,7 +233,7 @@ pub unsafe fn run_tests(paths: Vec<&str>) {
     );
     for path in paths {
         let mut info: ResultInfo = std::mem::uninitialized();
-        if test_scan(&mut decoder, Path::new(path), &mut info) > 0i32 {
+        if test_scan(Path::new(path), &mut info) > 0i32 {
             add_result(&mut sum, &mut info);
             count += 1;
         }

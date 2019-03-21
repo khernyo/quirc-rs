@@ -1003,12 +1003,7 @@ fn test_grouping(q: &mut Quirc, i: usize) {
     test_neighbours(q, i as i32, &hlist, &vlist);
 }
 
-fn pixels_setup(q: &mut Quirc, image: &[u8]) {
-    q.image.pixels.copy_from_slice(image);
-}
-
-pub fn quirc_identify(q: &mut Quirc, image: &[u8]) {
-    pixels_setup(q, image);
+pub fn quirc_identify(q: &mut Quirc) {
     threshold(q);
 
     for i in 0..q.image.h {

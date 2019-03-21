@@ -14,9 +14,14 @@ use quirc_wrapper as qw;
 use test_utils::dbgutil::*;
 
 fn run(width: u32, height: u32, image_bytes: &[u8]) {
-    let mut decoder = Quirc::new();
-    quirc_resize(&mut decoder, width, height);
-    quirc_identify(&mut decoder, image_bytes);
+    let mut image_bytes = image_bytes.to_owned();
+
+    let mut decoder = Quirc::new(Image {
+        pixels: &mut image_bytes,
+        w: width as i32,
+        h: height as i32,
+    });
+    quirc_identify(&mut decoder);
 
     let id_count = quirc_count(&decoder);
     for i in 0..id_count {
@@ -62,13 +67,7 @@ unsafe fn bench(
     path: &Path,
     f: unsafe fn(width: u32, height: u32, image_bytes: &[u8]),
 ) {
-    let (width, height, image_bytes) = {
-        let mut decoder = Quirc::new();
-        // TODO move quirc setup out of load_image()
-        let image_bytes = load_image(&mut decoder, path);
-
-        (decoder.image.w as u32, decoder.image.h as u32, image_bytes)
-    };
+    let (width, height, image_bytes) = load_image(path);
 
     b.iter(|| f(width, height, &image_bytes));
 }

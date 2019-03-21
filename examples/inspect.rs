@@ -273,11 +273,16 @@ pub unsafe fn _c_main() {
     let matches = args.get_matches();
     let path = matches.value_of(paths_arg_name).unwrap();
 
-    let mut q = Quirc::new();
-    let image_bytes = load_image(&mut q, &Path::new(path));
-    quirc_identify(&mut q, &image_bytes);
-    dump_info(&mut q);
-    if sdl_examine(&mut q) < 0i32 {
+    let (width, height, mut image_bytes) = load_image(&Path::new(path));
+
+    let mut decoder = Quirc::new(Image {
+        pixels: &mut image_bytes,
+        w: width as i32,
+        h: height as i32,
+    });
+    quirc_identify(&mut decoder);
+    dump_info(&mut decoder);
+    if sdl_examine(&mut decoder) < 0i32 {
         panic!();
     }
 }

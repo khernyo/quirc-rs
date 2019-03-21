@@ -37,16 +37,19 @@ fn main() {
 
     let img = image::open(&image_path).unwrap().grayscale().to_luma();
     let (width, height) = img.dimensions();
-    let image_bytes = img.into_raw();
+    let mut image_bytes = img.into_raw();
 
-    let mut q = Quirc::new();
-    quirc_resize(&mut q, width, height);
-    quirc_identify(&mut q, &image_bytes);
+    let mut decoder = Quirc::new(Image {
+        pixels: &mut image_bytes,
+        w: width as i32,
+        h: height as i32,
+    });
+    quirc_identify(&mut decoder);
 
-    let count: i32 = quirc_count(&q);
+    let count: i32 = quirc_count(&decoder);
     println!("Found {} QR codes", count);
     for i in 0..count {
-        let code = quirc_extract(&mut q, i).unwrap();
+        let code = quirc_extract(&mut decoder, i).unwrap();
         let result = quirc_decode(&code);
         match result {
             Ok(data) => {

@@ -212,23 +212,13 @@ impl Default for Grid {
     }
 }
 
-pub struct Image {
-    pub pixels: Vec<u8>,
+pub struct Image<'a> {
+    pub pixels: &'a mut [u8],
     pub w: i32,
     pub h: i32,
 }
 
-impl Default for Image {
-    fn default() -> Self {
-        Image {
-            pixels: vec![],
-            w: 0,
-            h: 0,
-        }
-    }
-}
-
-impl Index<usize> for Image {
+impl<'a> Index<usize> for Image<'a> {
     type Output = u8;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -236,24 +226,15 @@ impl Index<usize> for Image {
     }
 }
 
-impl IndexMut<usize> for Image {
+impl<'a> IndexMut<usize> for Image<'a> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.pixels[index]
     }
 }
 
-impl Image {
-    fn resize(&mut self, w: u32, h: u32) {
-        let newdim: usize = (w * h) as usize;
-        self.pixels.resize(newdim, 0);
-        self.w = w as i32;
-        self.h = h as i32;
-    }
-}
-
 #[repr(C)]
-pub struct Quirc {
-    pub image: Image,
+pub struct Quirc<'a> {
+    pub image: Image<'a>,
 
     /// used by threshold()
     pub row_average: Vec<i32>,
@@ -263,11 +244,12 @@ pub struct Quirc {
     pub grids: Vec<Grid>,
 }
 
-impl Default for Quirc {
-    fn default() -> Self {
+impl<'a> Quirc<'a> {
+    pub fn new(image: Image<'a>) -> Self {
+        let width = image.w;
         Quirc {
-            image: Default::default(),
-            row_average: Vec::new(),
+            image,
+            row_average: vec![0; width as usize],
             regions: vec![Default::default(); 2],
             capstones: Vec::new(),
             grids: Vec::new(),
@@ -275,25 +257,9 @@ impl Default for Quirc {
     }
 }
 
-impl Quirc {
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
-
 /// Obtain the library version string.
 pub fn quirc_version() -> &'static str {
     "1.0"
-}
-
-/// Resize the QR-code recognizer. The size of an image must be
-/// specified before codes can be analyzed.
-///
-/// This function returns 0 on success, or -1 if sufficient memory could
-/// not be allocated.
-pub fn quirc_resize(q: &mut Quirc, w: u32, h: u32) {
-    q.image.resize(w, h);
-    q.row_average.resize(w as usize, 0);
 }
 
 /// Return the number of QR-codes identified in the last processed

@@ -37,10 +37,16 @@ impl Data {
 }
 
 unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Data>]) {
-    let mut decoder = Quirc::new();
-    let image_bytes = load_image(&mut decoder, path);
+    let (width, height, mut image_bytes) = load_image(path);
+    let image_bytes_clone = image_bytes.clone();
 
-    quirc_identify(&mut decoder, &image_bytes);
+    let mut decoder = Quirc::new(Image {
+        pixels: &mut image_bytes,
+        w: width as i32,
+        h: height as i32,
+    });
+
+    quirc_identify(&mut decoder);
 
     let result: Vec<_> = (0..quirc_count(&decoder))
         .map(|i| {
@@ -61,7 +67,7 @@ unsafe fn validate_against_original(path: &Path, expected_contents: &[Option<Dat
         .collect();
     assert_eq!(result, expected_contents);
 
-    validate(&mut decoder, &image_bytes);
+    validate(&mut decoder, &image_bytes_clone);
 }
 
 macro_rules! check {
