@@ -36,7 +36,7 @@ mod tests {
 
     #[test]
     #[allow(clippy::float_cmp)]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn test_round_to_nearest_favor_even() {
         assert!(f64::NAN.round_to_nearest_favor_even().is_nan());
         assert_eq!(f64::INFINITY.round_to_nearest_favor_even(), f64::INFINITY);
