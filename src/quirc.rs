@@ -97,6 +97,12 @@ impl Default for QuircData {
     }
 }
 
+impl QuircData {
+    pub fn payload(&self) -> &[u8] {
+        &self.payload[0..self.payload_len as usize]
+    }
+}
+
 /// This structure describes a location in the input image buffer.
 #[derive(Copy, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -295,7 +301,7 @@ pub fn quirc_count(q: &Quirc) -> i32 {
 pub type Result<T> = core::result::Result<T, DecodeError>;
 
 /// This enum describes the various decoder errors which may occur.
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(i32)]
 pub enum DecodeError {
     InvalidGridSize = 1,
