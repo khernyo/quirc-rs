@@ -17,7 +17,7 @@ libc = "0.2.49"
 [dev-dependencies]
 chrono = "0.4.6"
 clap = "2.32.0"
-image = "0.21.0"
+image = "0.23"
 quirc-wrapper = { path = "quirc-wrapper" }
 sdl2 = "0.31.0"
 sdl2-unifont = "1.0.1"
